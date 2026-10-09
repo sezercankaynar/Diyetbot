@@ -67,7 +67,7 @@ export function foodFromRecipe(r: HomeRecipeInput, uid: string): Food {
   return {
     id: `ev-${slug(r.name)}-${uid}`,
     name: r.name.trim(),
-    portion: `1 porsiyon (≈${Math.round(t.grams / n)} g, tarifin 1/${n}'i)`,
+    portion: n === 1 ? `1 porsiyon (≈${t.grams} g çiğ malzeme)` : `1 porsiyon (≈${Math.round(t.grams / n)} g, tarifin 1/${n}'i)`,
     slots: r.slots,
     group: 'ev',
     prep: 2,
