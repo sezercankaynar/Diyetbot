@@ -7,7 +7,6 @@ import FoodRow from '@/components/FoodRow.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
 import CravingPanel from '@/components/CravingPanel.vue'
-import RecipePanel from '@/components/RecipePanel.vue'
 import DailyCoach from '@/components/DailyCoach.vue'
 import RingProgress from '@/components/RingProgress.vue'
 import MacroBars from '@/components/MacroBars.vue'
@@ -15,7 +14,7 @@ import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
-const sheet = ref<null | 'check' | 'out' | 'craving' | 'recipe'>(null)
+const sheet = ref<null | 'check' | 'out' | 'craving'>(null)
 const openMeal = ref<Slot | null>(null)
 
 const greeting = computed(() => {
@@ -50,7 +49,6 @@ const extras = computed(() => store.todayDiary.filter((e) => !e.menuSlot))
 
 const ACTIONS = [
   { id: 'check', icon: '🍽️', label: 'Yiyebilir miyim?' },
-  { id: 'recipe', icon: '🥘', label: 'Kendi yemeğim' },
   { id: 'out', icon: '🏪', label: 'Dışarıda' },
   { id: 'craving', icon: '🍫', label: 'Tatlı krizi' },
 ] as const
@@ -145,7 +143,6 @@ const ACTIONS = [
     <CheckPanel v-if="sheet === 'check'" @close="sheet = null" />
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
-    <RecipePanel v-if="sheet === 'recipe'" @close="sheet = null" />
   </div>
 </template>
 
@@ -158,7 +155,7 @@ const ACTIONS = [
 .big { font-size: 1.9rem; font-weight: 800; line-height: 1; color: var(--ink); }
 .big.neg { color: var(--accent-2); }
 .hero-side { flex: 1; min-width: 0; display: grid; gap: 8px; }
-.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
 .action {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   min-height: 76px; padding: 8px 4px; font: inherit; font-size: 0.74rem; font-weight: 700; line-height: 1.15;

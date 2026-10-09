@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { alternativesFor, dayTotals, fitPortion, getFood, isSnackSlot, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
+import { alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
 import MacroBars from '@/components/MacroBars.vue'
+import MealAddPanel from '@/components/MealAddPanel.vue'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
@@ -28,24 +29,14 @@ const windows = computed(() =>
   Object.fromEntries((store.menuCtx ? slotPlan(store.menuCtx) : []).map((s) => [s.slot, mealWindow(s, store.profile.mealTimes)])),
 )
 const openSlot = ref<Slot | null>(null)
+const addSlot = ref<Slot | null>(null)
 const alternatives = computed(() =>
   store.menuCtx && day.value && openSlot.value ? alternativesFor(store.menuCtx, day.value, openSlot.value) : [],
 )
-// The user's saved home dishes, in a portion that keeps the day inside its targets.
-const mine = computed(() => {
-  const ctx = store.menuCtx
-  const d = day.value
-  const sl = openSlot.value
-  if (!ctx || !d || !sl) return []
-  const shown = new Set([...alternatives.value.map((a) => a.foodId), ...d.items.map((i) => i.foodId)])
-  const suits = (slots: Slot[]) => (slots.includes(isSnackSlot(sl) ? 'snack' : sl) ? 0 : 1)
-  return store.customFoods
-    .filter((f) => f.id.startsWith('ev-') && !f.hidden && !shown.has(f.id))
-    .sort((a, b) => suits(a.slots) - suits(b.slots))
-    .map((f) => ({ foodId: f.id, factor: fitPortion(ctx, d, sl, f.id) }))
-    .filter((x): x is { foodId: string; factor: number } => x.factor !== null)
+watch(dayIdx, () => {
+  openSlot.value = null
+  addSlot.value = null
 })
-watch(dayIdx, () => (openSlot.value = null))
 
 const shortDate = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
 
@@ -129,6 +120,7 @@ async function regenerate() {
           <button type="button" class="act" :aria-pressed="store.liked.includes(item.foodId)" @click="toggleLike(item.foodId)">
             {{ store.liked.includes(item.foodId) ? '♥ Beğendim' : '♡ Beğen' }}
           </button>
+          <button type="button" class="act plus" :aria-label="`${labels[item.slot]}: başka bir yemek ara ve ekle`" @click="addSlot = item.slot">＋</button>
           <button type="button" class="act no" @click="dislike(item.foodId)">✕ Gösterme</button>
         </div>
         <div v-if="openSlot === item.slot" class="alts">
@@ -136,13 +128,6 @@ async function regenerate() {
             <FoodRow :food-id="a.foodId" :factor="a.factor" compact />
             <button type="button" class="btn small" @click="choose(a.foodId, a.factor)">Seç</button>
           </div>
-          <template v-if="mine.length">
-            <div class="label mine-label">Kayıtlı yemeklerim</div>
-            <div v-for="a in mine" :key="a.foodId" class="alt">
-              <FoodRow :food-id="a.foodId" :factor="a.factor" compact />
-              <button type="button" class="btn small" @click="choose(a.foodId, a.factor)">Seç</button>
-            </div>
-          </template>
         </div>
       </section>
 
@@ -153,6 +138,10 @@ async function regenerate() {
         <button type="button" class="btn ghost" @click="regenerate">Haftayı yeniden oluştur</button>
       </div>
     </template>
+    <MealAddPanel
+      v-if="addSlot && day" :date="day.date" :slot="addSlot" :title="`${labels[addSlot]}: yemek ekle`"
+      @close="addSlot = null"
+    />
   </div>
 </template>
 
@@ -173,10 +162,10 @@ async function regenerate() {
 .act { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 0.82rem; font-weight: 700; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
 .act[aria-pressed='true'] { background: var(--stop-bg); color: var(--stop-border); }
 .act.no { margin-left: auto; color: var(--ink-3); }
+.act.plus { background: var(--accent); color: var(--accent-ink); font-size: 1rem; padding: 4px 14px; }
 .alts { margin-top: 10px; background: var(--surface-2); border-radius: 14px; padding: 4px 12px; }
 .alt { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
 .alt + .alt { border-top: 1px solid var(--line); }
-.mine-label { padding-top: 10px; border-top: 1px solid var(--line); }
 .alt :deep(.food-row) { flex: 1; }
 .outdated {
   background: var(--info-bg); color: var(--info-ink); border-radius: 14px; padding: 12px;

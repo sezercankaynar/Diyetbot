@@ -198,7 +198,7 @@ legend + * { clear: both; }
 .field > .label { display: block; margin-bottom: 6px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-input[type='number'], input[type='date'], input[type='text'], input[type='time'], select {
+input[type='number'], input[type='date'], input[type='text'], input[type='search'], input[type='time'], select {
   width: 100%;
   font: inherit;
   font-variant-numeric: tabular-nums;

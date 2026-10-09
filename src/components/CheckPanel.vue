@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { allFoods, evaluateMeal, getFood, type CheckItem } from '@/engine'
+import { evaluateMeal, getFood, searchFoods, type CheckItem } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
@@ -13,18 +13,10 @@ const query = ref('')
 const items = ref<CheckItem[]>([])
 const saved = ref(false)
 
-const norm = (s: string) => s.toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g, '')
 const showPackaged = ref(false)
 const results = computed(() => {
   void store.customFoods.length // re-run when a product is saved
-  const words = norm(query.value.trim()).split(/\s+/).filter(Boolean)
-  if (!words.length) return []
-  return allFoods()
-    .filter((f) => {
-      const hay = norm(`${f.name} ${f.brand ?? ''} ${f.portion}`)
-      return words.every((w) => hay.includes(w))
-    })
-    .slice(0, 30)
+  return searchFoods(query.value, 30)
 })
 
 function add(foodId: string) {
