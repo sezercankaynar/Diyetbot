@@ -151,6 +151,16 @@ export const INGREDIENTS: Ingredient[] = [
   { id: 'tuz', name: 'Tuz', category: 'diger', kcal: 0, protein: 0, carb: 0, fat: 0, units: [{ label: '1 çay kaşığı', grams: 5 }, { label: '1 tatlı kaşığı', grams: 8 }], tags: [], source: 'USDA FDC 173468' },
   { id: 'mayonez', name: 'Mayonez', category: 'diger', kcal: 676, protein: 0.63, carb: 11.45, fat: 69.7, units: [{ label: '1 yemek kaşığı', grams: 14 }], tags: ['egg'], source: 'TürKomp (mayonez-katkisiz)' },
   { id: 'whey', name: 'Protein tozu (whey)', category: 'diger', kcal: 352, protein: 78.13, carb: 6.25, fat: 1.56, units: [{ label: '1 ölçek', grams: 30 }], tags: ['dairy'], source: 'USDA FDC 173180' },
+  // --- atıştırmalık (USDA SR Legacy, per 100 g)
+  { id: 'misir-patlamis-sade', name: 'Patlamış mısır (yağsız, makinede)', category: 'diger', kcal: 387, protein: 12.94, carb: 77.78, fat: 4.54, units: [{ label: '1 büyük kase', grams: 25 }], tags: [], source: 'USDA SR Legacy (popcorn, air-popped)' },
+  { id: 'misir-patlamis-yagli', name: 'Patlamış mısır (yağda / sinema usulü)', category: 'diger', kcal: 500, protein: 9, carb: 57.2, fat: 28.1, units: [{ label: '1 büyük kase', grams: 30 }], tags: [], source: 'USDA SR Legacy (popcorn, oil-popped)' },
+  { id: 'misir-patlamis-karamelli', name: 'Karamelli patlamış mısır', category: 'diger', kcal: 432, protein: 3.8, carb: 79.1, fat: 12.8, tags: [], source: 'USDA SR Legacy (popcorn, caramel-coated)' },
+  { id: 'patates-cipsi', name: 'Patates cipsi (sade, tuzlu)', category: 'diger', kcal: 536, protein: 6.56, carb: 52.9, fat: 34.6, units: [{ label: '1 avuç (≈15 adet)', grams: 20 }], tags: [], source: 'USDA SR Legacy (potato chips, plain, salted)' },
+  { id: 'misir-cipsi', name: 'Mısır cipsi (tortilla)', category: 'diger', kcal: 489, protein: 6.6, carb: 63.4, fat: 23.4, units: [{ label: '1 avuç (≈10 adet)', grams: 20 }], tags: [], source: 'USDA SR Legacy (tortilla chips, plain) – yakın karşılık' },
+  { id: 'cubuk-kraker', name: 'Çubuk kraker / pretzel', category: 'diger', kcal: 381, protein: 10.3, carb: 79.8, fat: 2.6, tags: ['gluten'], source: 'USDA SR Legacy (pretzels, hard, salted)' },
+  { id: 'tuzlu-kraker', name: 'Tuzlu kraker', category: 'diger', kcal: 421, protein: 9.5, carb: 74, fat: 8.6, units: [{ label: '1 adet', grams: 3 }], tags: ['gluten'], source: 'USDA SR Legacy (crackers, saltines)' },
+  { id: 'ay-cekirdegi', name: 'Ay çekirdeği içi (kavrulmuş)', category: 'yag-kuruyemis', kcal: 582, protein: 19.33, carb: 24.07, fat: 49.8, units: [{ label: '1 avuç (kabuksuz)', grams: 30 }], tags: [], source: 'USDA SR Legacy (sunflower seed kernels, dry roasted)' },
+  { id: 'kabak-cekirdegi', name: 'Kabak çekirdeği içi (kavrulmuş)', category: 'yag-kuruyemis', kcal: 574, protein: 29.84, carb: 14.71, fat: 49.05, units: [{ label: '1 avuç (kabuksuz)', grams: 30 }], tags: [], source: 'USDA SR Legacy (pumpkin seed kernels, roasted)' },
 ]
 
 const BY_ID = new Map(INGREDIENTS.map((i) => [i.id, i]))

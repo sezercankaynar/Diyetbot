@@ -23,7 +23,7 @@ export function searchFoods(query: string, limit = 30, foods: Food[] = allFoods(
   const scored: { f: Food; score: number }[] = []
   for (const f of foods) {
     const name = foldTr(f.name)
-    const hay = `${name} ${foldTr(f.brand ?? '')} ${foldTr(f.portion)}`
+    const hay = `${name} ${foldTr(f.brand ?? '')} ${foldTr(f.portion)} ${foldTr(f.keywords ?? '')}`
     let score = 0
     let ok = true
     for (const w of words) {

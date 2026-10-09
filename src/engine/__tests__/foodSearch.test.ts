@@ -20,4 +20,9 @@ describe('food search', () => {
   it('empty query → nothing', () => {
     expect(searchFoods('  ')).toEqual([])
   })
+  it('snacks by common names', () => {
+    expect(searchFoods('popcorn').length).toBeGreaterThan(2)
+    expect(searchFoods('cips')[0].group).toBe('ara')
+    expect(searchFoods('çiğdem').length).toBeGreaterThan(0)
+  })
 })

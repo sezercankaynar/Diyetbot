@@ -6,6 +6,7 @@ import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
+import MealAddPanel from '@/components/MealAddPanel.vue'
 import CravingPanel from '@/components/CravingPanel.vue'
 import DailyCoach from '@/components/DailyCoach.vue'
 import RingProgress from '@/components/RingProgress.vue'
@@ -14,7 +15,7 @@ import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
-const sheet = ref<null | 'check' | 'out' | 'craving'>(null)
+const sheet = ref<null | 'check' | 'out' | 'craving' | 'extra'>(null)
 const openMeal = ref<Slot | null>(null)
 
 const greeting = computed(() => {
@@ -129,8 +130,12 @@ const ACTIONS = [
         </div>
       </section>
 
-      <section v-if="extras.length" class="card">
-        <h2>Menü dışı yediklerin</h2>
+      <section class="card">
+        <div class="sec-head">
+          <h2>Öğün dışı yediklerin</h2>
+          <button type="button" class="btn small" @click="sheet = 'extra'">＋ Ekle</button>
+        </div>
+        <p v-if="!extras.length" class="small muted">Cips, patlamış mısır, kuruyemiş, tatlı… Öğünler dışında yediklerini buraya ekle, günün toplamına yazılsın.</p>
         <div v-for="e in extras" :key="e.id" class="extra">
           <FoodRow :food-id="e.foodId" :factor="e.factor" compact />
           <button type="button" class="btn danger small" aria-label="Sil" @click="store.deleteDiary(e.id)">✕</button>
@@ -143,6 +148,7 @@ const ACTIONS = [
     <CheckPanel v-if="sheet === 'check'" @close="sheet = null" />
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
+    <MealAddPanel v-if="sheet === 'extra'" :date="store.todayDate" title="Öğün dışı ekle" @close="sheet = null" />
   </div>
 </template>
 

@@ -58,6 +58,8 @@ export interface Food {
   recipe?: { lines: { ingredientId: string; grams: number }[]; servings: number }
   /** The user's own dish that shouldn't be suggested in generated menus. */
   noMenu?: boolean
+  /** Other names people search for (e.g. "popcorn"). */
+  keywords?: string
   /** Deleted by the user: kept only so past diary entries and menus still resolve. */
   hidden?: boolean
 }

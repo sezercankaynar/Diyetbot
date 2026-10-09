@@ -13,6 +13,8 @@ interface Dish {
   group: FoodGroup
   kind?: 'light' | 'hearty'
   sweet?: boolean
+  /** Other names people search for. */
+  kw?: string
   lines: Line[]
 }
 
@@ -112,6 +114,23 @@ export const LIBRARY_DISHES: Dish[] = [
   { id: 'peynirli-gozleme', name: 'Peynirli gözleme', portion: '1 adet', group: 'hamur', lines: [['un', 90], ['beyaz-peynir', 40], ['tereyagi', 8], ['maydanoz', 5]] },
   { id: 'patatesli-gozleme', name: 'Patatesli gözleme', portion: '1 adet', group: 'hamur', lines: [['un', 90], ['patates', 80], ['sogan', 15], ['tereyagi', 8]] },
 
+  // --- atıştırmalık
+  { id: 'sinema-misiri-orta', kw: 'popcorn', name: 'Sinema patlamış mısırı (orta boy)', portion: '1 orta kova (≈70 g)', group: 'ara', lines: [['misir-patlamis-yagli', 70]] },
+  { id: 'sinema-misiri-buyuk', kw: 'popcorn', name: 'Sinema patlamış mısırı (büyük boy)', portion: '1 büyük kova (≈120 g)', group: 'ara', lines: [['misir-patlamis-yagli', 120]] },
+  { id: 'ev-patlamis-misir', kw: 'popcorn', name: 'Evde patlamış mısır (az yağlı)', portion: '1 büyük kase (≈25 g)', group: 'ara', lines: [['misir-patlamis-sade', 25], ['zeytinyagi', 3]] },
+  { id: 'karamelli-misir', kw: 'popcorn', name: 'Karamelli patlamış mısır', portion: '1 paket (≈50 g)', group: 'ara', sweet: true, lines: [['misir-patlamis-karamelli', 50]] },
+  { id: 'cips-kucuk', kw: 'chips', name: 'Patates cipsi (küçük paket)', portion: '1 küçük paket (≈30 g)', group: 'ara', lines: [['patates-cipsi', 30]] },
+  { id: 'cips-orta', kw: 'chips', name: 'Patates cipsi (orta paket)', portion: '1 orta paket (≈70 g)', group: 'ara', lines: [['patates-cipsi', 70]] },
+  { id: 'cips-buyuk', kw: 'chips', name: 'Patates cipsi (büyük / parti boy)', portion: '1 büyük paket (≈150 g)', group: 'ara', lines: [['patates-cipsi', 150]] },
+  { id: 'misir-cipsi-orta', kw: 'chips doritos nachos', name: 'Mısır cipsi (orta paket)', portion: '1 orta paket (≈70 g)', group: 'ara', lines: [['misir-cipsi', 70]] },
+  { id: 'cubuk-kraker-paket', kw: 'pretzel', name: 'Çubuk kraker', portion: '1 paket (≈40 g)', group: 'ara', lines: [['cubuk-kraker', 40]] },
+  { id: 'tuzlu-kraker-paket', name: 'Tuzlu kraker', portion: '1 paket (≈30 g, 10 adet)', group: 'ara', lines: [['tuzlu-kraker', 30]] },
+  { id: 'ay-cekirdegi-avuc', kw: 'çiğdem', name: 'Çekirdek (ay çekirdeği)', portion: '1 avuç kabuksuz (≈30 g)', group: 'ara', lines: [['ay-cekirdegi', 30]] },
+  { id: 'kabak-cekirdegi-avuc', name: 'Kabak çekirdeği (kavrulmuş)', portion: '1 avuç kabuksuz (≈30 g)', group: 'ara', lines: [['kabak-cekirdegi', 30]] },
+  { id: 'karisik-kuruyemis', kw: 'kuru yemiş çerez', name: 'Karışık kuruyemiş', portion: '1 avuç (≈30 g)', group: 'ara', lines: [['findik', 10], ['badem', 10], ['ceviz', 5], ['antep-fistigi', 5]] },
+  { id: 'yer-fistigi-avuc', kw: 'fıstık çerez', name: 'Yer fıstığı', portion: '1 avuç (≈30 g)', group: 'ara', lines: [['yer-fistigi', 30]] },
+  { id: 'kuru-meyve-karisik', name: 'Karışık kuru meyve (kayısı, incir, üzüm)', portion: '1 avuç (≈50 g)', group: 'ara', sweet: true, lines: [['kuru-kayisi', 20], ['kuru-incir', 20], ['kuru-uzum', 10]] },
+
   // --- tatlı
   { id: 'irmik-helvasi', name: 'İrmik helvası', portion: '1 kase (≈150 g)', group: 'tatli', sweet: true, lines: [['irmik', 50], ['sut-tam', 80], ['seker', 30], ['tereyagi', 15]] },
   { id: 'muhallebi', name: 'Muhallebi', portion: '1 kase (≈230 g)', group: 'tatli', sweet: true, lines: [['sut-tam', 200], ['nisasta', 15], ['seker', 25]] },
@@ -136,6 +155,7 @@ export function libraryFood(d: Dish): Food {
     fat: r1(t.fat),
     ...(d.kind ? { kind: d.kind } : {}),
     ...(d.sweet ? { sweet: true } : {}),
+    ...(d.kw ? { keywords: d.kw } : {}),
     recipe: { lines, servings: 1 },
     source: 'Standart tarif; değerler malzemelerden hesaplandı (USDA FDC / TürKomp)',
   }

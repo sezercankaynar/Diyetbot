@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import {
-  dayTotals, foldTr, foodFromRecipe, getFood, INGREDIENTS, ingredientById, isSnackSlot, placeDish, portionText, recipeTotals,
+  dayTotals, foldTr, itemTotals, sumTotals, foodFromRecipe, getFood, INGREDIENTS, ingredientById, isSnackSlot, placeDish, portionText, recipeTotals,
   searchFoods, stems, validateRecipe, type RecipeLine, type Slot,
 } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
 
-const props = defineProps<{ date: string; slot: Slot; title: string }>()
+// With a slot: put the dish into that menu meal. Without: log something eaten outside meals (today).
+const props = defineProps<{ date: string; slot?: Slot; title: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
@@ -16,7 +17,9 @@ const query = ref('')
 const input = ref<HTMLInputElement | null>(null)
 onMounted(() => nextTick(() => input.value?.focus()))
 
-const current = computed(() => store.menu?.days.find((d) => d.date === props.date)?.items.find((i) => i.slot === props.slot))
+const current = computed(() =>
+  props.slot ? store.menu?.days.find((d) => d.date === props.date)?.items.find((i) => i.slot === props.slot) : undefined,
+)
 const results = computed(() => {
   void store.customFoods.length // re-run when a dish is saved
   return searchFoods(query.value, 25).filter((f) => f.id !== current.value?.foodId)
@@ -29,18 +32,21 @@ const PORTIONS = [0.5, 0.75, 1, 1.5, 2, 3]
 const isToday = computed(() => props.date === store.todayDate)
 const eaten = ref(false)
 const placed = computed(() =>
-  picked.value && store.menu && store.menuCtx
+  picked.value && props.slot && store.menu && store.menuCtx
     ? placeDish(store.menu, store.menuCtx, props.date, props.slot, picked.value, { factor: factor.value, locked: store.eatenSlotsOn(props.date) })
     : null,
 )
+// Day totals after adding: the menu day (meal mode) or what's eaten today (extra mode).
 const after = computed(() => {
+  if (!picked.value) return null
+  if (!props.slot) return sumTotals([store.todayTotals, itemTotals(picked.value, factor.value)])
   const d = placed.value?.menu.days.find((x) => x.date === props.date)
   return d ? dayTotals(d) : null
 })
 const overBy = computed(() => {
   const t = after.value
   const c = store.menuCtx
-  if (!t || !c || !placed.value?.over) return []
+  if (!t || !c || (props.slot && !placed.value?.over)) return []
   const out: string[] = []
   if (t.kcal > c.kcal) out.push(`${t.kcal - c.kcal} kcal`)
   if (t.protein > c.proteinG) out.push(`protein ${t.protein - c.proteinG} g`)
@@ -55,8 +61,10 @@ function pick(id: string) {
   manual.value = false
 }
 async function confirmPick() {
-  if (!picked.value || !placed.value) return
-  await store.addToMenu(props.date, props.slot, picked.value, factor.value, eaten.value)
+  if (!picked.value) return
+  if (!props.slot) await store.logFoods([{ foodId: picked.value, factor: factor.value }])
+  else if (placed.value) await store.addToMenu(props.date, props.slot, picked.value, factor.value, eaten.value)
+  else return
   emit('close')
 }
 
@@ -85,7 +93,7 @@ const per = computed(() => {
   const t = totals.value
   return { kcal: Math.round(t.kcal / n), protein: Math.round(t.protein / n), carb: Math.round(t.carb / n), fat: Math.round(t.fat / n) }
 })
-const foodSlot = (): Slot => (isSnackSlot(props.slot) ? 'snack' : props.slot)
+const foodSlot = (): Slot => (!props.slot || isSnackSlot(props.slot) ? 'snack' : props.slot)
 const recipeErrors = computed(() => validateRecipe({ name: name.value, lines: lines.value, servings: servings.value, slots: [foodSlot()], kind: 'hearty' }))
 function openManual() {
   manual.value = true
@@ -110,30 +118,32 @@ async function saveManual() {
 <template>
   <SheetPanel :title="title" @close="emit('close')">
     <p class="small muted">
-      Menü dışında yemek istediğin bir şeyi ara ve seç. Kalorisi ve değerleri hazır gelir.
+      <template v-if="slot">Menü dışında yemek istediğin bir şeyi ara ve seç. Kalorisi ve değerleri hazır gelir.</template>
+      <template v-else>Öğünler dışında yediğin bir şeyi (cips, patlamış mısır, kuruyemiş, tatlı…) ara ve ekle; bugünün toplamına yazılır.</template>
       <template v-if="current"> Seçtiğin yemek <strong>{{ getFood(current.foodId)?.name }}</strong> yerine geçer.</template>
     </p>
 
     <input ref="input" v-model="query" type="search" placeholder="Ör. tavuklu pilav, mercimek çorbası, lahmacun" aria-label="Yemek ara" @input="picked = null" />
 
-    <section v-if="picked && placed" class="card picked">
+    <section v-if="picked && (placed || !slot)" class="card picked">
       <FoodRow :food-id="picked" :factor="factor" />
       <div class="label" style="margin-top: 10px">Ne kadar?</div>
       <div class="chips">
         <button v-for="x in PORTIONS" :key="x" type="button" :aria-pressed="x === factor" @click="factor = x">{{ portionText(x) }}</button>
       </div>
-      <label v-if="isToday" class="check"><input v-model="eaten" type="checkbox" /><span>Bunu yedim (bugünün kaydına da ekle)</span></label>
+      <label v-if="slot && isToday" class="check"><input v-model="eaten" type="checkbox" /><span>Bunu yedim (bugünün kaydına da ekle)</span></label>
       <p class="small muted">
         Gün toplamı: <strong>{{ after?.kcal }}</strong> / {{ store.menuCtx?.kcal }} kcal
-        <template v-if="placed.shrunk"> · yer açmak için günün henüz yenmemiş diğer öğünleri küçültülecek</template>
+        <template v-if="!slot"> (bugün yediklerinle birlikte)</template>
+        <template v-if="placed?.shrunk"> · yer açmak için günün henüz yenmemiş diğer öğünleri küçültülecek</template>
       </p>
-      <p v-if="placed.over" class="small over">
+      <p v-if="overBy.length" class="small over">
         Bu yemekle günün hedefi aşılıyor ({{ overBy.join(', ') }}). Yine de ekleyebilirsin: yediğini doğru kaydetmek önemli.
         Bir günlük aşım sorun değil; önemli olan haftalık ortalama.
       </p>
       <div class="row">
         <button type="button" class="btn ghost small" @click="picked = null">Geri</button>
-        <button type="button" class="btn" @click="confirmPick">{{ placed.over ? 'Yine de ekle' : 'Menüye koy' }}</button>
+        <button type="button" class="btn" @click="confirmPick">{{ !slot ? (overBy.length ? 'Yine de ekle' : 'Ekle') : overBy.length ? 'Yine de ekle' : 'Menüye koy' }}</button>
       </div>
     </section>
 
