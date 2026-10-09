@@ -87,6 +87,18 @@ describe('home recipes', () => {
       expect(t.kcal).toBeLessThanOrEqual(ctx.kcal)
       expect(t.fat).toBeLessThanOrEqual(ctx.fatG!)
     }
+    // Too big for the day: still added (what the user ate always counts), flagged as over.
+    const huge = foodFromValues({ name: 'Dev porsiyon', kcal: 2500, protein: 60, carb: 250, fat: 130, slots: ['dinner'], kind: 'hearty' }, 'h')
+    setExtraFoods([own, huge])
+    const r = placeDish(menu, ctx, day.date, 'dinner', huge.id)!
+    expect(r.over).toBe(true)
+    expect(r.factor).toBe(1)
+    expect(r.menu.days[2].items.find((i) => i.slot === 'dinner')!.foodId).toBe(huge.id)
+    // Locked (already eaten) meals are never shrunk.
+    const bf = day.items.find((i) => i.slot === 'breakfast')!
+    const r2 = placeDish(menu, ctx, day.date, 'dinner', own.id, { factor: 1.5, locked: ['breakfast'] })!
+    expect(r2.menu.days[2].items.find((i) => i.slot === 'breakfast')!.factor).toBe(bf.factor)
+    expect(r2.factor).toBe(1.5)
     // A meal the day didn't have is added in meal order.
     const added = swapItem(menu, day.date, 'snack', own.id, 0.5).days[2]
     expect(added.items.map((i) => i.slot)).toEqual(['breakfast', 'snack', 'dinner'])

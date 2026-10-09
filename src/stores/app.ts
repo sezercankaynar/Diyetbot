@@ -220,13 +220,20 @@ export const useAppStore = defineStore('app', () => {
     await saveSettings()
   }
 
-  /** Puts a dish into one meal of a menu day, keeping the day inside its targets. */
-  async function addToMenu(date: string, slot: Slot, foodId: string) {
+  /** Meals of a day that were already ticked as eaten (their portions must not change). */
+  const eatenSlotsOn = (date: string) => diary.value.filter((e) => e.date === date && e.menuSlot).map((e) => e.menuSlot as Slot)
+
+  /** The user's chosen dish into one meal of a menu day; optionally also logged as eaten (today only). */
+  async function addToMenu(date: string, slot: Slot, foodId: string, factor = 1, eaten = false) {
     if (!menu.value || !menuCtx.value) return null
-    const r = placeDish(menu.value, menuCtx.value, date, slot, foodId)
+    const r = placeDish(menu.value, menuCtx.value, date, slot, foodId, { factor, locked: eatenSlotsOn(date) })
     if (!r) return null
     menu.value = r.menu
     await repo.saveMenu(menu.value)
+    if (eaten && date === todayDate.value) {
+      for (const e of todayDiary.value.filter((x) => x.menuSlot === slot)) await deleteDiary(e.id)
+      await logFoods([{ foodId, factor }], slot)
+    }
     return r
   }
 
@@ -338,7 +345,7 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
-    liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu,
+    liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,

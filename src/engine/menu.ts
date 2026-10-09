@@ -323,25 +323,42 @@ export function fitPortion(ctx: MenuContext, day: MenuDay, slot: Slot, foodId: s
   return ALL_FACTORS.filter((x) => x <= prefer).reverse().find((x) => within(itemTotals(foodId, x), cap)) ?? null
 }
 
+export interface Placement {
+  menu: WeekMenu
+  factor: number
+  /** Other (not locked) meals of the day were made smaller to make room. */
+  shrunk: boolean
+  /** The day is over a target even so – the dish is added anyway (what the user ate always counts). */
+  over: boolean
+}
+
 /**
- * Puts a dish into a day's meal while keeping the day inside every target. The chosen dish keeps a
- * full portion when possible – first as is, then by making the day's other meals smaller; only if
- * that fails does the dish itself get a smaller portion. Null when it can't fit at all.
+ * Puts the user's chosen dish into a day's meal, in the portion they chose. To keep the day inside its
+ * targets the day's other meals may be made smaller (never the locked ones, e.g. meals already eaten).
+ * If that's not enough they go down to their smallest portion, the dish is still added and the day is
+ * flagged as over its targets.
  */
 export function placeDish(
   menu: WeekMenu, ctx: MenuContext, date: string, slot: Slot, foodId: string,
-): { menu: WeekMenu; factor: number; shrunk: boolean } | null {
+  opts: { factor?: number; locked?: Slot[] } = {},
+): Placement | null {
   const day = menu.days.find((d) => d.date === date)
   if (!day) return null
-  const factor = fitPortion(ctx, day, slot, foodId)
-  if (factor === 1) return { menu: swapItem(menu, date, slot, foodId, 1), factor, shrunk: false }
-  const limit = minus(dayLimit(ctx), itemTotals(foodId, 1))
-  const fitted = fitDay(day.items.filter((i) => i.slot !== slot), limit)
-  if (within(sumTotals(fitted.map((i) => itemTotals(i.foodId, i.factor))), limit)) {
-    const next = { ...menu, days: menu.days.map((d) => (d.date === date ? { ...d, items: fitted } : d)) }
-    return { menu: swapItem(next, date, slot, foodId, 1), factor: 1, shrunk: true }
-  }
-  return factor === null ? null : { menu: swapItem(menu, date, slot, foodId, factor), factor, shrunk: false }
+  const factor = opts.factor ?? 1
+  const limit = dayLimit(ctx)
+  const others = day.items.filter((i) => i.slot !== slot)
+  const total = (items: MenuItem[]) => sumTotals([itemTotals(foodId, factor), ...items.map((i) => itemTotals(i.foodId, i.factor))])
+  if (within(total(others), limit)) return { menu: swapItem(menu, date, slot, foodId, factor), factor, shrunk: false, over: false }
+
+  const locked = others.filter((i) => opts.locked?.includes(i.slot))
+  const free = others.filter((i) => !opts.locked?.includes(i.slot))
+  const room = minus(limit, total(locked))
+  // Shrink the other meals as far as needed (or as far as they go, when even that isn't enough).
+  const fitted = fitDay(free, room)
+  const shrunk = fitted.some((i, k) => i.factor !== free[k].factor)
+  const over = !within(sumTotals(fitted.map((i) => itemTotals(i.foodId, i.factor))), room)
+  const next = { ...menu, days: menu.days.map((d) => (d.date === date ? { ...d, items: [...locked, ...fitted] } : d)) }
+  return { menu: swapItem(next, date, slot, foodId, factor), factor, shrunk, over }
 }
 
 /** Shrinks portions on days that went over the budget (e.g. after a saved dish was edited). */
