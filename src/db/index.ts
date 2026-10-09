@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Adjustment, DiaryEntry, DietId, Profile, WeekMenu, WeighIn } from '@/engine'
+import type { Adjustment, DiaryEntry, DietId, Food, Profile, WeekMenu, WeighIn } from '@/engine'
 
 export interface Settings {
   /** User-chosen diet; null → use the top-scored one. */
@@ -16,11 +16,12 @@ interface DiyetDB extends DBSchema {
   settings: { key: string; value: Settings }
   diary: { key: string; value: DiaryEntry; indexes: { byDate: string } }
   menus: { key: string; value: WeekMenu }
+  customFoods: { key: string; value: Food }
 }
 
 export interface Backup {
   app: 'diyetbot'
-  version: 2
+  version: 3
   exportedAt: string
   profile: Profile | null
   weighLogs: WeighIn[]
@@ -28,6 +29,8 @@ export interface Backup {
   settings: Settings | null
   diary: DiaryEntry[]
   menu: WeekMenu | null
+  /** Packaged products the user saved (diary entries may point to them). */
+  customFoods: Food[]
 }
 
 const DB_NAME = 'diyetbot'
@@ -36,7 +39,7 @@ const MAIN = 'main'
 let dbPromise: Promise<IDBPDatabase<DiyetDB>> | null = null
 
 export function db(): Promise<IDBPDatabase<DiyetDB>> {
-  dbPromise ??= openDB<DiyetDB>(DB_NAME, 2, {
+  dbPromise ??= openDB<DiyetDB>(DB_NAME, 3, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore('profile')
@@ -47,6 +50,9 @@ export function db(): Promise<IDBPDatabase<DiyetDB>> {
       if (oldVersion < 2) {
         d.createObjectStore('diary', { keyPath: 'id' }).createIndex('byDate', 'date')
         d.createObjectStore('menus')
+      }
+      if (oldVersion < 3) {
+        d.createObjectStore('customFoods', { keyPath: 'id' })
       }
     },
   })
@@ -105,11 +111,21 @@ export const repo = {
     await (await db()).put('menus', plain(m), MAIN)
   },
 
+  async listCustomFoods() {
+    return (await db()).getAll('customFoods')
+  },
+  async putCustomFood(f: Food) {
+    await (await db()).put('customFoods', plain(f))
+  },
+  async deleteCustomFood(id: string) {
+    await (await db()).delete('customFoods', id)
+  },
+
   async exportAll(): Promise<Backup> {
     const d = await db()
     return {
       app: 'diyetbot',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       profile: (await d.get('profile', MAIN)) ?? null,
       weighLogs: await d.getAll('weighLogs'),
@@ -117,13 +133,14 @@ export const repo = {
       settings: (await d.get('settings', MAIN)) ?? null,
       diary: await d.getAll('diary'),
       menu: (await d.get('menus', MAIN)) ?? null,
+      customFoods: await d.getAll('customFoods'),
     }
   },
 
   /** Replaces all data with the backup contents. */
   async importAll(b: Backup) {
     const d = await db()
-    const tx = d.transaction(['profile', 'weighLogs', 'adjustments', 'settings', 'diary', 'menus'], 'readwrite')
+    const tx = d.transaction(['profile', 'weighLogs', 'adjustments', 'settings', 'diary', 'menus', 'customFoods'], 'readwrite')
     await Promise.all([
       tx.objectStore('profile').clear(),
       tx.objectStore('weighLogs').clear(),
@@ -131,6 +148,7 @@ export const repo = {
       tx.objectStore('settings').clear(),
       tx.objectStore('diary').clear(),
       tx.objectStore('menus').clear(),
+      tx.objectStore('customFoods').clear(),
     ])
     if (b.profile) await tx.objectStore('profile').put(b.profile, MAIN)
     if (b.settings) await tx.objectStore('settings').put(b.settings, MAIN)
@@ -138,6 +156,7 @@ export const repo = {
     for (const a of b.adjustments) await tx.objectStore('adjustments').put(a)
     for (const e of b.diary) await tx.objectStore('diary').put(e)
     if (b.menu) await tx.objectStore('menus').put(b.menu, MAIN)
+    for (const f of b.customFoods) await tx.objectStore('customFoods').put(f)
     await tx.done
   },
 }
@@ -152,7 +171,7 @@ export function parseBackup(raw: unknown): Backup {
   if (!raw || typeof raw !== 'object') fail('JSON nesnesi değil')
   const o = raw as Record<string, unknown>
   if (o.app !== 'diyetbot') fail('Diyetbot yedeği değil')
-  if (o.version !== 1 && o.version !== 2) fail('desteklenmeyen sürüm')
+  if (o.version !== 1 && o.version !== 2 && o.version !== 3) fail('desteklenmeyen sürüm')
   if (!Array.isArray(o.weighLogs) || !Array.isArray(o.adjustments)) fail('eksik alanlar')
   const weighLogs = (o.weighLogs as unknown[]).map((w) => {
     const x = w as WeighIn
@@ -181,9 +200,18 @@ export function parseBackup(raw: unknown): Backup {
       })
     : []
   const menu = o.menu && typeof o.menu === 'object' && Array.isArray((o.menu as WeekMenu).days) ? (o.menu as WeekMenu) : null
+  const customFoods = Array.isArray(o.customFoods)
+    ? (o.customFoods as unknown[]).map((x) => {
+        const f = x as Food
+        const ok = f && typeof f.id === 'string' && f.id.startsWith('pk-') && typeof f.name === 'string' &&
+          [f.kcal, f.protein, f.carb, f.fat].every((n) => typeof n === 'number' && Number.isFinite(n))
+        if (!ok) fail('hatalı paketli ürün kaydı')
+        return f
+      })
+    : []
   return {
     app: 'diyetbot',
-    version: 2,
+    version: 3,
     exportedAt: typeof o.exportedAt === 'string' ? o.exportedAt : '',
     profile,
     weighLogs,
@@ -191,5 +219,6 @@ export function parseBackup(raw: unknown): Backup {
     settings: (o.settings as Settings | null) ?? null,
     diary,
     menu,
+    customFoods,
   }
 }

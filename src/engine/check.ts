@@ -1,4 +1,4 @@
-import { FOODS, getFood, type Food, type FoodGroup, type FoodTag } from './foods'
+import { allFoods, getFood, type Food, type FoodGroup, type FoodTag } from './foods'
 import { conflicts, fitsAnimal, fitsDislikes } from './foodRules'
 import { itemTotals, sumTotals, type Totals } from './menu'
 import type { AnimalFoods, DietId } from './types'
@@ -54,6 +54,7 @@ const RELATED: Record<FoodGroup, FoodGroup[]> = {
   salata: ['salata', 'ana'],
   ara: ['ara', 'tatli'],
   yan: ['yan', 'salata'],
+  paket: ['paket', 'ara', 'tatli'],
 }
 
 const MAIN_GROUPS: FoodGroup[] = ['kebap', 'hamur', 'fast', 'ana', 'corba', 'salata', 'kahvalti']
@@ -93,7 +94,11 @@ export function evaluateMeal(items: CheckItem[], ctx: CheckContext): CheckResult
   const tips: string[] = []
   const groups = valid.map((i) => getFood(i.foodId)!.group)
   const isMain = groups.some((g) => MAIN_GROUPS.includes(g))
-  if (isMain && totals.protein < 20) {
+  const macrosKnown = !valid.some((i) => getFood(i.foodId)!.kcalOnly)
+  if (!macrosKnown) {
+    tips.push('Bu ürün için yalnızca kalori yayımlanmış; protein, karbonhidrat ve yağ hesaba katılamadı.')
+  }
+  if (isMain && macrosKnown && totals.protein < 20) {
     tips.push('Protein düşük: yanına yoğurt, ayran, yumurta veya bir porsiyon baklagil ekle.')
   }
   if (verdict !== 'over' && totals.kcal > ctx.kcalTarget * 0.35) {
@@ -124,18 +129,20 @@ function findAlternatives(items: CheckItem[], budget: number, ctx: CheckContext,
   const chosen = new Set(items.map((i) => i.foodId))
   const ok = (f: Food) =>
     !chosen.has(f.id) &&
+    // Chain/packaged items only as alternatives from the same brand (no KFC suggestion at McDonald's).
+    (!f.brand || f.brand === main.brand) &&
     groups.includes(f.group) &&
     fitsAnimal(f, ctx.animalFoods) &&
     fitsDislikes(f, ctx.dislikes) &&
     conflicts(f, 1, ctx).length === 0
 
   const out: (Alternative & { score: number })[] = []
-  for (const f of FOODS.filter(ok)) {
+  for (const f of allFoods().filter(ok)) {
     const factor = [1, 0.75, 0.5].find((x) => f.kcal * x <= budget + TOLERANCE)
     if (!factor) continue
     const kcal = Math.round(f.kcal * factor)
     const protein = Math.round(f.protein * factor)
-    const sameGroup = f.group === main.group ? 0.5 : 0
+    const sameGroup = (f.group === main.group ? 0.5 : 0) + (main.brand && f.brand === main.brand ? 1 : 0)
     const score = sameGroup + (protein * 4) / Math.max(kcal, 1) + (factor === 1 ? 0.3 : 0)
     out.push({ foodId: f.id, factor, kcal, protein, score })
   }

@@ -4,22 +4,16 @@ import { onBeforeUnmount, onMounted } from 'vue'
 defineProps<{ title: string }>()
 const emit = defineEmits<{ close: [] }>()
 
-// A history entry per open sheet, so Android's back button closes the sheet
-// instead of leaving the app.
-let popped = false
-function onPop() {
-  popped = true
-  emit('close')
-}
+import { openSheet, openSheetCount } from './sheetStack'
+
+let release: (() => void) | null = null
 onMounted(() => {
-  history.pushState({ sheet: true }, '')
-  window.addEventListener('popstate', onPop)
+  release = openSheet(() => emit('close'))
   document.body.style.overflow = 'hidden'
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('popstate', onPop)
-  document.body.style.overflow = ''
-  if (!popped) history.back()
+  release?.()
+  if (openSheetCount() === 0) document.body.style.overflow = ''
 })
 </script>
 

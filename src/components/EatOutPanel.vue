@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { VENUES, venueGuide } from '@/engine'
+import { chainList, chainMenu, VENUES, venueGuide } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
@@ -8,6 +8,8 @@ import FoodRow from './FoodRow.vue'
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 const venueId = ref<string | null>(null)
+const chain = ref<string | null>(null)
+const chains = chainList()
 const logged = ref<string | null>(null)
 
 const remaining = computed(() => (store.plan.energy?.target ?? 0) - store.todayTotals.kcal)
@@ -21,6 +23,28 @@ const guide = computed(() => {
     dislikes: store.profile.dislikes,
   })
 })
+
+const chainItems = computed(() => {
+  const diet = store.plan.recommendedDiet?.id
+  if (!chain.value || !diet) return []
+  return chainMenu(chain.value, {
+    remainingKcal: remaining.value,
+    diet,
+    animalFoods: store.profile.animalFoods,
+    dislikes: store.profile.dislikes,
+  })
+})
+const chainSource = computed(() => chains.find((c) => c.brand === chain.value)?.source ?? '')
+function pickVenue(id: string) {
+  venueId.value = id
+  chain.value = null
+  logged.value = null
+}
+function pickChain(brand: string) {
+  chain.value = chain.value === brand ? null : brand
+  venueId.value = null
+  logged.value = null
+}
 
 async function eat(foodId: string, factor: number) {
   await store.logFoods([{ foodId, factor }])
@@ -39,11 +63,40 @@ async function eat(foodId: string, factor: number) {
         :key="v.id"
         type="button"
         :aria-pressed="venueId === v.id"
-        @click="venueId = v.id; logged = null"
+        @click="pickVenue(v.id)"
       >
         {{ v.name }}
       </button>
     </div>
+
+    <template v-if="chains.length">
+      <h2 class="sec">Zincir restoranlar</h2>
+      <p class="small muted">Zincirlerin kendi yayımladığı besin değerleri.</p>
+      <div class="venues" role="group" aria-label="Zincir">
+        <button v-for="c in chains" :key="c.brand" type="button" :aria-pressed="chain === c.brand" @click="pickChain(c.brand)">
+          {{ c.brand }}
+        </button>
+      </div>
+    </template>
+
+    <section v-if="chain" class="card" style="margin-top: 14px">
+      <h2>{{ chain }} – sana uygun sıralama</h2>
+      <p class="small muted">En üstte planına uyan ve bütçene sığanlar var.</p>
+      <div v-for="it in chainItems" :key="it.foodId" class="pick">
+        <FoodRow :food-id="it.foodId" :factor="1" compact>
+          <template #extra>
+            <span v-if="store.plan.energy" class="tag" :class="{ off: !it.fitsBudget }">
+              {{ it.fitsBudget ? 'bütçene uyuyor' : 'bütçeni aşar' }}
+            </span>
+            <div v-for="w in it.warnings" :key="w" class="small warnline">⚠ {{ w }}</div>
+          </template>
+        </FoodRow>
+        <button type="button" class="btn ghost small" @click="eat(it.foodId, 1)">
+          {{ logged === it.foodId ? 'Kaydedildi ✓' : 'Bunu yedim' }}
+        </button>
+      </div>
+      <p class="small muted src">Kaynak: {{ chainSource }}</p>
+    </section>
 
     <template v-if="guide">
       <section class="card" style="margin-top: 14px">
@@ -85,6 +138,8 @@ async function eat(foodId: string, factor: number) {
 .pick:last-child { border-bottom: 0; }
 .pick > .btn { margin-top: 6px; }
 .tag { margin: 4px 0 0; }
+.sec { margin-top: 18px; }
+.src { word-break: break-word; margin-top: 8px; }
 .tag.off { border-color: var(--warn-border); color: var(--warn-ink); }
 .warnline { color: var(--warn-ink); margin-top: 2px; }
 </style>

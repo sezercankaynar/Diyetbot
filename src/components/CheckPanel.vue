@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { evaluateMeal, FOODS, type CheckItem } from '@/engine'
+import { allFoods, evaluateMeal, type CheckItem } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
+import PackagedPanel from './PackagedPanel.vue'
 
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
@@ -13,10 +14,17 @@ const items = ref<CheckItem[]>([])
 const saved = ref(false)
 
 const norm = (s: string) => s.toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g, '')
+const showPackaged = ref(false)
 const results = computed(() => {
-  const q = norm(query.value.trim())
-  if (!q) return []
-  return FOODS.filter((f) => norm(f.name).includes(q) || norm(f.portion).includes(q)).slice(0, 25)
+  void store.customFoods.length // re-run when a product is saved
+  const words = norm(query.value.trim()).split(/\s+/).filter(Boolean)
+  if (!words.length) return []
+  return allFoods()
+    .filter((f) => {
+      const hay = norm(`${f.name} ${f.brand ?? ''} ${f.portion}`)
+      return words.every((w) => hay.includes(w))
+    })
+    .slice(0, 30)
 })
 
 function add(foodId: string) {
@@ -88,12 +96,18 @@ async function eat() {
       <ul v-if="results.length" class="results">
         <li v-for="f in results" :key="f.id">
           <button type="button" @click="add(f.id)">
-            <span>{{ f.name }} <span class="small muted">· {{ f.portion }}</span></span>
+            <span>
+              <span v-if="f.brand && f.group !== 'paket'" class="brand">{{ f.brand }}</span>
+              {{ f.name }} <span class="small muted">· {{ f.portion }}</span>
+            </span>
             <span class="num small">{{ f.kcal }} kcal</span>
           </button>
         </li>
       </ul>
-      <p v-else-if="query.trim()" class="small muted">Bulunamadı. Benzer bir yemek dene (ör. "köfte", "pilav").</p>
+      <p v-else-if="query.trim()" class="small muted">Bulunamadı. Benzer bir yemek dene (ör. "köfte", "pilav") ya da paketli ürünse aşağıdan ekle.</p>
+      <button type="button" class="btn ghost small" style="margin-top: 8px" @click="showPackaged = true">
+        📦 Paketli ürün ekle (barkod / arama / etiket)
+      </button>
 
       <p v-if="saved" class="small saved" role="status">Kaydedildi ✓ Bugünkü listene eklendi.</p>
 
@@ -144,11 +158,13 @@ async function eat() {
       </div>
       <p class="small muted" style="margin-top: 12px">Değerler yaklaşık porsiyonlara göredir.</p>
     </template>
+    <PackagedPanel v-if="showPackaged" @close="showPackaged = false" @picked="add" />
   </SheetPanel>
 </template>
 
 <style scoped>
 .search { font-family: var(--font-body); }
+.brand { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); margin-right: 4px; }
 .results { list-style: none; padding: 0; margin: 8px 0 0; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-2); max-height: 50vh; overflow-y: auto; }
 .results li + li { border-top: 1px dotted var(--rule); }
 .results button {

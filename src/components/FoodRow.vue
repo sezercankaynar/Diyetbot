@@ -10,7 +10,7 @@ const t = computed(() => itemTotals(props.foodId, props.factor))
 <template>
   <div v-if="food" class="food-row">
     <div class="main">
-      <div class="name">{{ food.name }}</div>
+      <div class="name">{{ food.brand && food.group !== 'paket' ? `${food.brand} – ${food.name}` : food.name }}</div>
       <div class="small muted">
         {{ factor === 1 ? food.portion : `${portionText(factor)} (1 porsiyon: ${food.portion})` }}
       </div>
@@ -19,7 +19,8 @@ const t = computed(() => itemTotals(props.foodId, props.factor))
     </div>
     <div class="nums">
       <div class="num kcal">{{ t.kcal }}<span class="unit"> kcal</span></div>
-      <div v-if="!compact" class="num small muted">P {{ t.protein }} · K {{ t.carb }} · Y {{ t.fat }}</div>
+      <div v-if="food.kcalOnly" class="small muted">makro yok</div>
+      <div v-else-if="!compact" class="num small muted">P {{ t.protein }} · K {{ t.carb }} · Y {{ t.fat }}</div>
       <div v-else class="num small muted">P {{ t.protein }} g</div>
     </div>
   </div>

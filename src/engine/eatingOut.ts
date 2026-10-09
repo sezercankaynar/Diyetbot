@@ -1,4 +1,5 @@
 import { getFood, type FoodTag } from './foods'
+import { CHAIN_FOODS } from './chains'
 import { conflicts, fitsAnimal, fitsDislikes } from './foodRules'
 import type { AnimalFoods, DietId } from './types'
 
@@ -158,4 +159,63 @@ export function venueGuide(
   // Rule-compatible and in-budget picks first.
   picks.sort((a, b) => Number(a.warnings.length > 0) - Number(b.warnings.length > 0) || Number(b.fitsBudget) - Number(a.fitsBudget))
   return { venue, picks }
+}
+
+export interface ChainItem {
+  foodId: string
+  name: string
+  portion: string
+  kcal: number
+  protein: number
+  kcalOnly: boolean
+  fitsBudget: boolean
+  warnings: string[]
+}
+
+export interface ChainInfo {
+  brand: string
+  source: string
+  count: number
+}
+
+/** Chains that have published nutrition values in the database. */
+export function chainList(): ChainInfo[] {
+  const map = new Map<string, ChainInfo>()
+  for (const f of CHAIN_FOODS) {
+    if (!f.brand) continue
+    const c = map.get(f.brand) ?? { brand: f.brand, source: f.source ?? '', count: 0 }
+    c.count++
+    map.set(f.brand, c)
+  }
+  return [...map.values()].sort((a, b) => a.brand.localeCompare(b.brand, 'tr'))
+}
+
+/**
+ * A chain's menu for the user: items that fit preferences, best choices first
+ * (no rule conflicts, within budget, most protein per kcal).
+ */
+export function chainMenu(
+  brand: string,
+  ctx: { remainingKcal: number; diet: DietId; animalFoods: AnimalFoods; dislikes: FoodTag[] },
+): ChainItem[] {
+  return CHAIN_FOODS.filter((f) => f.brand === brand && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes))
+    .map((f) => ({
+      foodId: f.id,
+      name: f.name,
+      portion: f.portion,
+      kcal: f.kcal,
+      protein: f.protein,
+      kcalOnly: !!f.kcalOnly,
+      fitsBudget: f.kcal <= ctx.remainingKcal + 50,
+      warnings: conflicts(f, 1, ctx),
+      density: f.kcalOnly ? 0 : (f.protein * 4) / Math.max(f.kcal, 1),
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.warnings.length > 0) - Number(b.warnings.length > 0) ||
+        Number(b.fitsBudget) - Number(a.fitsBudget) ||
+        b.density - a.density ||
+        a.kcal - b.kcal,
+    )
+    .map(({ density: _d, ...rest }) => rest)
 }

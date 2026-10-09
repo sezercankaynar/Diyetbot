@@ -12,6 +12,7 @@ describe('IndexedDB repo', () => {
 
     await repo.putDiary({ id: 'd1', date: '2026-01-15', foodId: 'ayran', factor: 1 })
     await repo.saveMenu({ weekStart: '2026-01-12', seed: 1, days: [] })
+    await repo.putCustomFood({ id: 'pk-1-30', name: 'Gofret', portion: '30 g', slots: [], group: 'paket', prep: 1, tags: [], protein: 2, carb: 18, fat: 10, kcal: 170 })
     const backup = await repo.exportAll()
     expect(backup.weighLogs).toEqual([{ date: '2026-01-01', kg: 79.5 }])
 
@@ -25,12 +26,14 @@ describe('IndexedDB repo', () => {
     expect(await repo.listDiary('2026-01-15')).toHaveLength(1)
     expect(await repo.listDiary('2026-01-16')).toHaveLength(0)
     expect((await repo.loadMenu())?.weekStart).toBe('2026-01-12')
+    expect((await repo.listCustomFoods())[0].name).toBe('Gofret')
   })
 
   it('accepts version 1 backups (no diary/menu)', () => {
     const b = parseBackup({ app: 'diyetbot', version: 1, profile: null, weighLogs: [], adjustments: [] })
     expect(b.diary).toEqual([])
     expect(b.menu).toBeNull()
+    expect(b.customFoods).toEqual([])
   })
 
   it('rejects invalid backups', () => {

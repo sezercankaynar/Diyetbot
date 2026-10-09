@@ -1,3 +1,5 @@
+import { CHAIN_FOODS } from './chains'
+
 // Food & dish database (approximate values per stated portion).
 // kcal is derived from macros (4/4/9) so the numbers are always self-consistent.
 
@@ -6,7 +8,7 @@ export type FoodTag =
   | 'redmeat' | 'chicken' | 'fish' | 'egg' | 'dairy'
   | 'legume' | 'gluten' | 'nuts' | 'eggplant'
 export type FoodGroup =
-  | 'kahvalti' | 'ana' | 'corba' | 'salata' | 'kebap' | 'hamur' | 'fast' | 'tatli' | 'ara' | 'icecek' | 'yan'
+  | 'kahvalti' | 'ana' | 'corba' | 'salata' | 'kebap' | 'hamur' | 'fast' | 'tatli' | 'ara' | 'icecek' | 'yan' | 'paket'
 
 export interface Food {
   id: string
@@ -28,6 +30,15 @@ export interface Food {
   soy?: boolean
   /** A "real" dessert – what the craving is about, not a lighter swap. */
   treat?: boolean
+  /** Chain or product brand (fast-food chains, packaged products). */
+  brand?: string
+  barcode?: string
+  /** Where the numbers come from (URL or "Ürün etiketi"). */
+  source?: string
+  /** True when the animal content of the item is not known (packaged products). */
+  unknownTags?: boolean
+  /** Only energy is published (e.g. Starbucks TR); protein/carb/fat are unknown (stored as 0). */
+  kcalOnly?: boolean
 }
 
 type Opts = { salty?: boolean; sweet?: boolean; soy?: boolean; treat?: boolean }
@@ -166,10 +177,24 @@ export const FOODS: Food[] = [
   f('fistik-ezmesi-kakao', 'Fıstık ezmesi + kakao (şekersiz)', '1 yk fıstık ezmesi', NONE, 'tatli', 1, ['nuts'], 4, 4, 8, { sweet: true }),
 ]
 
-export const FOOD_BY_ID: Record<string, Food> = Object.fromEntries(FOODS.map((x) => [x.id, x]))
+export const FOOD_BY_ID: Record<string, Food> = Object.fromEntries([...FOODS, ...CHAIN_FOODS].map((x) => [x.id, x]))
+
+// The user's saved packaged products. Set at start-up and when one is saved.
+let extra: Food[] = []
+let extraById: Record<string, Food> = {}
+
+export function setExtraFoods(list: Food[]): void {
+  extra = list
+  extraById = Object.fromEntries(list.map((x) => [x.id, x]))
+}
+
+/** Built-in + chain + saved packaged foods – what search and "can I eat this?" see. */
+export function allFoods(): Food[] {
+  return [...FOODS, ...CHAIN_FOODS, ...extra]
+}
 
 export function getFood(id: string): Food | undefined {
-  return FOOD_BY_ID[id]
+  return FOOD_BY_ID[id] ?? extraById[id]
 }
 
 export const SLOT_LABEL: Record<Slot, string> = {

@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Diyetbot',
   webDir: 'dist',
   plugins: {
+    // Route fetch() through native HTTP in the app: no CORS limits on the product database.
+    CapacitorHttp: { enabled: true },
     // Edge-to-edge: the page pads itself with env(safe-area-inset-*).
     SystemBars: {
       insetsHandling: 'native',

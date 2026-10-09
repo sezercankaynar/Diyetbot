@@ -5,7 +5,8 @@ A personal nutrition & training planner. It's a mobile-first PWA with a Turkish 
 Screens (bottom tab bar):
 - **Bugün**: what's left of today's kcal/protein budget, today's menu with "eaten" ticks and items eaten off-menu. It also opens three helpers:
   - *Bunu yiyebilir miyim?* Pick one or more foods and portions to get a verdict (fits / careful / smaller portion / over budget), diet-rule warnings, tips and better alternatives.
-  - *Dışarıda yiyorum*: best picks, tips and things to avoid for 9 venue types (kebapçı, dönerci, esnaf lokantası, pide, fast food, pizza, balıkçı, kahvaltı, kafe).
+  - *Dışarıda yiyorum*: best picks, tips and things to avoid for 9 venue types (kebapçı, dönerci, esnaf lokantası, pide, fast food, pizza, balıkçı, kahvaltı, kafe). It also lists **chain restaurant menus** ranked for the user, using values the chains publish themselves (see `src/engine/chains.ts` for the sources).
+  - *Paketli ürün ekle* (inside "Bunu yiyebilir miyim?") lets you add packaged products in three ways: scan the barcode (Android app, Google code scanner), search by name, or type the values from the label. The first two use [Open Food Facts](https://world.openfoodfacts.org) and need internet. Saved products stay on the device and show up in search.
   - *Tatlı krizi*: step-by-step craving plan, light sweet options that fit the remaining budget and the diet, and prevention tips.
 - **Menü**: a weekly menu built from a Turkish dish database. It fits the kcal target, diet, animal-food preference, disliked ingredients and cooking time. You can swap any meal for an alternative, like dishes (they show up more often) or hide them for good, and rebuild the week.
 - **Plan**: targets, diet recommendation, meal rules and the training week. A link opens **Kanıt** (the studies behind the rules + disclaimer).
@@ -90,6 +91,10 @@ src/
     eatingOut.ts   Venue guides filtered by preferences and remaining budget
     cravings.ts    Sweet-craving plan
     diary.ts       Daily eaten log totals
+    chains.ts      Chain restaurant menu items with published nutrition (source per chain)
+    packaged.ts    Label → food conversion, Open Food Facts product parsing, label validation
+  off/             Open Food Facts client (network)
+  native/          Barcode scanning (Capacitor ML Kit plugin, Android only)
     plan.ts        buildPlan(): orchestrates everything into one Plan object
     defaults.ts    Default profile
     __tests__/     Vitest suites

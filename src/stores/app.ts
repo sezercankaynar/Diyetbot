@@ -10,12 +10,14 @@ import {
   menuOutdated as isMenuOutdated,
   mondayOf,
   removeDish,
+  setExtraFoods,
   sortLogs,
   swapItem,
   type Adjustment,
   type AdjustmentOption,
   type CheckItem,
   type DiaryEntry,
+  type Food,
   type DietId,
   type Profile,
   type Slot,
@@ -41,6 +43,9 @@ export const useAppStore = defineStore('app', () => {
   const disliked = ref<string[]>([])
   const diary = ref<DiaryEntry[]>([])
   const menu = ref<WeekMenu | null>(null)
+  /** Packaged products the user saved (from barcode, search or label). */
+  const customFoods = ref<Food[]>([])
+  const syncExtraFoods = () => setExtraFoods(customFoods.value)
   /** Refreshed when the app comes back to the foreground, so "today" rolls over at midnight. */
   const todayDate = ref(today())
 
@@ -86,6 +91,8 @@ export const useAppStore = defineStore('app', () => {
     liked.value = settings?.liked ?? []
     disliked.value = settings?.disliked ?? []
     diary.value = await repo.listDiary()
+    customFoods.value = await repo.listCustomFoods()
+    syncExtraFoods()
     menu.value = (await repo.loadMenu()) ?? null
     loaded.value = true
     await ensureMenu()
@@ -142,6 +149,12 @@ export const useAppStore = defineStore('app', () => {
       await repo.putDiary(e)
       diary.value = [...diary.value, e]
     }
+  }
+
+  async function saveCustomFood(f: Food) {
+    await repo.putCustomFood(f)
+    customFoods.value = [...customFoods.value.filter((x) => x.id !== f.id), f]
+    syncExtraFoods()
   }
 
   async function deleteDiary(id: string) {
@@ -227,7 +240,7 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
-    liked, disliked, diary, menu, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
+    liked, disliked, diary, menu, customFoods, saveCustomFood, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
     ensureMenu, regenerateMenu, swapMenu, rateDish, logFoods, deleteDiary, toggleMenuEaten,
