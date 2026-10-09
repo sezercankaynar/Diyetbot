@@ -1,5 +1,5 @@
 // Pure domain types. No UI or browser dependencies.
-import type { FoodTag } from './foods'
+import type { Slot } from './foods'
 
 export type Sex = 'm' | 'f'
 export type ActivityMultiplier = 1.2 | 1.375 | 1.55 | 1.725
@@ -61,8 +61,12 @@ export interface Profile {
   eatingOut: EatingOut
   tracksCalories: boolean
   hungerTime: HungerTime
-  /** Ingredients the user doesn't eat or dislikes (menu never uses them). */
-  dislikes: FoodTag[]
+  /** Ingredients/dishes the user doesn't eat: coarse tags or fine taste keys (foodKeys.ts). */
+  dislikes: string[]
+  /** Taste keys the user likes (menus favour them). */
+  likes?: string[]
+  /** Meals the user eats; overrides mealsPerDay-based defaults when set. */
+  mealSlots?: Slot[]
   /** Which meals are big and which are light (öğün düzeni). */
   mealStyle: MealStyles
   mealTimes: MealTimes

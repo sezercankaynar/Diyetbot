@@ -1,4 +1,4 @@
-import { FOODS, type FoodTag } from './foods'
+import { FOODS } from './foods'
 import { fitsAnimal, fitsDislikes } from './foodRules'
 import type { AnimalFoods, DietId, HealthFlags, HungerTime } from './types'
 
@@ -25,7 +25,7 @@ export function cravingPlan(ctx: {
   remainingKcal: number
   diet: DietId
   animalFoods: AnimalFoods
-  dislikes: FoodTag[]
+  dislikes: readonly string[]
   health: HealthFlags
   hungerTime: HungerTime
 }): CravingPlan {

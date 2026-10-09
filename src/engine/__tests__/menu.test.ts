@@ -18,7 +18,7 @@ describe('slot plan', () => {
   })
   it('evening hunger adds a night snack and a bigger dinner', () => {
     const sp = slotPlan({ mealsPerDay: 3, canSkipBreakfast: false, hungerTime: 'evening' })
-    expect(sp.map((s) => s.slot)).toEqual(['breakfast', 'lunch', 'dinner', 'snack'])
+    expect(sp.map((s) => s.slot)).toEqual(['breakfast', 'lunch', 'dinner', 'night'])
     expect(sp.at(-1)!.label).toBe('Gece ara öğün')
     expect(sp.reduce((a, s) => a + s.share, 0)).toBeCloseTo(1)
   })
@@ -59,6 +59,42 @@ describe('meal styles (öğün düzeni)', () => {
     expect(mains.filter((i) => getFood(i.foodId)!.trad).length).toBeGreaterThanOrEqual(5)
     const dinners = m.days.map((d) => d.items.find((i) => i.slot === 'dinner')!.foodId)
     expect(dinners.filter(light).length).toBeLessThanOrEqual(2)
+  })
+})
+
+describe('chosen meals (mealSlots)', () => {
+  it('no lunch, afternoon snack + night snack: every chosen meal is in the menu', () => {
+    const ctx = ctxFor({ mealSlots: ['breakfast', 'snack', 'dinner', 'night'] })
+    expect(slotPlan(ctx).map((s) => s.slot)).toEqual(['breakfast', 'snack', 'dinner', 'night'])
+    const m = generateWeekMenu(ctx, WEEK)
+    for (const d of m.days) {
+      expect(d.items.map((i) => i.slot)).toEqual(['breakfast', 'snack', 'dinner', 'night'])
+      for (const i of d.items.filter((x) => x.slot === 'snack' || x.slot === 'night')) {
+        expect(getFood(i.foodId)!.slots).toContain('snack')
+      }
+      // the two snacks of a day are different
+      const snacks = d.items.filter((x) => x.slot === 'snack' || x.slot === 'night').map((x) => x.foodId)
+      expect(new Set(snacks).size).toBe(2)
+    }
+  })
+  it('changing the chosen meals makes the menu outdated', () => {
+    const ctx = ctxFor()
+    const m = generateWeekMenu(ctx, WEEK)
+    expect(menuOutdated(m, { ...ctx, mealSlots: ['breakfast', 'snack', 'dinner'] })).toBe(true)
+  })
+})
+
+describe('taste preferences', () => {
+  it('fine-grained dislikes exclude matching dishes', () => {
+    const m = generateWeekMenu(ctxFor({ dislikes: ['patlican', 'dana-kiyma', 'mercimek'] }), WEEK)
+    for (const d of m.days) for (const i of d.items) {
+      expect(getFood(i.foodId)!.name).not.toMatch(/patlıcan|karnıyarık|musakka|kıyma|köfte|mercimek/i)
+    }
+  })
+  it('likes are favoured', () => {
+    const count = (likes: string[]) =>
+      generateWeekMenu(ctxFor({ likes }), WEEK).days.flatMap((d) => d.items).filter((i) => /çorba/i.test(getFood(i.foodId)!.name)).length
+    expect(count(['corba'])).toBeGreaterThan(count([]))
   })
 })
 

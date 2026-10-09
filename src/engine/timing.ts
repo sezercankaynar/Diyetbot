@@ -17,7 +17,7 @@ const toTime = (min: number): string => {
 
 /** Start time of a planned meal (night snack has its own time). */
 export function mealStart(sp: Pick<SlotPlan, 'slot' | 'label'>, times: MealTimes = DEFAULT_MEAL_TIMES): string {
-  if (sp.slot === 'snack') return sp.label === 'Gece ara öğün' ? times.nightSnack : times.snack
+  if (sp.slot === 'night') return times.nightSnack
   return times[sp.slot]
 }
 
@@ -25,7 +25,7 @@ export function mealStart(sp: Pick<SlotPlan, 'slot' | 'label'>, times: MealTimes
 export function mealWindow(sp: Pick<SlotPlan, 'slot' | 'label'>, times: MealTimes = DEFAULT_MEAL_TIMES): string {
   const start = toMin(mealStart(sp, times))
   if (Number.isNaN(start)) return ''
-  return `${toTime(start)}–${toTime(start + (sp.slot === 'snack' ? 30 : 60))}`
+  return `${toTime(start)}–${toTime(start + (sp.slot === 'snack' || sp.slot === 'night' ? 30 : 60))}`
 }
 
 /** Tips about the chosen schedule. */

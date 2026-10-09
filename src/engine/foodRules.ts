@@ -1,4 +1,5 @@
-import type { Food, FoodTag, Slot } from './foods'
+import { avoidsAll } from './foodKeys'
+import { isSnackSlot, type Food, type FoodTag, type Slot } from './foods'
 import type { AnimalFoods, DietId } from './types'
 
 const ANIMAL_EXCLUDES: Record<AnimalFoods, FoodTag[]> = {
@@ -12,14 +13,15 @@ export function fitsAnimal(food: Food, a: AnimalFoods): boolean {
   return !food.tags.some((t) => ANIMAL_EXCLUDES[a].includes(t))
 }
 
-export function fitsDislikes(food: Food, dislikes: FoodTag[]): boolean {
-  return !food.tags.some((t) => dislikes.includes(t))
+/** Dislikes can be coarse tags ('fish') or fine taste keys ('patlican', see foodKeys.ts). */
+export function fitsDislikes(food: Food, dislikes: readonly string[]): boolean {
+  return avoidsAll(food, dislikes)
 }
 
 /** Per-portion carb ceilings that keep the day within the diet's carb budget. */
 export function carbLimit(diet: DietId, slot: Slot): number | null {
-  if (diet === 'keto') return slot === 'snack' ? 6 : 10
-  if (diet === 'lowcarb') return slot === 'snack' ? 15 : slot === 'breakfast' ? 30 : 40
+  if (diet === 'keto') return isSnackSlot(slot) ? 6 : 10
+  if (diet === 'lowcarb') return isSnackSlot(slot) ? 15 : slot === 'breakfast' ? 30 : 40
   return null
 }
 
@@ -34,7 +36,7 @@ export function fitsDiet(food: Food, diet: DietId, slot: Slot, factor = 1): bool
 
 /** Human-readable reasons a food conflicts with the user's rules (empty = fine). */
 export function conflicts(
-  food: Food, factor: number, ctx: { diet: DietId; animalFoods: AnimalFoods; dislikes: FoodTag[] },
+  food: Food, factor: number, ctx: { diet: DietId; animalFoods: AnimalFoods; dislikes: readonly string[] },
 ): string[] {
   const out: string[] = []
   if (!fitsAnimal(food, ctx.animalFoods)) out.push('beslenme tercihinize (hayvansal gıda) uymuyor')

@@ -30,6 +30,7 @@ export const SLOT_LABEL: Record<Slot, string> = {
   lunch: 'Öğle',
   dinner: 'Akşam',
   snack: 'Ara öğün',
+  night: 'Gece ara öğün',
 }
 
 export const TAG_LABEL: Record<FoodTag, string> = {

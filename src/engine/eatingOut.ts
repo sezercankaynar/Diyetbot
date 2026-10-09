@@ -1,4 +1,4 @@
-import { getFood, type FoodTag } from './foods'
+import { getFood } from './foods'
 import { CHAIN_FOODS } from './chains'
 import { conflicts, fitsAnimal, fitsDislikes } from './foodRules'
 import type { AnimalFoods, DietId } from './types'
@@ -137,7 +137,7 @@ export interface VenueGuide {
 
 export function venueGuide(
   venueId: string,
-  ctx: { remainingKcal: number; diet: DietId; animalFoods: AnimalFoods; dislikes: FoodTag[] },
+  ctx: { remainingKcal: number; diet: DietId; animalFoods: AnimalFoods; dislikes: readonly string[] },
 ): VenueGuide | null {
   const venue = VENUES.find((v) => v.id === venueId)
   if (!venue) return null
@@ -200,7 +200,7 @@ export function chainList(): ChainInfo[] {
  */
 export function chainMenu(
   brand: string,
-  ctx: { remainingKcal: number; diet: DietId; animalFoods: AnimalFoods; dislikes: FoodTag[] },
+  ctx: { remainingKcal: number; diet: DietId; animalFoods: AnimalFoods; dislikes: readonly string[] },
 ): ChainItem[] {
   return CHAIN_FOODS.filter((f) => f.brand === brand && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes))
     .map((f) => {

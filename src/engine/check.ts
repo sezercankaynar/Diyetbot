@@ -1,4 +1,4 @@
-import { allFoods, getFood, type Food, type FoodGroup, type FoodTag } from './foods'
+import { allFoods, getFood, type Food, type FoodGroup } from './foods'
 import { conflicts, fitsAnimal, fitsDislikes } from './foodRules'
 import { itemTotals, sumTotals, type Totals } from './menu'
 import type { AnimalFoods, DietId } from './types'
@@ -14,7 +14,7 @@ export interface CheckContext {
   eaten: Totals
   diet: DietId
   animalFoods: AnimalFoods
-  dislikes: FoodTag[]
+  dislikes: readonly string[]
 }
 
 export type Verdict = 'ok' | 'caution' | 'smaller' | 'over'

@@ -3,7 +3,9 @@ import { SWEET_RECIPES } from '../content/sweetRecipes'
 // Food & dish database (approximate values per stated portion).
 // kcal is derived from macros (4/4/9) so the numbers are always self-consistent.
 
-export type Slot = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+export type Slot = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'night'
+/** Snack-type slots (afternoon and night snack) – both use foods tagged 'snack'. */
+export const isSnackSlot = (s: Slot): boolean => s === 'snack' || s === 'night'
 export type FoodTag =
   | 'redmeat' | 'chicken' | 'fish' | 'egg' | 'dairy'
   | 'legume' | 'gluten' | 'nuts' | 'eggplant'
