@@ -163,6 +163,8 @@ export function venueGuide(
 
 export interface ChainItem {
   foodId: string
+  /** Usual serving (per-100 g/ml items use their assumed portion). */
+  factor: number
   name: string
   portion: string
   kcal: number
@@ -201,17 +203,22 @@ export function chainMenu(
   ctx: { remainingKcal: number; diet: DietId; animalFoods: AnimalFoods; dislikes: FoodTag[] },
 ): ChainItem[] {
   return CHAIN_FOODS.filter((f) => f.brand === brand && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes))
-    .map((f) => ({
-      foodId: f.id,
-      name: f.name,
-      portion: f.portion,
-      kcal: f.kcal,
-      protein: f.protein,
-      kcalOnly: !!f.kcalOnly,
-      fitsBudget: f.kcal <= ctx.remainingKcal + 50,
-      warnings: conflicts(f, 1, ctx),
-      density: f.kcalOnly ? 0 : (f.protein * 4) / Math.max(f.kcal, 1),
-    }))
+    .map((f) => {
+      const factor = f.defaultFactor ?? 1
+      const kcal = Math.round(f.kcal * factor)
+      return {
+        foodId: f.id,
+        factor,
+        name: f.name,
+        portion: f.portion,
+        kcal,
+        protein: Math.round(f.protein * factor),
+        kcalOnly: !!f.kcalOnly,
+        fitsBudget: kcal <= ctx.remainingKcal + 50,
+        warnings: conflicts(f, factor, ctx),
+        density: f.kcalOnly ? 0 : (f.protein * 4) / Math.max(f.kcal, 1),
+      }
+    })
     .sort(
       (a, b) =>
         Number(a.warnings.length > 0) - Number(b.warnings.length > 0) ||

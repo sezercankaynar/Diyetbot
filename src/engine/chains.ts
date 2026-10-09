@@ -14,7 +14,7 @@ type Row = [
   carb: number | null,
   fat: number | null,
   tags: FoodTag[],
-  opts?: { sweet?: boolean; treat?: boolean; salty?: boolean },
+  opts?: { sweet?: boolean; treat?: boolean; salty?: boolean; defaultFactor?: number },
 ]
 
 /**
@@ -295,4 +295,134 @@ const ARBYS = chain("Arby's", AR, [
   ['cheese-sticks-6', "6'lı Cheese Sticks", '6 adet', 'fast', 540.54, 26.14, 35.64, 32.67, ['dairy', 'gluten'], { salty: true }],
 ])
 
-export const CHAIN_FOODS: Food[] = [...MCDONALDS, ...BURGER_KING, ...KFC, ...POPEYES, ...ARBYS, ...STARBUCKS, ...TAVUK_DUNYASI, ...KOMAGENE, ...USTA_DONERCI]
+// Published per 100 ml / 100 g: `defaultFactor` is the assumed usual serving (labelled as an assumption).
+const ORTA = { defaultFactor: 3.5 } // orta boy ≈ 350 ml (cup volume not published)
+const KD = "Kahve Dünyası'nın Migros Yemek mağaza sayfasındaki kendi ürün açıklamaları (100 ml / 100 g başına). Orta boy ≈350 ml ve parça gramajları varsayımdır."
+const KAHVE_DUNYASI = chain('Kahve Dünyası', KD, [
+  ['filtre-orta', 'Filtre Kahve (Orta)', '100 ml', 'icecek', 3.57, 0, 0.78, 0.05, [], ORTA],
+  ['sutlu-filtre-orta', 'Sütlü Filtre Kahve (Orta)', '100 ml', 'icecek', 8.44, 0.71, 1.22, 0.08, ['dairy'], ORTA],
+  ['double-turk-kahvesi', 'Double Türk Kahvesi', '100 ml', 'icecek', 2, 0.1, 0.1, 0.1, [], { defaultFactor: 1 }],
+  ['espresso-double', 'Espresso Double', '100 ml', 'icecek', 21, 1.8, 3.5, null, [], { defaultFactor: 0.6 }],
+  ['americano-orta', 'Americano (Orta)', '100 ml', 'icecek', 4, 0.3, 0.6, null, [], ORTA],
+  ['latte-orta', 'Caffe Latte (Orta)', '100 ml', 'icecek', 53, 2.8, 4.5, 2.7, ['dairy'], ORTA],
+  ['cappuccino-orta', 'Cappuccino (Orta)', '100 ml', 'icecek', 50, 2.7, 4.4, 2.4, ['dairy'], ORTA],
+  ['flat-white-orta', 'Flat White (Orta)', '100 ml', 'icecek', 50, 2.7, 4.4, 2.4, ['dairy'], ORTA],
+  ['mocha-orta', 'Mocha (Orta)', '100 ml', 'icecek', 81, 2.7, 11.2, 2.7, ['dairy'], { ...ORTA, sweet: true }],
+  ['beyaz-mocha-orta', 'Beyaz Çikolatalı Mocha (Orta)', '100 ml', 'icecek', 167, 3, 14, 10, ['dairy'], { ...ORTA, sweet: true, treat: true }],
+  ['buzlu-latte-orta', 'Buzlu Caffe Latte (Orta)', '100 ml', 'icecek', 35, 1.99, 3.35, 1.53, ['dairy'], ORTA],
+  ['buzlu-mocha-orta', 'Buzlu Mocha (Orta)', '100 ml', 'icecek', 78, 1.35, 8.87, 4.08, ['dairy'], { ...ORTA, sweet: true }],
+  ['soguk-turk-kahvesi', 'Soğuk Türk Kahvesi', '100 ml', 'icecek', 98, 1.21, 16.56, 2.94, ['dairy'], { ...ORTA, sweet: true }],
+  ['sicak-cikolata-orta', 'Sıcak Çikolata (Orta)', '100 ml', 'icecek', 179, 4.5, 13.6, 11.3, ['dairy'], { ...ORTA, sweet: true, treat: true }],
+  ['salep-orta', 'Salep (Orta)', '100 ml', 'icecek', 90, 3.0, 12.5, 3.0, ['dairy'], { ...ORTA, sweet: true }],
+  ['kruvasan', 'Kruvasan', '100 g', 'hamur', 360, 5.6, 39.7, 19.3, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.7 }],
+  ['peynirli-kruvasan', 'Peynirli Kruvasan', '100 g', 'hamur', 448, 11.6, 40.5, 26.1, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.9 }],
+  ['cikolatali-kruvasan', 'Çikolatalı Kruvasan', '100 g', 'hamur', 396, 5.6, 45, 20.8, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.8, sweet: true }],
+  ['peynirli-pogaca', 'Peynirli Poğaça', '100 g', 'hamur', 497, 11, 47.1, 28.7, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.8 }],
+  ['findikli-kek', 'Fındık Dilimli Kek', '100 g', 'tatli', 400, 6.9, 45.1, 21.6, ['gluten', 'dairy', 'egg', 'nuts'], { defaultFactor: 0.8, sweet: true, treat: true }],
+  ['havuclu-kek', 'Havuçlu Kek (Dilim)', '100 g', 'tatli', 369, 5.9, 46.1, 17.8, ['gluten', 'dairy', 'egg'], { defaultFactor: 1, sweet: true, treat: true }],
+  ['limonlu-cheesecake', 'Limonlu Cheesecake (Dilim)', '100 g', 'tatli', 363, 6.9, 32.2, 23.2, ['dairy', 'egg', 'gluten'], { defaultFactor: 1.2, sweet: true, treat: true }],
+  ['cookie', 'Çikolata Parçalı Cookie', '100 g', 'tatli', 493, 5.6, 63.5, 23.5, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.6, sweet: true, treat: true }],
+  ['mozzarella-sandvic', 'Mozzarellalı Sandviç', '100 g', 'fast', 268, 15, 14.8, 16.4, ['gluten', 'dairy'], { defaultFactor: 1.8 }],
+  ['jambonlu-sandvic', 'Dana Jambonlu Sandviç', '100 g', 'fast', 196, 8.2, 19.2, 9.5, ['gluten', 'redmeat', 'dairy'], { defaultFactor: 1.8, salty: true }],
+])
+
+const CR = 'cariboucoffee.com.tr – Alerjen ve Ürün Bilgileri, kalori menüsü PDF (2026), 100 g başına; parça gramajları varsayımdır. İçecek değeri yayımlanmıyor.'
+const CARIBOU = chain('Caribou Coffee', CR, [
+  ['acma-patatesli', 'Açma Patatesli', '100 g', 'hamur', 305, 6.6, 35, 15, ['gluten', 'dairy'], { defaultFactor: 1 }],
+  ['acma-zeytinli', 'Açma Zeytinli', '100 g', 'hamur', 371, 6.9, 38, 21, ['gluten', 'dairy'], { defaultFactor: 1 }],
+  ['marble-kek', 'Marble Kek', '100 g', 'tatli', 374.65, 6.09, 42.57, 20.69, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.8, sweet: true, treat: true }],
+  ['muffin-cikolata', 'Muffin Çikolata', '100 g', 'tatli', 362, 3.8, 60.4, 11.5, ['gluten', 'dairy', 'egg'], { defaultFactor: 1.1, sweet: true, treat: true }],
+  ['muffin-yaban-mersini', 'Muffin Yaban Mersinli', '100 g', 'tatli', 376, 4.5, 54, 16, ['gluten', 'dairy', 'egg'], { defaultFactor: 1.1, sweet: true, treat: true }],
+  ['havuclu-kek', 'Kremalı Havuçlu Kek', '100 g', 'tatli', 362, 4.8, 37.3, 20.5, ['gluten', 'dairy', 'egg'], { defaultFactor: 1, sweet: true, treat: true }],
+  ['sebzeli-cheddar', 'Sebzeli Cheddar Sandviç', '100 g', 'fast', 231, 7.4, 30, 8.4, ['gluten', 'dairy'], { defaultFactor: 1.8 }],
+  ['artizan-mozarella', 'Artizan Mozarella Peynirli Sandviç', '100 g', 'fast', 226, 11.23, 32.54, 7.16, ['gluten', 'dairy'], { defaultFactor: 1.8 }],
+  ['mozarella-focaccia', 'Mozarella Focaccia Sandviç', '100 g', 'fast', 245, 6.5, 38, 6.5, ['gluten', 'dairy'], { defaultFactor: 1.8 }],
+  ['hindi-fume-bagel', 'Hindi Füme Bagel', '100 g', 'fast', 242, 13.4, 24.12, 9.83, ['gluten', 'chicken', 'dairy'], { defaultFactor: 1.6, salty: true }],
+  ['italyan-cheddar', 'İtalyan Cheddar Sandviç', '100 g', 'fast', 305, 15.2, 25.4, 15.6, ['gluten', 'dairy', 'redmeat'], { defaultFactor: 1.8, salty: true }],
+  ['midi-balli-tavuk', 'Midi Ballı Tavuklu Sandviç', '100 g', 'fast', 219, 9.4, 27, 8, ['gluten', 'chicken'], { defaultFactor: 1.4 }],
+  ['roastbeef', 'Roastbeef Sandviç', '100 g', 'fast', 241.25, 14.32, 43.23, 3.89, ['gluten', 'redmeat'], { defaultFactor: 1.8, salty: true }],
+  ['uc-peynirli-bagel', 'Üç Peynirli Bagel Kaiser Sandviç', '100 g', 'fast', 254, 12, 29, 9.4, ['gluten', 'dairy'], { defaultFactor: 1.6 }],
+  ['cikolatali-tart', 'Unsuz Çikolatalı Tart', '100 g', 'tatli', 424, 5, 40.6, 26.5, ['dairy', 'egg'], { defaultFactor: 1, sweet: true, treat: true }],
+  ['tiramisu', 'Tiramisu Pasta', '100 g', 'tatli', 225.4, 4.54, 33.04, 8.5, ['dairy', 'egg', 'gluten'], { defaultFactor: 1.2, sweet: true, treat: true }],
+  ['profiterol', 'Profiterol Pasta', '100 g', 'tatli', 333, 6.69, 39.7, 16.3, ['dairy', 'egg', 'gluten'], { defaultFactor: 1.2, sweet: true, treat: true }],
+  ['lotus-pasta', 'Lotus Biscoff Pasta', '100 g', 'tatli', 463, 5.5, 45.2, 29.4, ['dairy', 'egg', 'gluten'], { defaultFactor: 1.2, sweet: true, treat: true }],
+])
+
+const SS = 'simitsarayi.com – ürün grupları sayfaları (100 g başına; tutarsız görünen değerler alınmadı). Parça gramajları varsayımdır.'
+const SIMIT_SARAYI = chain('Simit Sarayı', SS, [
+  ['pogaca', 'Poğaça', '100 g', 'hamur', 332.7, 10.9, 52.1, 10.23, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.8 }],
+  ['su-boregi', 'Su Böreği', '100 g', 'hamur', 281.9, 5, 36.5, 13.6, ['gluten', 'dairy', 'egg'], { defaultFactor: 1.5, salty: true }],
+  ['ev-coregi', 'Dereotlu Ev Çöreği', '100 g', 'hamur', 371.24, 8.56, 28.39, 25.07, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.9 }],
+  ['kiymali-durum', 'Kıymalı Saray Dürüm', '100 g', 'fast', 328.3, 21.5, 22.2, 17.9, ['gluten', 'redmeat'], { defaultFactor: 2, salty: true }],
+  ['patatesli-durum', 'Patatesli Saray Dürüm', '100 g', 'fast', 404.7, 7.77, 43.78, 21.79, ['gluten'], { defaultFactor: 2 }],
+  ['margarita-simit-pizza', 'Margaritha Simit Pizza', '100 g', 'fast', 306.6, 8.2, 24.6, 20.1, ['gluten', 'dairy'], { defaultFactor: 2, salty: true }],
+  ['karisik-simit-pizza', 'Karışık Simit Pizza', '100 g', 'fast', 340.4, 12.3, 33.3, 18.2, ['gluten', 'dairy', 'redmeat'], { defaultFactor: 2, salty: true }],
+  ['sucuklu-ciabatta', 'Sucuklu Ciabatta Pizza', '100 g', 'fast', 452.74, 10.45, 34.63, 30.58, ['gluten', 'dairy', 'redmeat'], { defaultFactor: 2, salty: true }],
+  ['manti', 'Mantı', '100 g', 'hamur', 252, 10.91, 36.97, 7.27, ['gluten', 'dairy', 'redmeat'], { defaultFactor: 3 }],
+  ['mozaik-pasta', 'Mozaik Pasta', '100 g', 'tatli', 405.6, 9.5, 38.3, 24.6, ['dairy', 'gluten', 'egg'], { defaultFactor: 1, sweet: true, treat: true }],
+  ['latte-pasta', 'Latte Pasta', '100 g', 'tatli', 161.1, 3.5, 27.2, 4.5, ['dairy', 'gluten', 'egg'], { defaultFactor: 1.2, sweet: true, treat: true }],
+  ['sade-cookie', 'Sade Cookie', '100 g', 'tatli', 372.7, 8.2, 44.6, 18.5, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.6, sweet: true, treat: true }],
+  ['portakalli-kurabiye', 'Portakallı Kurabiye', '100 g', 'tatli', 387, 8, 48.9, 18.2, ['gluten', 'dairy', 'egg'], { defaultFactor: 0.5, sweet: true }],
+  ['limonata', 'Limonata', '100 ml', 'icecek', 43.83, 0.21, 10.71, 0.07, [], { defaultFactor: 3, sweet: true }],
+])
+
+// Café chains that publish no values: menu items mapped to generic café recipes.
+const cafe = (brand: string, menu: string, items: [string, string, string, number?][]) =>
+  estimatedChain(brand, menu, items.map(([id, name, base, factor]) => [id, name, 'Orta boy / 1 adet', base, factor ?? 1]))
+const ESPRESSOLAB = cafe('Espressolab', 'Migros Yemek mağaza menüsü', [
+  ['espresso', 'Espresso', 'espresso'], ['filtre', 'Filtre Kahve', 'filtre-kahve'], ['turk', 'Türk Kahvesi', 'turk-kahvesi'],
+  ['latte', 'Latte', 'latte'], ['mocha', 'Caffe Mocha', 'mocha'], ['white-mocha', 'White Chocolate Mocha', 'white-mocha'],
+  ['salted-caramel', 'Salted Caramel Latte', 'surup-latte'], ['lotus-latte', 'Lotus Latte', 'surup-latte'], ['spanish-latte', 'Spanish Latte', 'surup-latte'],
+  ['chai', 'Chai Tea Latte', 'chai-latte'], ['hot-chocolate', 'Hot Chocolate', 'sicak-cikolata'], ['milkshake', 'Çikolatalı Milkshake', 'milkshake'],
+  ['kruvasan', 'Tereyağlı Kruvasan', 'kruvasan'], ['san-sebastian', 'San Sebastian Cheesecake', 'san-sebastian'],
+])
+const GLORIA = cafe("Gloria Jean's", 'gloriajeans.com.tr/pages/menu', [
+  ['latte', 'Latte', 'latte'], ['cappuccino', 'Cappuccino', 'cappuccino'], ['americano', 'Coffee Americano', 'americano'],
+  ['mocha', 'Coffee Mocha', 'mocha'], ['white-mocha', 'White Chocolate Mocha', 'white-mocha'], ['caramel-latte', 'Caramel Latte', 'surup-latte'],
+  ['iced-latte', 'Iced Latte', 'iced-latte'], ['iced-americano', 'Iced Americano', 'americano'], ['chiller', 'Very Vanilla Chiller', 'frappe'],
+  ['chai', 'Oregon Chai Tea Latte', 'chai-latte'],
+])
+const JUAN_VALDEZ = cafe('Juan Valdez', 'juanvaldez.com (marka içecek adları)', [
+  ['tinto', 'Tinto (filtre kahve)', 'filtre-kahve'], ['americano', 'Americano', 'americano'], ['latte', 'Café Latte', 'latte'],
+  ['cappuccino', 'Capuccino', 'cappuccino'], ['dulce', 'Capuccino Dulce de Leche', 'surup-latte'], ['mocca', 'Latte Mocca', 'mocha'],
+  ['nevado', 'Nevado (buzlu blended)', 'frappe'], ['cold-brew', 'Cold Brew', 'filtre-kahve'],
+])
+const COFFEE_LAB = cafe('Coffee Lab', 'coffeelab.com.tr ürün kategorileri', [
+  ['cappuccino', 'Cappuccino', 'cappuccino'], ['caramel-latte', 'Caramel Latte', 'surup-latte'], ['caramel-macchiato', 'Caramel Macchiato', 'surup-latte'],
+  ['salted-caramel', 'Salted Caramel Latte', 'surup-latte'], ['white-mocha', 'White Chocolate Mocha', 'white-mocha'], ['fistikli-latte', 'Fıstıklı Latte', 'surup-latte'],
+  ['sicak-cikolata', 'Sıcak Çikolata', 'sicak-cikolata'], ['matcha', 'Matcha Latte', 'matcha-latte'], ['filtre', 'Filtre Kahve', 'filtre-kahve'],
+  ['espresso', 'Espresso', 'espresso'], ['ice-latte', 'Ice Coffee Latte', 'iced-latte'], ['caramel-frappe', 'Caramel Frappe', 'frappe'],
+])
+const ARABICA = cafe('Arabica Coffee House', 'arabicacoffee.com.tr/urun', [
+  ['americano', 'Americano', 'americano'], ['latte', 'Caffe Latte', 'latte'], ['cappuccino', 'Cappuccino', 'cappuccino'],
+  ['flat-white', 'Flat White', 'flat-white'], ['filtre', 'Filtre Kahve', 'filtre-kahve'], ['mocha', 'Caffe Mocha', 'mocha'],
+  ['white-mocha', 'White Mocha', 'white-mocha'], ['caramel-macchiato', 'Caramel Macchiato', 'surup-latte'], ['turk', 'Türk Kahvesi', 'turk-kahvesi'],
+  ['ice-latte', 'Ice Caffe Latte', 'iced-latte'], ['lotus-frappe', 'Lotus Frappe', 'frappe'], ['san-sebastian', 'Cheesecake San Sebastian', 'san-sebastian'],
+])
+const KAHVE_DIYARI = cafe('Kahve Diyarı', 'kahvediyari.com menü sayfaları', [
+  ['latte', 'Cafe Latte', 'latte'], ['americano', 'Americano', 'americano'], ['cappuccino', 'Cappuccino', 'cappuccino'],
+  ['flat-white', 'Flat White', 'flat-white'], ['mocha', 'Cafe Mocha', 'mocha'], ['white-mocha', 'White Chocolate Mocha', 'white-mocha'],
+  ['karamel-latte', 'Karamel Latte', 'surup-latte'], ['toffee', 'Toffee Nut Latte', 'surup-latte'], ['frappe', 'Frappe', 'frappe'],
+])
+const COFFY = cafe('Coffy', 'coffy.com.tr/menu', [
+  ['latte', 'Latte', 'latte'], ['americano', 'Americano', 'americano'], ['filtre', 'Filtre Kahve', 'filtre-kahve'],
+  ['flat-white', 'Flat White', 'flat-white'], ['pumpkin', 'Pumpkin Latte', 'surup-latte'], ['iced-latte', 'Iced Latte', 'iced-latte'],
+  ['cold-brew', 'Cold Brew', 'filtre-kahve'], ['matcha', 'Matcha', 'matcha-latte'], ['kruvasan', 'Tereyağlı Kruvasan', 'kruvasan'],
+  ['cheesecake', 'Frambuazlı Cheesecake', 'cheesecake'],
+])
+const TCHIBO = cafe('Tchibo', 'Tchibo kafe içecek listesi', [
+  ['latte', 'Coffee Latte', 'latte'], ['iced-latte', 'Iced Coffee Latte', 'iced-latte'], ['cappuccino', 'Cappuccino', 'cappuccino'],
+  ['flat-white', 'Flat White', 'flat-white'], ['americano', 'Americano', 'americano'], ['filtre', 'Filter Coffee', 'filtre-kahve'],
+  ['turk', 'Türk Kahvesi', 'turk-kahvesi'],
+])
+const MADO = cafe('Mado', 'mado.com.tr kafe menüsü', [
+  ['turk', 'Türk Kahvesi', 'turk-kahvesi'], ['latte', 'Latte', 'latte'], ['cappuccino', 'Cappuccino', 'cappuccino'],
+  ['sicak-cikolata', 'Sıcak Çikolata', 'sicak-cikolata'], ['salep', 'Salep', 'salep'], ['dondurma', 'Maraş Dondurması (2 top)', 'dondurma'],
+  ['kunefe', 'Künefe', 'kunefe'], ['baklava', 'Fıstıklı Baklava (2 dilim)', 'baklava'], ['sutlac', 'Fırın Sütlaç', 'sutlac'],
+  ['kazandibi', 'Kazandibi', 'kazandibi'], ['profiterol', 'Profiterol', 'profiterol'],
+])
+
+export const CHAIN_FOODS: Food[] = [
+  ...KAHVE_DUNYASI, ...CARIBOU, ...SIMIT_SARAYI, ...ESPRESSOLAB, ...GLORIA, ...JUAN_VALDEZ, ...COFFEE_LAB,
+  ...ARABICA, ...KAHVE_DIYARI, ...COFFY, ...TCHIBO, ...MADO,
+  ...MCDONALDS, ...BURGER_KING, ...KFC, ...POPEYES, ...ARBYS, ...STARBUCKS, ...TAVUK_DUNYASI, ...KOMAGENE, ...USTA_DONERCI]

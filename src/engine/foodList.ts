@@ -43,6 +43,11 @@ export interface Food {
   trad?: boolean
   /** Brand doesn't publish values: estimated from a comparable standard recipe. */
   estimated?: boolean
+  /**
+   * Values are published per 100 g/ml; this is the assumed usual serving as a
+   * multiple of the stated portion (e.g. 3.5 → ~350 ml cup). Used as the default amount.
+   */
+  defaultFactor?: number
 }
 
 type Opts = { salty?: boolean; sweet?: boolean; soy?: boolean; treat?: boolean }
@@ -197,6 +202,32 @@ export const FOODS: Food[] = [
   f('ayran', 'Ayran', '1 bardak', NONE, 'icecek', 1, ['dairy'], 4, 5, 3, { salty: true }),
   f('kola', 'Kola', '1 kutu (330 ml)', NONE, 'icecek', 1, [], 0, 35, 0, { sweet: true }),
   f('latte', 'Latte', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 8, 12, 7),
+  // Café generics (orta boy ≈ 350 ml, tam/yarım yağlı süt; standard recipes, approximate)
+  f('americano', 'Americano', 'Orta boy', NONE, 'icecek', 1, [], 0.5, 1, 0),
+  f('filtre-kahve', 'Filtre kahve (sade)', 'Orta boy', NONE, 'icecek', 1, [], 0.5, 1, 0),
+  f('turk-kahvesi', 'Türk kahvesi (sade)', '1 fincan', NONE, 'icecek', 1, [], 0.2, 0.5, 0.1),
+  f('espresso', 'Espresso', '1–2 shot', NONE, 'icecek', 1, [], 0.2, 0.3, 0.2),
+  f('cappuccino', 'Cappuccino', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 6, 9, 5),
+  f('flat-white', 'Flat white', '1 bardak', NONE, 'icecek', 1, ['dairy'], 6, 8, 5),
+  f('mocha', 'Mocha', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 9, 30, 10, { sweet: true }),
+  f('white-mocha', 'Beyaz çikolatalı mocha', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 10, 45, 14, { sweet: true, treat: true }),
+  f('surup-latte', 'Şuruplu latte (karamel, vanilya vb.)', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 8, 30, 7, { sweet: true }),
+  f('iced-latte', 'Buzlu latte', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 6, 9, 5),
+  f('frappe', 'Kremalı frappe', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 5, 55, 12, { sweet: true, treat: true }),
+  f('sicak-cikolata', 'Sıcak çikolata', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 10, 40, 10, { sweet: true, treat: true }),
+  f('salep', 'Salep', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 8, 40, 8, { sweet: true }),
+  f('chai-latte', 'Chai tea latte', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 6, 35, 5, { sweet: true }),
+  f('matcha-latte', 'Matcha latte', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 8, 25, 6, { sweet: true }),
+  f('milkshake', 'Milkshake', 'Orta boy', NONE, 'icecek', 1, ['dairy'], 10, 60, 14, { sweet: true, treat: true }),
+  f('kruvasan', 'Tereyağlı kruvasan', '1 adet (≈60 g)', NONE, 'hamur', 1, ['gluten', 'dairy', 'egg'], 5, 26, 12),
+  f('bagel-sandvic', 'Peynirli bagel sandviç', '1 adet', NONE, 'fast', 1, ['gluten', 'dairy'], 18, 50, 14),
+  f('cheesecake', 'Cheesecake', '1 dilim (≈120 g)', NONE, 'tatli', 1, ['dairy', 'egg', 'gluten'], 7, 30, 27, { sweet: true, treat: true }),
+  f('san-sebastian', 'San Sebastian cheesecake', '1 dilim (≈130 g)', NONE, 'tatli', 1, ['dairy', 'egg'], 8, 25, 30, { sweet: true, treat: true }),
+  f('cookie', 'Cookie', '1 adet (≈60 g)', NONE, 'tatli', 1, ['gluten', 'dairy', 'egg'], 3, 36, 12, { sweet: true, treat: true }),
+  f('tiramisu', 'Tiramisu', '1 dilim', NONE, 'tatli', 1, ['dairy', 'egg', 'gluten'], 6, 35, 18, { sweet: true, treat: true }),
+  f('kunefe', 'Künefe', '1 porsiyon', NONE, 'tatli', 1, ['dairy', 'gluten'], 15, 70, 30, { sweet: true, treat: true }),
+  f('kazandibi', 'Kazandibi', '1 porsiyon', NONE, 'tatli', 1, ['dairy'], 7, 45, 7, { sweet: true, treat: true }),
+  f('profiterol', 'Profiterol', '1 porsiyon', NONE, 'tatli', 1, ['dairy', 'egg', 'gluten'], 6, 40, 20, { sweet: true, treat: true }),
 
   // ── Tatlılar ─────────────────────────────────────────────
   f('baklava', 'Baklava', '2 dilim', NONE, 'tatli', 1, ['gluten', 'nuts'], 4, 40, 20, { sweet: true, treat: true }),

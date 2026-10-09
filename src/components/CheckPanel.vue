@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { allFoods, evaluateMeal, type CheckItem } from '@/engine'
+import { allFoods, evaluateMeal, getFood, type CheckItem } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
@@ -29,12 +29,13 @@ const results = computed(() => {
 
 function add(foodId: string) {
   const existing = items.value.find((i) => i.foodId === foodId)
-  if (existing) existing.factor += 1
-  else items.value.push({ foodId, factor: 1 })
+  const usual = getFood(foodId)?.defaultFactor ?? 1
+  if (existing) existing.factor += usual
+  else items.value.push({ foodId, factor: usual })
   query.value = ''
   saved.value = false
 }
-const STEPS = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3]
+const STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 5, 6]
 function step(i: CheckItem, dir: 1 | -1) {
   const idx = STEPS.findIndex((x) => x >= i.factor)
   const next = STEPS[Math.max(0, Math.min(STEPS.length - 1, (idx === -1 ? STEPS.length - 1 : idx) + dir))]

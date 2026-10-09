@@ -85,7 +85,7 @@ async function eat(foodId: string, factor: number) {
       <h2>{{ chain }} – sana uygun sıralama</h2>
       <p class="small muted">En üstte planına uyan ve bütçene sığanlar var.</p>
       <div v-for="it in chainItems" :key="it.foodId" class="pick">
-        <FoodRow :food-id="it.foodId" :factor="1" compact>
+        <FoodRow :food-id="it.foodId" :factor="it.factor" compact>
           <template #extra>
             <span v-if="store.plan.energy" class="tag" :class="{ off: !it.fitsBudget }">
               {{ it.fitsBudget ? 'bütçene uyuyor' : 'bütçeni aşar' }}
@@ -93,7 +93,7 @@ async function eat(foodId: string, factor: number) {
             <div v-for="w in it.warnings" :key="w" class="small warnline">⚠ {{ w }}</div>
           </template>
         </FoodRow>
-        <button type="button" class="btn ghost small" @click="eat(it.foodId, 1)">
+        <button type="button" class="btn ghost small" @click="eat(it.foodId, it.factor)">
           {{ logged === it.foodId ? 'Kaydedildi ✓' : 'Bunu yedim' }}
         </button>
       </div>

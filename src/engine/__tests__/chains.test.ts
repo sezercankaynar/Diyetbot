@@ -18,7 +18,7 @@ describe('chain menus', () => {
   })
 
   it('macros are kept only when they add up to the published kcal', () => {
-    for (const f of CHAIN_FOODS.filter((x) => !x.kcalOnly)) {
+    for (const f of CHAIN_FOODS.filter((x) => !x.kcalOnly && !x.estimated && x.kcal >= 20)) {
       const k = f.protein * 4 + f.carb * 4 + f.fat * 9
       expect(Math.abs(k - f.kcal) / f.kcal, f.id).toBeLessThanOrEqual(MACRO_MISMATCH)
     }

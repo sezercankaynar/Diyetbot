@@ -5,6 +5,14 @@ import { getFood, itemTotals, portionText } from '@/engine'
 const props = defineProps<{ foodId: string; factor: number; note?: string; compact?: boolean }>()
 const food = computed(() => getFood(props.foodId))
 const t = computed(() => itemTotals(props.foodId, props.factor))
+// Per-100 g/ml items read as an amount ("350 ml"), others as portions.
+const amount = computed(() => {
+  const f = food.value
+  if (!f) return ''
+  const per100 = /^100 (g|ml)$/.exec(f.portion)
+  if (per100) return `${Math.round(props.factor * 100)} ${per100[1]}${f.defaultFactor ? ' (yaklaşık porsiyon)' : ''}`
+  return props.factor === 1 ? f.portion : `${portionText(props.factor)} (1 porsiyon: ${f.portion})`
+})
 </script>
 
 <template>
@@ -12,7 +20,7 @@ const t = computed(() => itemTotals(props.foodId, props.factor))
     <div class="main">
       <div class="name">{{ food.brand && food.group !== 'paket' ? `${food.brand} – ${food.name}` : food.name }}</div>
       <div class="small muted">
-        {{ factor === 1 ? food.portion : `${portionText(factor)} (1 porsiyon: ${food.portion})` }}
+        {{ amount }}
       </div>
       <div v-if="note" class="small note">{{ note }}</div>
       <div v-if="food.estimated" class="small est">tahmini değer</div>
