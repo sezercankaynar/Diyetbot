@@ -14,6 +14,8 @@ import {
   type CoachContext,
   generateWeekMenu,
   menuOutdated as isMenuOutdated,
+  refitMenu,
+  placeDish,
   mondayOf,
   removeDish,
   setExtraFoods,
@@ -195,6 +197,37 @@ export const useAppStore = defineStore('app', () => {
     await repo.putCustomFood(f)
     customFoods.value = [...customFoods.value.filter((x) => x.id !== f.id), f]
     syncExtraFoods()
+    // An edited dish may now be bigger: keep menu days that use it inside the budget.
+    if (menu.value && menuCtx.value && menu.value.days.some((d) => d.items.some((i) => i.foodId === f.id))) {
+      menu.value = refitMenu(menu.value, menuCtx.value)
+      await repo.saveMenu(menu.value)
+    }
+  }
+
+  /**
+   * Deletes a saved dish/product. It's kept hidden (not erased) so past diary days still add up;
+   * menu meals that used it get an alternative.
+   */
+  async function deleteCustomFood(id: string) {
+    const f = customFoods.value.find((x) => x.id === id)
+    if (!f) return
+    await saveCustomFood({ ...f, hidden: true })
+    liked.value = liked.value.filter((x) => x !== id)
+    if (menu.value && menuCtx.value) {
+      menu.value = removeDish(menu.value, menuCtx.value, id)
+      await repo.saveMenu(menu.value)
+    }
+    await saveSettings()
+  }
+
+  /** Puts a dish into one meal of a menu day, keeping the day inside its targets. */
+  async function addToMenu(date: string, slot: Slot, foodId: string) {
+    if (!menu.value || !menuCtx.value) return null
+    const r = placeDish(menu.value, menuCtx.value, date, slot, foodId)
+    if (!r) return null
+    menu.value = r.menu
+    await repo.saveMenu(menu.value)
+    return r
   }
 
   async function updateToday(patch: Partial<Omit<DailyLog, 'date'>>) {
@@ -305,7 +338,7 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
-    liked, disliked, diary, menu, customFoods, saveCustomFood,
+    liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,

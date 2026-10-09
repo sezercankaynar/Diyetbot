@@ -123,7 +123,7 @@ export function addDays(date: string, n: number): string {
 function candidatePool(slot: Slot, ctx: MenuContext): Food[] {
   // Built-in dishes plus the user's own recipes that they allowed in menus (chains have no slots).
   const all = allFoods().filter(
-    (f) => f.slots.includes(isSnackSlot(slot) ? 'snack' : slot) && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes) && !ctx.dislikedFoods.includes(f.id),
+    (f) => !f.noMenu && f.slots.includes(isSnackSlot(slot) ? 'snack' : slot) && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes) && !ctx.dislikedFoods.includes(f.id),
   )
   // A light lunch/dinner means a quick, snack-like plate – only light dishes qualify.
   const style = isSnackSlot(slot) ? 'normal' : (ctx.mealStyle ?? DEFAULT_STYLES)[slot as keyof MealStyles]
@@ -299,13 +299,55 @@ export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 
   return (fitting.length ? fitting : scoreSlot(slot, target, ctx).filter(ok)).slice(0, n)
 }
 
+/** Puts a dish into a day's meal (replacing what's there, or adding the meal if the day lacks it). */
 export function swapItem(menu: WeekMenu, date: string, slot: Slot, foodId: string, factor: number): WeekMenu {
   return {
     ...menu,
-    days: menu.days.map((d) =>
-      d.date !== date ? d : { ...d, items: d.items.map((i) => (i.slot === slot ? { slot, foodId, factor } : i)) },
-    ),
+    days: menu.days.map((d) => {
+      if (d.date !== date) return d
+      const items = d.items.some((i) => i.slot === slot)
+        ? d.items.map((i) => (i.slot === slot ? { slot, foodId, factor } : i))
+        : [...d.items, { slot, foodId, factor }].sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+      return { ...d, items }
+    }),
   }
+}
+
+/**
+ * Portion of a dish that fits a day's meal without the day going over any target:
+ * the preferred portion if it fits, else the largest smaller one; null when even half a portion doesn't fit.
+ */
+export function fitPortion(ctx: MenuContext, day: MenuDay, slot: Slot, foodId: string, prefer = 1): number | null {
+  const others = sumTotals(day.items.filter((i) => i.slot !== slot).map((i) => itemTotals(i.foodId, i.factor)))
+  const cap = minus(dayLimit(ctx), others)
+  return ALL_FACTORS.filter((x) => x <= prefer).reverse().find((x) => within(itemTotals(foodId, x), cap)) ?? null
+}
+
+/**
+ * Puts a dish into a day's meal while keeping the day inside every target. The chosen dish keeps a
+ * full portion when possible – first as is, then by making the day's other meals smaller; only if
+ * that fails does the dish itself get a smaller portion. Null when it can't fit at all.
+ */
+export function placeDish(
+  menu: WeekMenu, ctx: MenuContext, date: string, slot: Slot, foodId: string,
+): { menu: WeekMenu; factor: number; shrunk: boolean } | null {
+  const day = menu.days.find((d) => d.date === date)
+  if (!day) return null
+  const factor = fitPortion(ctx, day, slot, foodId)
+  if (factor === 1) return { menu: swapItem(menu, date, slot, foodId, 1), factor, shrunk: false }
+  const limit = minus(dayLimit(ctx), itemTotals(foodId, 1))
+  const fitted = fitDay(day.items.filter((i) => i.slot !== slot), limit)
+  if (within(sumTotals(fitted.map((i) => itemTotals(i.foodId, i.factor))), limit)) {
+    const next = { ...menu, days: menu.days.map((d) => (d.date === date ? { ...d, items: fitted } : d)) }
+    return { menu: swapItem(next, date, slot, foodId, 1), factor: 1, shrunk: true }
+  }
+  return factor === null ? null : { menu: swapItem(menu, date, slot, foodId, factor), factor, shrunk: false }
+}
+
+/** Shrinks portions on days that went over the budget (e.g. after a saved dish was edited). */
+export function refitMenu(menu: WeekMenu, ctx: MenuContext): WeekMenu {
+  const limit = dayLimit(ctx)
+  return { ...menu, days: menu.days.map((d) => (within(dayTotals(d), limit) ? d : { ...d, items: fitDay(d.items, limit) })) }
 }
 
 /** Replaces every occurrence of a dish (e.g. after "don't show again") with its best alternative. */

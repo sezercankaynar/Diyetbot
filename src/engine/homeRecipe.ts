@@ -15,6 +15,8 @@ export interface HomeRecipeInput {
   /** Let the weekly menu suggest it at these meals. */
   slots: Slot[]
   kind: 'light' | 'hearty'
+  /** Don't suggest it in generated menus. */
+  noMenu?: boolean
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10
@@ -76,12 +78,14 @@ export function foodFromRecipe(r: HomeRecipeInput, uid: string): Food {
     fat: r1(t.fat / n),
     kind: r.kind,
     source: 'Kendi tarifim',
+    recipe: { lines: r.lines.filter((l) => l.grams > 0).map((l) => ({ ...l })), servings: n },
+    ...(r.noMenu ? { noMenu: true } : {}),
   }
 }
 
 /** Quick entry when the user already knows the values of one portion. */
 export function foodFromValues(
-  v: { name: string; kcal: number; protein: number; carb: number; fat: number; slots: Slot[]; kind: 'light' | 'hearty' },
+  v: { name: string; kcal: number; protein: number; carb: number; fat: number; slots: Slot[]; kind: 'light' | 'hearty'; noMenu?: boolean },
   uid: string,
 ): Food {
   return {
@@ -99,5 +103,6 @@ export function foodFromValues(
     fat: r1(v.fat),
     kind: v.kind,
     source: 'Kendi değerlerim',
+    ...(v.noMenu ? { noMenu: true } : {}),
   }
 }

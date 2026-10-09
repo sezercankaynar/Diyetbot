@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { foodFromRecipe, foodFromValues, recipeTotals, validateRecipe } from '../homeRecipe'
 import { INGREDIENTS, ingredientById } from '../ingredients'
-import { setExtraFoods } from '../foods'
-import { buildMenuContext, generateWeekMenu } from '../menu'
+import { allFoods, getFood, setExtraFoods } from '../foods'
+import { buildMenuContext, dayTotals, generateWeekMenu, placeDish, swapItem } from '../menu'
 import { buildPlan } from '../plan'
 import { profile } from './helpers'
 
@@ -52,5 +52,43 @@ describe('home recipes', () => {
     const ctx = buildMenuContext(p, buildPlan(p), { liked: [own.id], disliked: [] })!
     const m = generateWeekMenu(ctx, '2026-10-05')
     expect(m.days.some((d) => d.items.some((i) => i.foodId === own.id))).toBe(true)
+  })
+
+  it('keeps the recipe so it can be edited', () => {
+    const f = foodFromRecipe({ name: 'Fasulye', lines: lines(), servings: 4, slots: ['lunch', 'snack'], kind: 'light' }, 'z')
+    expect(f.recipe).toEqual({ lines: lines(), servings: 4 })
+    expect(f.slots).toEqual(['lunch', 'snack'])
+  })
+
+  it('noMenu dishes are never suggested; deleted (hidden) ones vanish from search but still resolve', () => {
+    const own = foodFromValues({ name: 'Ev mantısı', kcal: 520, protein: 25, carb: 60, fat: 18, slots: ['dinner'], kind: 'hearty', noMenu: true }, 'y')
+    setExtraFoods([own])
+    const p = profile()
+    const ctx = buildMenuContext(p, buildPlan(p), { liked: [own.id], disliked: [] })!
+    expect(generateWeekMenu(ctx, '2026-10-05').days.every((d) => d.items.every((i) => i.foodId !== own.id))).toBe(true)
+    setExtraFoods([{ ...own, hidden: true }])
+    expect(allFoods().some((f) => f.id === own.id)).toBe(false)
+    expect(getFood(own.id)?.name).toBe('Ev mantısı')
+  })
+
+  it('adding a saved dish to a menu day picks a portion inside the day budget', () => {
+    const own = foodFromValues({ name: 'Büyük tencere', kcal: 900, protein: 30, carb: 90, fat: 45, slots: ['dinner'], kind: 'hearty' }, 'b')
+    setExtraFoods([own])
+    const p = profile({ mealSlots: ['breakfast', 'dinner'] })
+    const ctx = buildMenuContext(p, buildPlan(p))!
+    const menu = generateWeekMenu(ctx, '2026-10-05')
+    const day = menu.days[2]
+    for (const slot of ['dinner', 'snack'] as const) {
+      const r = placeDish(menu, ctx, day.date, slot, own.id)
+      expect(r).not.toBeNull()
+      const after = r!.menu.days[2]
+      expect(after.items.some((i) => i.slot === slot && i.foodId === own.id)).toBe(true)
+      const t = dayTotals(after)
+      expect(t.kcal).toBeLessThanOrEqual(ctx.kcal)
+      expect(t.fat).toBeLessThanOrEqual(ctx.fatG!)
+    }
+    // A meal the day didn't have is added in meal order.
+    const added = swapItem(menu, day.date, 'snack', own.id, 0.5).days[2]
+    expect(added.items.map((i) => i.slot)).toEqual(['breakfast', 'snack', 'dinner'])
   })
 })

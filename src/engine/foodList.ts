@@ -54,6 +54,12 @@ export interface Food {
    * multiple of the stated portion (e.g. 3.5 → ~350 ml cup). Used as the default amount.
    */
   defaultFactor?: number
+  /** The user's own dish: ingredients it was built from (so it can be edited later). */
+  recipe?: { lines: { ingredientId: string; grams: number }[]; servings: number }
+  /** The user's own dish that shouldn't be suggested in generated menus. */
+  noMenu?: boolean
+  /** Deleted by the user: kept only so past diary entries and menus still resolve. */
+  hidden?: boolean
 }
 
 type Opts = { salty?: boolean; sweet?: boolean; soy?: boolean; treat?: boolean }

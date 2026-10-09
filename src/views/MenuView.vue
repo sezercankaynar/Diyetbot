@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
+import { alternativesFor, dayTotals, fitPortion, getFood, isSnackSlot, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
@@ -31,6 +31,20 @@ const openSlot = ref<Slot | null>(null)
 const alternatives = computed(() =>
   store.menuCtx && day.value && openSlot.value ? alternativesFor(store.menuCtx, day.value, openSlot.value) : [],
 )
+// The user's saved home dishes, in a portion that keeps the day inside its targets.
+const mine = computed(() => {
+  const ctx = store.menuCtx
+  const d = day.value
+  const sl = openSlot.value
+  if (!ctx || !d || !sl) return []
+  const shown = new Set([...alternatives.value.map((a) => a.foodId), ...d.items.map((i) => i.foodId)])
+  const suits = (slots: Slot[]) => (slots.includes(isSnackSlot(sl) ? 'snack' : sl) ? 0 : 1)
+  return store.customFoods
+    .filter((f) => f.id.startsWith('ev-') && !f.hidden && !shown.has(f.id))
+    .sort((a, b) => suits(a.slots) - suits(b.slots))
+    .map((f) => ({ foodId: f.id, factor: fitPortion(ctx, d, sl, f.id) }))
+    .filter((x): x is { foodId: string; factor: number } => x.factor !== null)
+})
 watch(dayIdx, () => (openSlot.value = null))
 
 const shortDate = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
@@ -122,6 +136,13 @@ async function regenerate() {
             <FoodRow :food-id="a.foodId" :factor="a.factor" compact />
             <button type="button" class="btn small" @click="choose(a.foodId, a.factor)">Seç</button>
           </div>
+          <template v-if="mine.length">
+            <div class="label mine-label">Kayıtlı yemeklerim</div>
+            <div v-for="a in mine" :key="a.foodId" class="alt">
+              <FoodRow :food-id="a.foodId" :factor="a.factor" compact />
+              <button type="button" class="btn small" @click="choose(a.foodId, a.factor)">Seç</button>
+            </div>
+          </template>
         </div>
       </section>
 
@@ -155,6 +176,7 @@ async function regenerate() {
 .alts { margin-top: 10px; background: var(--surface-2); border-radius: 14px; padding: 4px 12px; }
 .alt { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
 .alt + .alt { border-top: 1px solid var(--line); }
+.mine-label { padding-top: 10px; border-top: 1px solid var(--line); }
 .alt :deep(.food-row) { flex: 1; }
 .outdated {
   background: var(--info-bg); color: var(--info-ink); border-radius: 14px; padding: 12px;

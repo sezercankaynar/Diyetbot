@@ -16,9 +16,9 @@ export function setExtraFoods(list: Food[]): void {
   extraById = Object.fromEntries(list.map((x) => [x.id, x]))
 }
 
-/** Built-in + chain + saved packaged foods – what search and "can I eat this?" see. */
+/** Built-in + chain + saved foods (minus deleted ones) – what search and "can I eat this?" see. */
 export function allFoods(): Food[] {
-  return [...FOODS, ...CHAIN_FOODS, ...extra]
+  return [...FOODS, ...CHAIN_FOODS, ...extra.filter((x) => !x.hidden)]
 }
 
 export function getFood(id: string): Food | undefined {
