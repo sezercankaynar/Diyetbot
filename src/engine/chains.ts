@@ -184,6 +184,10 @@ const USTA_DONERCI = chain('Usta Dönerci', UD, [
   ['acili-kebap-durum', 'Acılı Kebap Dürüm', '1 porsiyon', 'kebap', 761.4, 31.7, 69, 31.3, ['redmeat', 'gluten'], { salty: true }],
   ['fit-bi-kase', 'Fit Bi Kase', '1 kase', 'kebap', 679.8, 45.8, 43.5, 34.1, ['chicken']],
   ['orta-patates', 'Orta Patates Kızartması', '1 orta porsiyon', 'fast', 174, 1.7, 29.5, 5.2, [], { salty: true }],
+  ['et-tombik-120', 'Et Tombik 120 g (Mega Seçim)', '1 adet', 'kebap', 643.2, 26.9, 60.5, 31.6, ['redmeat', 'gluten'], { salty: true }],
+  ['ekmek-arasi-kofte', 'Ekmek Arası Köfte', '1 adet', 'kebap', 793.2, 19.8, 72, 43.3, ['redmeat', 'gluten'], { salty: true }],
+  ['5li-kofte', "5'li Porsiyon Köfte", '1 porsiyon', 'kebap', 923.1, 36.7, 92.8, 36.9, ['redmeat', 'gluten'], { salty: true }],
+  ['beyti', 'Beyti (90 g)', '1 porsiyon', 'kebap', 1117.1, 32.4, 81.6, 65.3, ['redmeat', 'gluten', 'dairy'], { salty: true }],
   ['buyuk-ayran', 'Büyük Ayran', '1 büyük', 'icecek', 96, 6, 6, 5.4, ['dairy'], { salty: true }],
 ])
 
@@ -422,7 +426,158 @@ const MADO = cafe('Mado', 'mado.com.tr kafe menüsü', [
   ['kazandibi', 'Kazandibi', 'kazandibi'], ['profiterol', 'Profiterol', 'profiterol'],
 ])
 
+const MD = 'maydonozdoner.com – Besin Değerleri ve Alerjen Tablosu (Eylül 2026)'
+const MAYDONOZ = chain('Maydonoz Döner', MD, [
+  ['tavuk-durum-s', 'Tavuk Döner Dürüm (Small)', '1 dürüm', 'kebap', 767, 26.5, 86.4, 35.6, ['chicken', 'gluten'], { salty: true }],
+  ['tavuk-durum-m', 'Tavuk Döner Dürüm (Medium)', '1 dürüm', 'kebap', 846, 35.1, 85.5, 41.4, ['chicken', 'gluten'], { salty: true }],
+  ['tavuk-durum-l', 'Tavuk Döner Dürüm (Large)', '1 dürüm', 'kebap', 1274, 65.7, 123.8, 58.5, ['chicken', 'gluten'], { salty: true }],
+  ['et-durum-s', 'Et Döner Dürüm (Small)', '1 dürüm', 'kebap', 761, 23.5, 84.2, 37.5, ['redmeat', 'gluten'], { salty: true }],
+  ['et-durum-m', 'Et Döner Dürüm (Medium)', '1 dürüm', 'kebap', 858, 32.1, 84.0, 43.5, ['redmeat', 'gluten'], { salty: true }],
+  ['et-durum-l', 'Et Döner Dürüm (Large)', '1 dürüm', 'kebap', 1224, 45.0, 130.5, 59.4, ['redmeat', 'gluten'], { salty: true }],
+  ['maytako-tavuk', "Doritos'lu Maytako (Tavuk)", '1 adet', 'kebap', 504, 24.8, 18.8, 37.5, ['chicken', 'gluten'], { salty: true }],
+  ['maytako-et', "Doritos'lu Maytako (Et)", '1 adet', 'kebap', 512, 21.8, 21.3, 38.1, ['redmeat', 'gluten'], { salty: true }],
+  ['tavuk-burger', 'Tavuk Döner Burger', '1 adet', 'fast', 554, 29.5, 78.2, 14.6, ['chicken', 'gluten'], { salty: true }],
+  ['et-burger', 'Et Döner Burger', '1 adet', 'fast', 593, 39.1, 54.0, 25.2, ['redmeat', 'gluten'], { salty: true }],
+  ['burrito', 'May Burrito Klasik', '1 adet', 'kebap', 840, 29.6, 69.8, 26.3, ['chicken', 'gluten'], { salty: true }],
+  ['et-sandvic', 'Et Döner Sandviç', '1 adet', 'kebap', 741, 48.9, 67.5, 31.5, ['redmeat', 'gluten'], { salty: true }],
+  ['tavuk-sandvic', 'Tavuk Döner Sandviç', '1 adet', 'kebap', 692.3, 36.9, 97.8, 18.3, ['chicken', 'gluten'], { salty: true }],
+  ['et-tombik', 'Et Döner Tombik', '1 adet', 'kebap', 669.2, 31.9, 92.4, 20.2, ['redmeat', 'gluten'], { salty: true }],
+  ['tavuk-tombik', 'Tavuk Döner Tombik', '1 adet', 'kebap', 736.4, 26.0, 72.8, 39.2, ['chicken', 'gluten'], { salty: true }],
+  ['porsiyon-tavuk', 'Porsiyon Tavuk Döner (lavaş + patates dahil)', '1 porsiyon', 'kebap', 690, 33.6, 72.6, 30.9, ['chicken', 'gluten'], { salty: true }],
+  ['porsiyon-et', 'Porsiyon Et Döner (lavaş + patates dahil)', '1 porsiyon', 'kebap', 777, 26.1, 75.0, 42.6, ['redmeat', 'gluten'], { salty: true }],
+  ['pilav-ustu-tavuk', 'Pilav Üstü Tavuk Döner', '1 porsiyon', 'kebap', 822.5, 33.3, 102.6, 32.6, ['chicken'], { salty: true }],
+  ['pilav-ustu-et', 'Pilav Üstü Et Döner', '1 porsiyon', 'kebap', 927.5, 30.1, 112.0, 40.6, ['redmeat'], { salty: true }],
+  ['iskender-tavuk', 'İskender (Tavuk)', '1 porsiyon', 'kebap', 804, 42.0, 62.0, 44.8, ['chicken', 'gluten', 'dairy'], { salty: true }],
+  ['iskender-et', 'İskender (Et)', '1 porsiyon', 'kebap', 956, 32.0, 61.6, 65.6, ['redmeat', 'gluten', 'dairy'], { salty: true }],
+  ['beyti-tavuk', 'Beyti (Tavuk)', '1 porsiyon', 'kebap', 1028, 54.0, 66.0, 62.0, ['chicken', 'gluten', 'dairy'], { salty: true }],
+  ['maypide', 'Maypide', '1 adet', 'hamur', 683.2, 34.2, 91.6, 34.2, ['gluten', 'dairy'], { salty: true }],
+  ['patates', 'Patates Kızartması', '1 külah', 'fast', 277, 3.7, 38.5, 14.3, [], { salty: true }],
+])
+
+const DR = 'durumle.com – Besin Değerleri (Temmuz 2026), 100 g başına. Dürüm toplam ağırlığı yayımlanmıyor: tek dürüm ≈250 g, duble ≈320 g varsayımıdır. Değerleri tutarsız döner satırları alınmadı.'
+const D1 = { defaultFactor: 2.5, salty: true }
+const D2 = { defaultFactor: 3.2, salty: true }
+const DURUMLE = chain('Dürümle', DR, [
+  ['tavuk', 'Tavuk Dürüm', '100 g', 'kebap', 202, 12, 28, 4, ['chicken', 'gluten'], D1],
+  ['duble-tavuk', 'Duble Tavuk Dürüm', '100 g', 'kebap', 225, 21, 28, 5, ['chicken', 'gluten'], D2],
+  ['soslu-tavuk', 'Dürümle Soslu Tavuk', '100 g', 'kebap', 274, 15, 32, 7, ['chicken', 'gluten'], D1],
+  ['cheddar-tavuk', 'Cheddar Lezzetli Tavuk', '100 g', 'kebap', 264, 18, 29, 11, ['chicken', 'gluten', 'dairy'], D1],
+  ['kebap', 'Kebap Dürüm (Acılı / Urfa)', '100 g', 'kebap', 236, 9, 27, 10, ['redmeat', 'gluten'], D1],
+  ['duble-kebap', 'Duble Kebap Dürüm', '100 g', 'kebap', 309, 18, 27, 15, ['redmeat', 'gluten'], D2],
+  ['cheddar-kebap', 'Cheddar Lezzetli Kebap', '100 g', 'kebap', 298, 15, 28, 17, ['redmeat', 'gluten', 'dairy'], D1],
+  ['citir-tavuk', 'Dürümle Soslu Çıtır Tavuk', '100 g', 'kebap', 420, 20, 48, 25, ['chicken', 'gluten'], D1],
+  ['parmak-patates', 'Parmak Patates', '100 g', 'fast', 137, 2, 22, 10, [], { defaultFactor: 1.5, salty: true }],
+])
+
+const SW = 'neyediginibil.com/besin-degerleri/subway (TAB Gıda resmi besin değerleri)'
+const SUBWAY = chain('Subway', SW, [
+  ['tavuk-fileto-15', 'Tavuk Fileto Sandviç (15 cm)', '15 cm', 'fast', 361, 25, 38, 11, ['chicken', 'gluten']],
+  ['tavuk-fileto-30', 'Tavuk Fileto Sandviç (30 cm)', '30 cm', 'fast', 723.6, 51.2, 76.3, 23.8, ['chicken', 'gluten']],
+  ['teriyaki-15', 'Teriyaki Tavuk Sandviç (15 cm)', '15 cm', 'fast', 325, 24, 39, 7, ['chicken', 'gluten']],
+  ['teriyaki-30', 'Teriyaki Tavuk Sandviç (30 cm)', '30 cm', 'fast', 650.1, 48.7, 78.4, 15.8, ['chicken', 'gluten']],
+  ['biftek-peynir-15', 'Biftek Peynir Sandviç (15 cm)', '15 cm', 'fast', 340, 22, 42, 8, ['redmeat', 'gluten', 'dairy']],
+  ['kofte-15', 'Marinara Soslu Köfte Sandviç (15 cm)', '15 cm', 'fast', 483, 26, 34, 26, ['redmeat', 'gluten', 'dairy']],
+  ['hindi-15', 'Hindi Göğüs Sandviç (15 cm)', '15 cm', 'fast', 314, 21, 39, 7, ['chicken', 'gluten']],
+  ['ton-15', 'Ton Balıklı Sandviç (15 cm)', '15 cm', 'fast', 456, 19, 32, 27, ['fish', 'gluten', 'egg']],
+  ['bmt-15', 'İtalyan BMT (15 cm)', '15 cm', 'fast', 415, 17, 39, 20, ['redmeat', 'gluten'], { salty: true }],
+  ['tavuk-durum', 'Tavuk Fileto Dürüm', '1 dürüm', 'fast', 402.8, 24.9, 43.5, 15.4, ['chicken', 'gluten']],
+  ['teriyaki-durum', 'Tavuk Teriyaki Dürüm', '1 dürüm', 'fast', 379.5, 22.1, 47, 12.7, ['chicken', 'gluten']],
+  ['double-teriyaki-durum', 'Double Teriyaki Tavuklu Dürüm', '1 dürüm', 'fast', 512.6, 38.1, 55.6, 18.2, ['chicken', 'gluten']],
+  ['tavuk-salata', 'Tavuk Fileto Salata', '1 salata', 'salata', 508.2, 21.5, 14.6, 40.1, ['chicken', 'egg']],
+])
+
+const SBR = 'sbarro.com.tr – ürün sayfaları, bütün pizza değerleri. Dilim değeri yayımlanmıyor; dilim için porsiyonu küçült (ör. ¼).'
+const SBARRO = chain('Sbarro', SBR, [
+  ['margarita-k', 'Margarita (Küçük, bütün)', '1 pizza', 'fast', 827.47, 41.47, 100.61, 28.21, ['gluten', 'dairy'], { salty: true }],
+  ['margarita-o', 'Margarita (Orta, bütün)', '1 pizza', 'fast', 1203.03, 59.69, 148.98, 40.05, ['gluten', 'dairy'], { salty: true }],
+  ['pepperoni-k', 'Pepperonili (Küçük, bütün)', '1 pizza', 'fast', 888.28, 41.48, 97.47, 36.28, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+  ['pepperoni-o', 'Pepperonili (Orta, bütün)', '1 pizza', 'fast', 1279.96, 59.18, 145.83, 50.12, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+  ['sucuklu-k', 'Sucuklu (Küçük, bütün)', '1 pizza', 'fast', 903.52, 42.04, 97.55, 37.68, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+  ['sucuklu-o', 'Sucuklu (Orta, bütün)', '1 pizza', 'fast', 1287.58, 59.46, 145.87, 50.82, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+  ['karisik-o', 'Karışık (Orta, bütün)', '1 pizza', 'fast', 1379.31, 61.28, 149.94, 58.24, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+  ['bol-etli-o', 'Bol Etli (Orta, bütün)', '1 pizza', 'fast', 1368.79, 63.12, 149.67, 56.63, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+  ['bbq-tavuk-o', 'BBQ Tavuklu (Orta, bütün)', '1 pizza', 'fast', 1339.85, 74.2, 152.83, 47.14, ['gluten', 'dairy', 'chicken'], { salty: true }],
+  ['turka-o', 'Turka Pizza (Orta, bütün)', '1 pizza', 'fast', 1371.49, 68.85, 149.23, 54.73, ['gluten', 'dairy', 'redmeat'], { salty: true }],
+])
+
+const KY = "Köfteci Yusuf'un Migros Yemek mağaza sayfasındaki kendi ürün açıklamaları (yalnızca kalori yayımlanıyor)."
+const KOFTECI_YUSUF = chain('Köfteci Yusuf', KY, [
+  ['kofte-200', 'Porsiyon Köfte (200 g çiğ, 6 köfte)', '1 porsiyon', 'kebap', 500, null, null, null, ['redmeat'], { salty: true }],
+  ['kofte-300', 'Köfte (300 g çiğ, 9 köfte)', '1 porsiyon', 'kebap', 750, null, null, null, ['redmeat'], { salty: true }],
+  ['sucuk-200', 'Sucuk (200 g çiğ)', '1 porsiyon', 'kebap', 650, null, null, null, ['redmeat'], { salty: true }],
+  ['doner-130', 'Porsiyon Döner (130 g)', '1 porsiyon', 'kebap', 400, null, null, null, ['redmeat'], { salty: true }],
+  ['piyaz', 'Porsiyon Piyaz (300 g)', '1 porsiyon', 'salata', 325, null, null, null, ['legume', 'egg']],
+  ['patates-kucuk', 'Küçük Boy Patates', '100 g', 'fast', 310, null, null, null, [], { salty: true }],
+  ['mercimek', 'Mercimek Çorbası (300 g)', '1 porsiyon', 'corba', 250, null, null, null, ['legume']],
+])
+
+// Döner / pide / pizza chains that publish no values: mapped to generic recipes.
+const est = (brand: string, menu: string, items: [string, string, string, string, number?][]) =>
+  estimatedChain(brand, menu, items.map(([id, name, portion, base, factor]) => [id, name, portion, base, factor ?? 1]))
+const ONCU = est('Öncü Döner', 'oncudoner.com/menu', [
+  ['tavuk-durum', 'Tavuk Döner Dürüm (100 g döner)', '1 dürüm', 'tavuk-doner-durum'],
+  ['zurna-tavuk', 'Zurna Tavuk Döner Dürüm (150 g)', '1 dürüm', 'tavuk-doner-durum', 1.5],
+  ['tavuk-tabak', 'Tavuk Döner Tabak (150 g + patates)', '1 porsiyon', 'pilav-ustu-tavuk-doner', 1.1],
+  ['et-durum', 'Et Dürüm', '1 dürüm', 'et-doner-durum'],
+  ['et-zurna', 'Et Zurna', '1 dürüm', 'et-doner-durum', 1.5],
+  ['ekmek-et', 'Ekmek Arası Et Döner', '1 adet', 'ekmek-arasi-et-doner'],
+  ['ekmek-tavuk', 'Ekmek Arası Tavuk Döner', '1 adet', 'ekmek-arasi-tavuk-doner'],
+  ['et-servis', 'Et Döner Servis', '1 porsiyon', 'et-doner-porsiyon'],
+  ['patates', 'Patates Kızartması', '1 porsiyon', 'patates-kizartmasi'],
+])
+const BAYDONER = est('Baydöner', 'baydoner.com/urunler', [
+  ['iskender', 'İskender', '1 porsiyon', 'iskender'],
+  ['iskender-15', '1,5 İskender', '1,5 porsiyon', 'iskender', 1.5],
+  ['patlicanli-iskender', 'Yoğurtlu Köz Patlıcanlı İskender', '1 porsiyon', 'iskender'],
+  ['cokertme', 'Çökertme Döner', '1 porsiyon', 'iskender'],
+  ['mercimek', 'Mercimek Çorbası', '1 kase', 'mercimek-corbasi'],
+  ['kunefe', 'Künefe', '1 porsiyon', 'kunefe'],
+])
+const HD = est('HD İskender', 'HD İskender menü (ürün adları)', [
+  ['iskender', 'HD İskender', '1 porsiyon', 'iskender'],
+  ['iskender-15', 'HD İskender (1,5 porsiyon)', '1,5 porsiyon', 'iskender', 1.5],
+  ['mercimek', 'Mercimek Çorbası', '1 kase', 'mercimek-corbasi'],
+  ['cig-kofte', 'Çiğ Köfte (yan ürün)', '1 porsiyon', 'cig-kofte', 0.7],
+  ['icli-kofte', 'İçli Köfte', '1 adet', 'icli-kofte'],
+  ['sutlac', 'Fındıklı Fırın Sütlaç', '1 kase', 'sutlac'],
+])
+const BEREKET = est('Bereket Döner', 'bereketdoner.com.tr menü (döner gramajları)', [
+  ['tavuk-durum-m', 'Tavuk Döner Dürüm (M, 75 g)', '1 dürüm', 'tavuk-doner-durum', 0.85],
+  ['tavuk-durum-l', 'Tavuk Döner Dürüm (L, 100 g)', '1 dürüm', 'tavuk-doner-durum', 1.2],
+  ['et-durum-m', 'Et Döner Dürüm (M, 75 g)', '1 dürüm', 'et-doner-durum', 0.85],
+  ['tam-ekmek-et', 'Tam Ekmek Et Döner (125 g)', '1 adet', 'ekmek-arasi-et-doner', 1.6],
+  ['yarim-ekmek-tavuk', 'Yarım Ekmek Tavuk Döner (75 g)', '1 adet', 'ekmek-arasi-tavuk-doner'],
+  ['iskender', 'Et İskender (100 g)', '1 porsiyon', 'iskender'],
+  ['pilav-ustu-tavuk', 'Pilav Üstü Tavuk (100 g)', '1 porsiyon', 'pilav-ustu-tavuk-doner'],
+])
+const SAMPI = est('Sampi Pide', 'Sampi Pide menü (Migros Yemek)', [
+  ['samsun-kiymali', 'Samsun Pidesi (Kapalı Kıymalı)', '1 adet', 'kiymali-pide'],
+  ['kusbasili-kasarli', 'Kuşbaşılı Kaşarlı Pide', '1 adet', 'kusbasili-pide', 1.15],
+  ['kusbasili', 'Kuşbaşılı Pide', '1 adet', 'kusbasili-pide'],
+  ['kasarli', 'Kaşar Peynirli Pide', '1 adet', 'kasarli-pide'],
+  ['lahmacun', 'Lahmacun', '1 adet', 'lahmacun'],
+])
+const PIDEM = est('Pidem', 'pidem.com.tr/tum-urunler', [
+  ['kiymali', 'Kıymalı Pidem', '1 adet', 'kiymali-pide'],
+  ['kasarli', 'Kaşarlı Pidem', '1 adet', 'kasarli-pide'],
+  ['kusbasili', 'Kuşbaşılı Pidem', '1 adet', 'kusbasili-pide'],
+  ['lahmacun', 'Lahmacun', '1 adet', 'lahmacun'],
+])
+const DOMINOS = est("Domino's", 'dominos.com.tr menü (değer yayımlanmıyor)', [
+  ['margarita', 'Margarita (orta, 1 dilim)', '1 dilim', 'sebzeli-pizza-dilim'],
+  ['karisik', 'Karışık (orta, 1 dilim)', '1 dilim', 'pizza-dilim'],
+  ['sucuksever', 'Sucuksever (orta, 1 dilim)', '1 dilim', 'pizza-dilim'],
+  ['bol-malzemos', 'Bol Malzemos (orta, 1 dilim)', '1 dilim', 'pizza-dilim', 1.15],
+])
+const LITTLE_CAESARS = est('Little Caesars', 'Little Caesars menü (Migros Yemek)', [
+  ['margarita', 'Margarita (1 dilim)', '1 dilim', 'sebzeli-pizza-dilim'],
+  ['sucuk-misir', 'Sucuk - Mısır (1 dilim)', '1 dilim', 'pizza-dilim'],
+  ['piknik', 'Piknik (1 dilim)', '1 dilim', 'pizza-dilim'],
+])
+
 export const CHAIN_FOODS: Food[] = [
+  ...MAYDONOZ, ...DURUMLE, ...SUBWAY, ...SBARRO, ...KOFTECI_YUSUF, ...ONCU, ...BAYDONER, ...HD, ...BEREKET,
+  ...SAMPI, ...PIDEM, ...DOMINOS, ...LITTLE_CAESARS,
   ...KAHVE_DUNYASI, ...CARIBOU, ...SIMIT_SARAYI, ...ESPRESSOLAB, ...GLORIA, ...JUAN_VALDEZ, ...COFFEE_LAB,
   ...ARABICA, ...KAHVE_DIYARI, ...COFFY, ...TCHIBO, ...MADO,
   ...MCDONALDS, ...BURGER_KING, ...KFC, ...POPEYES, ...ARBYS, ...STARBUCKS, ...TAVUK_DUNYASI, ...KOMAGENE, ...USTA_DONERCI]

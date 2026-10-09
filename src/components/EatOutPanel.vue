@@ -10,6 +10,9 @@ const store = useAppStore()
 const venueId = ref<string | null>(null)
 const chain = ref<string | null>(null)
 const chains = chainList()
+const chainQuery = ref('')
+const norm = (x: string) => x.toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+const shownChains = computed(() => chains.filter((c) => norm(c.brand).includes(norm(chainQuery.value.trim()))))
 const logged = ref<string | null>(null)
 
 const remaining = computed(() => (store.plan.energy?.target ?? 0) - store.todayTotals.kcal)
@@ -74,8 +77,9 @@ async function eat(foodId: string, factor: number) {
       <p class="small muted">
         Zincirlerin kendi yayımladığı besin değerleri. "tahmini" yazanlar değer yayımlamıyor; benzer standart tariften hesaplandı.
       </p>
+      <input v-model="chainQuery" type="text" class="chain-search" placeholder="Marka ara (ör. döner, kahve, Maydonoz)" aria-label="Marka ara" />
       <div class="venues" role="group" aria-label="Zincir">
-        <button v-for="c in chains" :key="c.brand" type="button" :aria-pressed="chain === c.brand" @click="pickChain(c.brand)">
+        <button v-for="c in shownChains" :key="c.brand" type="button" :aria-pressed="chain === c.brand" @click="pickChain(c.brand)">
           {{ c.brand }}<span v-if="c.estimated" class="small"> · tahmini</span>
         </button>
       </div>
@@ -141,6 +145,7 @@ async function eat(foodId: string, factor: number) {
 .pick > .btn { margin-top: 6px; }
 .tag { margin: 4px 0 0; }
 .sec { margin-top: 18px; }
+.chain-search { font-family: var(--font-body); margin: 6px 0 8px; }
 .src { word-break: break-word; margin-top: 8px; }
 .tag.off { border-color: var(--warn-border); color: var(--warn-ink); }
 .warnline { color: var(--warn-ink); margin-top: 2px; }
