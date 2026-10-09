@@ -39,7 +39,7 @@ export function conflicts(
   const out: string[] = []
   if (!fitsAnimal(food, ctx.animalFoods)) out.push('beslenme tercihinize (hayvansal gıda) uymuyor')
   if (food.unknownTags && ctx.animalFoods !== 'all') out.push('hayvansal içerik bilinmiyor; etiketteki içindekiler listesini kontrol edin')
-  if (food.kcalOnly && (ctx.diet === 'keto' || ctx.diet === 'lowcarb')) out.push('karbonhidrat değeri yayımlanmamış; planınıza uygunluğu kontrol edilemedi')
+  if (food.kcalOnly && (ctx.diet === 'keto' || ctx.diet === 'lowcarb')) out.push('karbonhidrat değeri bilinmiyor; planınıza uygunluğu kontrol edilemedi')
   if (ctx.diet === 'keto' && food.carb * factor > 10) out.push(`ketojenik plan için karbonhidratı yüksek (${Math.round(food.carb * factor)} g)`)
   if (ctx.diet === 'lowcarb' && food.carb * factor > 40) out.push(`düşük karbonhidrat planı için karbonhidratı yüksek (${Math.round(food.carb * factor)} g)`)
   if (ctx.diet === 'dash' && food.salty) out.push('tuzu yüksek; DASH planında sınırlı tutulmalı')

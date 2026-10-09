@@ -126,7 +126,8 @@ async function eat() {
       <section v-if="result" class="verdict" :class="tone" role="status">
         <h2>{{ result.title }}</h2>
         <p class="num">
-          {{ result.totals.kcal }} kcal · {{ result.totals.protein }} g protein
+          {{ result.totals.kcal }} kcal ·
+          {{ result.macrosKnown ? `${result.totals.protein} g protein` : 'protein bilinmiyor' }}
         </p>
         <p class="small">
           Bugün kalan: <span class="num">{{ result.remainingBefore }}</span> kcal →

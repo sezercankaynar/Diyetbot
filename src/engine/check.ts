@@ -33,6 +33,8 @@ export interface CheckResult {
   verdict: Verdict
   title: string
   reasons: string[]
+  /** False when an item has only kcal (protein/carb/fat unknown). */
+  macrosKnown: boolean
   /** Portion multiplier that fits the remaining budget (for verdict 'smaller'). */
   suggestedFactor?: number
   alternatives: Alternative[]
@@ -96,7 +98,7 @@ export function evaluateMeal(items: CheckItem[], ctx: CheckContext): CheckResult
   const isMain = groups.some((g) => MAIN_GROUPS.includes(g))
   const macrosKnown = !valid.some((i) => getFood(i.foodId)!.kcalOnly)
   if (!macrosKnown) {
-    tips.push('Bu ürün için yalnızca kalori yayımlanmış; protein, karbonhidrat ve yağ hesaba katılamadı.')
+    tips.push('Bu ürünün protein, karbonhidrat ve yağ değerleri yayımlanmamış ya da tutarsız; yalnızca kalorisi hesaba katıldı.')
   }
   if (isMain && macrosKnown && totals.protein < 20) {
     tips.push('Protein düşük: yanına yoğurt, ayran, yumurta veya bir porsiyon baklagil ekle.')
@@ -117,7 +119,7 @@ export function evaluateMeal(items: CheckItem[], ctx: CheckContext): CheckResult
   const needAlternatives = verdict !== 'ok' || reasons.length > 0
   const alternatives = needAlternatives ? findAlternatives(valid, Math.max(remainingBefore, 250), ctx) : []
 
-  return { totals, remainingBefore, remainingAfter, verdict, title: title[verdict], reasons, suggestedFactor, alternatives, tips }
+  return { totals, remainingBefore, remainingAfter, verdict, title: title[verdict], reasons, macrosKnown, suggestedFactor, alternatives, tips }
 }
 
 function findAlternatives(items: CheckItem[], budget: number, ctx: CheckContext, n = 3): Alternative[] {
