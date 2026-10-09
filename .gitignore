@@ -4,3 +4,7 @@ dev-dist
 *.local
 .DS_Store
 coverage
+
+# Signing keys never go in git
+*.keystore
+*.jks

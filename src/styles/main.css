@@ -97,7 +97,7 @@ li { margin: 0.15em 0; }
 .page {
   max-width: 640px;
   margin: 0 auto;
-  padding: 16px 14px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom));
+  padding: calc(16px + env(safe-area-inset-top)) 14px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom));
 }
 
 .page-head {

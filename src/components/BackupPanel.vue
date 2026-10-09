@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { useAppStore } from '@/stores/app'
 
 const store = useAppStore()
@@ -9,15 +10,33 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 async function doExport() {
   const data = await store.exportBackup()
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `diyetbot-yedek-${data.exportedAt.slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  const json = JSON.stringify(data, null, 2)
+  const name = `diyetbot-yedek-${data.exportedAt.slice(0, 10)}.json`
   err.value = false
-  msg.value = 'Yedek indirildi.'
+  try {
+    if (Capacitor.isNativePlatform()) {
+      // Android app: browsers' download link doesn't work in the WebView,
+      // so write the file and open the share sheet (Drive, Files, e-mail…).
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+      const { Share } = await import('@capacitor/share')
+      const { uri } = await Filesystem.writeFile({ path: name, data: json, directory: Directory.Cache, encoding: Encoding.UTF8 })
+      await Share.share({ title: 'Diyetbot yedeği', files: [uri] })
+      msg.value = 'Yedek hazır; kaydedeceğiniz yeri seçin.'
+      return
+    }
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(url)
+    msg.value = 'Yedek indirildi.'
+  } catch (x) {
+    // Closing the share sheet without choosing a target is not an error.
+    if (/cancel/i.test((x as Error).message)) return
+    err.value = true
+    msg.value = 'Yedek alınamadı: ' + (x as Error).message
+  }
 }
 
 async function onFile(e: Event) {
@@ -44,7 +63,7 @@ async function onFile(e: Event) {
     <div class="btn-row">
       <button class="btn ghost" type="button" @click="doExport">JSON dışa aktar</button>
       <button class="btn ghost" type="button" @click="fileInput?.click()">JSON içe aktar</button>
-      <input ref="fileInput" type="file" accept="application/json,.json" hidden @change="onFile" />
+      <input ref="fileInput" type="file" accept=".json,application/json,text/plain,application/octet-stream" hidden @change="onFile" />
     </div>
     <p v-if="msg" class="small" :style="{ color: err ? 'var(--stop-border)' : 'var(--accent)' }" role="status">{{ msg }}</p>
   </section>

@@ -6,12 +6,15 @@ import { fileURLToPath, URL } from 'node:url'
 
 // BASE_PATH lets you deploy under a sub-path (e.g. GitHub Pages: /Diyetbot/).
 const base = process.env.BASE_PATH ?? '/'
+// CAPACITOR=1 → build for the Android app (no service worker inside the WebView).
+const native = process.env.CAPACITOR === '1'
 
 export default defineConfig({
   base,
   plugins: [
     vue(),
     VitePWA({
+      disable: native,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {

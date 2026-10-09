@@ -37,6 +37,27 @@ npm run preview    # serve dist/ locally (service worker active)
   ```
 - **Any web server** (nginx, Caddy, S3 + CloudFront): copy `dist/` as-is. Navigation uses `#hash` URLs, so no rewrite rules are needed.
 
+## Android app (APK)
+
+The same web app is wrapped as a native Android app with [Capacitor](https://capacitorjs.com) (`android/`, `capacitor.config.ts`). The service worker is disabled for this build because the files are bundled inside the app. In the app, the JSON export opens the Android share sheet so you can save the file to Drive or Files.
+
+Requirements: Java 21 and the Android SDK (`ANDROID_HOME`).
+
+```bash
+npm run build:android                 # web build + copy into android/
+cd android && ./gradlew assembleRelease
+# → android/app/build/outputs/apk/release/app-release.apk
+```
+
+**Signing.** The release signing key is **not** in the repo. Point these env vars at a private keystore (alias `diyetbot`):
+
+```bash
+export DIYETBOT_KEYSTORE=/path/to/diyetbot.keystore
+export DIYETBOT_KEYSTORE_PASSWORD=...
+```
+
+Without them, the APK is signed with the local debug key. Android only installs an update over the existing app when **both APKs are signed with the same key**. If the key changes, the old app has to be uninstalled first, which deletes its data. So take a JSON backup before installing a build signed with a different key. Set `VERSION_CODE` to a higher number for each new build.
+
 ## Data & backup
 
 Profile, weigh-ins, accepted adjustments and the chosen diet are stored in IndexedDB (database `diyetbot`). Use **Profil → Yedekleme** to export or import a JSON backup. Importing **replaces** all current data, and the file is validated before anything is written.
