@@ -207,6 +207,8 @@ export const useAppStore = defineStore('app', () => {
     const h = todayLog.value.habits
     return updateToday({ habits: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] })
   }
+  const setSteps = (steps: number) => updateToday({ steps: Math.max(0, Math.round(steps)) })
+  const toggleWorkout = () => updateToday({ workout: !todayLog.value.workout })
   async function setHabits(ids: string[]) {
     activeHabits.value = ids
     await saveSettings()
@@ -304,7 +306,7 @@ export const useAppStore = defineStore('app', () => {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
     liked, disliked, diary, menu, customFoods, saveCustomFood,
-    checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
+    checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
     ensureMenu, regenerateMenu, swapMenu, rateDish, logFoods, deleteDiary, toggleMenuEaten,

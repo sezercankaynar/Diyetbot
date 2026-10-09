@@ -53,7 +53,7 @@ export function generateTraining(p: Profile): TrainingPlan {
   const reps = '6–12'
   const trainingDays: TrainingDay[] = days.map((name, i) => ({
     name: `${i + 1}. gün – ${name}`,
-    exercises: TEMPLATES[name].map<Exercise>((slot) => ({ name: EX[slot][p.equipment], sets, reps })),
+    exercises: TEMPLATES[name].map<Exercise>((slot) => ({ name: EX[slot][p.equipment], sets, reps, slot })),
   }))
 
   const cardio =
@@ -75,4 +75,72 @@ export function generateTraining(p: Profile): TrainingPlan {
     steps: p.goal === 'lose' ? 'Günde 8.000–10.000 adım' : 'Günde 7.000–9.000 adım',
     sleep: 'Her gece 7–9 saat, mümkün olduğunca aynı saatte',
   }
+}
+
+// ── Weekly schedule & steps ────────────────────────────────
+
+export type DayType = 'strength' | 'cardio' | 'walk' | 'rest'
+export interface ScheduleDay {
+  /** 0 = Monday … 6 = Sunday */
+  weekday: number
+  type: DayType
+  title: string
+  detail: string
+  /** Index into TrainingPlan.days for strength days. */
+  workout?: number
+  /** Strength day that also gets a short cardio finisher. */
+  plusCardio?: boolean
+}
+
+const STRENGTH_DAYS: Record<number, number[]> = {
+  2: [0, 3],
+  3: [0, 2, 4],
+  4: [0, 1, 3, 4],
+  5: [0, 1, 2, 3, 4],
+  6: [0, 1, 2, 3, 4, 5],
+}
+
+export function cardioSessions(goal: Profile['goal']): number {
+  return goal === 'lose' ? 3 : goal === 'gain' ? 1 : 2
+}
+
+export function stepTarget(goal: Profile['goal']): number {
+  return goal === 'lose' ? 9000 : 8000
+}
+
+/**
+ * Which day is what: strength days spread through the week, cardio on free days
+ * (or as a finisher after strength when there are none), one full rest day,
+ * and easy walks on the others.
+ */
+export function weekSchedule(p: Pick<Profile, 'trainingDays' | 'goal'>, plan: TrainingPlan): ScheduleDay[] {
+  const strength = STRENGTH_DAYS[p.trainingDays] ?? STRENGTH_DAYS[3]
+  const days: ScheduleDay[] = Array.from({ length: 7 }, (_, weekday) => ({ weekday, type: 'walk' as DayType, title: '', detail: '' }))
+  strength.forEach((wd, i) => {
+    const w = plan.days[i]
+    days[wd] = { weekday: wd, type: 'strength', title: w ? w.name.replace(/^\d+\. gün – /, '') : 'Ağırlık', detail: 'Ağırlık antrenmanı', workout: i }
+  })
+  // Sunday is the rest day unless it is a training day; then the first free day.
+  const free = days.filter((d) => d.type !== 'strength').map((d) => d.weekday)
+  const restDay = free.includes(6) ? 6 : free.at(-1)
+  let cardioLeft = cardioSessions(p.goal)
+  for (const wd of free) {
+    if (wd === restDay || cardioLeft === 0) continue
+    days[wd] = { weekday: wd, type: 'cardio', title: 'Kardiyo', detail: p.goal === 'gain' ? '20 dk hafif tempo' : '25–35 dk zone 2 (tempolu yürüyüş, bisiklet, yüzme)' }
+    cardioLeft--
+  }
+  // Not enough free days: add short cardio after strength sessions.
+  for (const d of days) {
+    if (cardioLeft === 0) break
+    if (d.type === 'strength') {
+      d.plusCardio = true
+      d.detail = 'Ağırlık + 15–20 dk zone 2 kardiyo'
+      cardioLeft--
+    }
+  }
+  for (const d of days) {
+    if (d.weekday === restDay && d.type !== 'strength') Object.assign(d, { type: 'rest', title: 'Dinlenme', detail: 'Tam dinlenme; hafif esneme ve günlük adımlar yeterli' })
+    else if (d.type === 'walk') Object.assign(d, { title: 'Aktif dinlenme', detail: '30–45 dk yürüyüş, hareketli kal' })
+  }
+  return days
 }

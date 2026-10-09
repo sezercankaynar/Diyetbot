@@ -184,6 +184,10 @@ export interface DailyLog {
   date: string
   water: number
   habits: string[]
+  /** Steps walked (entered by the user). */
+  steps?: number
+  /** The planned workout/cardio was done. */
+  workout?: boolean
 }
 
 export const GLASS_ML = 250

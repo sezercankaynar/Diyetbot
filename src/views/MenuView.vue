@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { alternativesFor, dayTotals, getFood, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
+import { alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
-import BudgetBar from '@/components/BudgetBar.vue'
+import MacroBars from '@/components/MacroBars.vue'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
@@ -23,6 +23,9 @@ const day = computed(() => store.menu?.days[dayIdx.value] ?? null)
 const totals = computed(() => (day.value ? dayTotals(day.value) : null))
 const labels = computed(() =>
   Object.fromEntries((store.menuCtx ? slotPlan(store.menuCtx) : []).map((s) => [s.slot, s.label])),
+)
+const windows = computed(() =>
+  Object.fromEntries((store.menuCtx ? slotPlan(store.menuCtx) : []).map((s) => [s.slot, mealWindow(s, store.profile.mealTimes)])),
 )
 const openSlot = ref<Slot | null>(null)
 const alternatives = computed(() =>
@@ -60,7 +63,7 @@ async function regenerate() {
     <template v-if="!store.hasProfile">
       <section class="card">
         <p>Menü için önce profilini doldur.</p>
-        <button class="btn" type="button" @click="emit('go', 'profil')">Profile git →</button>
+        <button class="btn" type="button" @click="emit('go', 'profil')">Başla →</button>
       </section>
     </template>
     <template v-else-if="store.plan.safety.stop">
@@ -88,30 +91,31 @@ async function regenerate() {
         </button>
       </div>
 
-      <section class="card">
-        <h2>{{ WEEKDAY_TR[dayIdx] }}</h2>
-        <BudgetBar label="Menü kalorisi" :value="totals.kcal" :target="store.plan.energy?.target ?? 0" unit="kcal" />
-        <BudgetBar label="Protein" :value="totals.protein" :target="store.plan.macros?.proteinG ?? 0" unit="g" />
-        <BudgetBar label="Karbonhidrat" :value="totals.carb" :target="store.plan.macros?.carbG ?? 0" unit="g" />
-        <BudgetBar label="Yağ" :value="totals.fat" :target="store.plan.macros?.fatG ?? 0" unit="g" />
+      <section class="card summary">
+        <div class="sum-head">
+          <h2>{{ WEEKDAY_TR[dayIdx] }}</h2>
+          <span class="num"><strong>{{ totals.kcal }}</strong> / {{ store.plan.energy?.target ?? 0 }} kcal</span>
+        </div>
+        <MacroBars
+          :protein="totals.protein" :carb="totals.carb" :fat="totals.fat"
+          :protein-t="store.plan.macros?.proteinG ?? 0" :carb-t="store.plan.macros?.carbG ?? 0" :fat-t="store.plan.macros?.fatG ?? 0"
+        />
       </section>
 
       <section v-for="item in day.items" :key="item.slot" class="card meal">
-        <div class="label">{{ labels[item.slot] }}</div>
+        <div class="meal-top">
+          <span class="label">{{ labels[item.slot] }}</span>
+          <span class="time num">{{ windows[item.slot] }}</span>
+        </div>
         <FoodRow :food-id="item.foodId" :factor="item.factor" />
-        <div class="btn-row">
-          <button type="button" class="btn ghost small" :aria-expanded="openSlot === item.slot" @click="openSlot = openSlot === item.slot ? null : item.slot">
-            {{ openSlot === item.slot ? 'Kapat' : 'Alternatifler' }}
+        <div class="acts">
+          <button type="button" class="act" :aria-expanded="openSlot === item.slot" @click="openSlot = openSlot === item.slot ? null : item.slot">
+            ↻ {{ openSlot === item.slot ? 'Kapat' : 'Değiştir' }}
           </button>
-          <button
-            type="button"
-            class="btn ghost small"
-            :aria-pressed="store.liked.includes(item.foodId)"
-            @click="toggleLike(item.foodId)"
-          >
+          <button type="button" class="act" :aria-pressed="store.liked.includes(item.foodId)" @click="toggleLike(item.foodId)">
             {{ store.liked.includes(item.foodId) ? '♥ Beğendim' : '♡ Beğen' }}
           </button>
-          <button type="button" class="btn danger small" @click="dislike(item.foodId)">Bir daha gösterme</button>
+          <button type="button" class="act no" @click="dislike(item.foodId)">✕ Gösterme</button>
         </div>
         <div v-if="openSlot === item.slot" class="alts">
           <div v-for="a in alternatives" :key="a.foodId" class="alt">
@@ -132,22 +136,28 @@ async function regenerate() {
 </template>
 
 <style scoped>
-.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 14px; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 14px; }
 .days button {
-  display: flex; flex-direction: column; align-items: center; padding: 6px 0; min-height: 50px;
-  font: inherit; font-size: 0.8rem; background: var(--paper-2); color: var(--ink);
-  border: 1px solid var(--rule-strong); border-radius: var(--radius); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; padding: 8px 0; min-height: 52px;
+  font: inherit; font-size: 0.8rem; font-weight: 700; background: var(--surface); color: var(--ink-2);
+  border: 0; border-radius: 14px; box-shadow: var(--shadow); cursor: pointer;
 }
-.days button.today { border-color: var(--accent); border-width: 2px; }
-.days button[aria-selected='true'] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.days button.today { color: var(--accent); }
+.days button[aria-selected='true'] { background: var(--accent); color: var(--accent-ink); }
 .days button[aria-selected='true'] .small { color: var(--accent-ink); }
-.meal .label { margin-bottom: 4px; }
-.btn-row .btn[aria-pressed='true'] { color: var(--stop-border); border-color: var(--stop-border); }
-.alts { margin-top: 10px; border-top: 1px dashed var(--rule-strong); }
-.alt { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px dotted var(--rule); }
+.sum-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.meal-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.time { font-size: 0.82rem; font-weight: 700; color: var(--accent); }
+.acts { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.act { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 0.82rem; font-weight: 700; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
+.act[aria-pressed='true'] { background: var(--stop-bg); color: var(--stop-border); }
+.act.no { margin-left: auto; color: var(--ink-3); }
+.alts { margin-top: 10px; background: var(--surface-2); border-radius: 14px; padding: 4px 12px; }
+.alt { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
+.alt + .alt { border-top: 1px solid var(--line); }
 .alt :deep(.food-row) { flex: 1; }
 .outdated {
-  background: var(--info-bg); color: var(--info-ink); border-left: 4px solid var(--info-border);
-  border-radius: var(--radius); padding: 10px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between;
+  background: var(--info-bg); color: var(--info-ink); border-radius: 14px; padding: 12px;
+  margin-bottom: 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between;
 }
 </style>

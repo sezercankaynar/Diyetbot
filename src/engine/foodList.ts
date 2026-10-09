@@ -1,3 +1,5 @@
+import { SWEET_RECIPES } from '../content/sweetRecipes'
+
 // Food & dish database (approximate values per stated portion).
 // kcal is derived from macros (4/4/9) so the numbers are always self-consistent.
 
@@ -6,7 +8,7 @@ export type FoodTag =
   | 'redmeat' | 'chicken' | 'fish' | 'egg' | 'dairy'
   | 'legume' | 'gluten' | 'nuts' | 'eggplant'
 export type FoodGroup =
-  | 'kahvalti' | 'ana' | 'corba' | 'salata' | 'kebap' | 'hamur' | 'fast' | 'tatli' | 'ara' | 'icecek' | 'yan' | 'paket'
+  | 'kahvalti' | 'ana' | 'corba' | 'salata' | 'kebap' | 'hamur' | 'fast' | 'tatli' | 'ara' | 'icecek' | 'yan' | 'paket' | 'ev'
 
 export interface Food {
   id: string
@@ -43,6 +45,8 @@ export interface Food {
   trad?: boolean
   /** Brand doesn't publish values: estimated from a comparable standard recipe. */
   estimated?: boolean
+  /** Has a recipe (see content/sweetRecipes.ts). */
+  recipeId?: string
   /**
    * Values are published per 100 g/ml; this is the assumed usual serving as a
    * multiple of the stated portion (e.g. 3.5 → ~350 ml cup). Used as the default amount.
@@ -66,20 +70,20 @@ const NONE: Slot[] = []
 
 export const FOODS: Food[] = [
   // ── Kahvaltı ─────────────────────────────────────────────
-  f('menemen', 'Menemen + tam buğday ekmek', '2 yumurta, 1 dilim ekmek', B, 'kahvalti', 1, ['egg', 'gluten'], 17, 22, 16),
+  f('menemen', 'Menemen + tam buğday ekmek', '2 yumurta, 1 dilim ekmek', ['breakfast', 'lunch'], 'kahvalti', 1, ['egg', 'gluten'], 17, 22, 16),
   f('yumurta-kahvalti', 'Haşlanmış yumurtalı kahvaltı', '2 yumurta, 30 g beyaz peynir, domates-salatalık, 5 zeytin, 1 dilim ekmek', B, 'kahvalti', 1, ['egg', 'dairy', 'gluten'], 24, 20, 22, { salty: true }),
   f('yulaf-lapasi', 'Yulaf lapası', '40 g yulaf, 200 ml süt, 1 muz, tarçın', B, 'kahvalti', 1, ['dairy', 'gluten'], 13, 62, 8),
-  f('yogurt-meyve-ceviz', 'Süzme yoğurt + meyve + ceviz', '200 g süzme yoğurt, 1 avuç meyve, 15 g ceviz', B, 'kahvalti', 1, ['dairy', 'nuts'], 20, 18, 14),
-  f('lorlu-omlet', 'Lorlu omlet + yeşillik', '2 yumurta, 50 g lor', B, 'kahvalti', 1, ['egg', 'dairy'], 24, 4, 15),
-  f('kasarli-tost', 'Kaşarlı tost + domates', '2 dilim tam buğday ekmek, 40 g kaşar', B, 'kahvalti', 1, ['dairy', 'gluten'], 18, 34, 14, { salty: true }),
-  f('avokado-yumurta', 'Avokadolu yumurta tost', '1 dilim tam tahıllı ekmek, ½ avokado, 2 yumurta', B, 'kahvalti', 1, ['egg', 'gluten'], 16, 20, 24),
+  f('yogurt-meyve-ceviz', 'Süzme yoğurt + meyve + ceviz', '200 g süzme yoğurt, 1 avuç meyve, 15 g ceviz', ['breakfast', 'lunch'], 'kahvalti', 1, ['dairy', 'nuts'], 20, 18, 14),
+  f('lorlu-omlet', 'Lorlu omlet + yeşillik', '2 yumurta, 50 g lor', ['breakfast', 'lunch'], 'kahvalti', 1, ['egg', 'dairy'], 24, 4, 15),
+  f('kasarli-tost', 'Kaşarlı tost + domates', '2 dilim tam buğday ekmek, 40 g kaşar', ['breakfast', 'lunch'], 'kahvalti', 1, ['dairy', 'gluten'], 18, 34, 14, { salty: true }),
+  f('avokado-yumurta', 'Avokadolu yumurta tost', '1 dilim tam tahıllı ekmek, ½ avokado, 2 yumurta', ['breakfast', 'lunch'], 'kahvalti', 1, ['egg', 'gluten'], 16, 20, 24),
   f('tofu-menemen', 'Tofu menemen + ekmek', '150 g tofu, biber, domates, 1 dilim ekmek', B, 'kahvalti', 1, ['legume', 'gluten'], 22, 22, 14, { soy: true }),
   f('tofu-menemen-avokado', 'Ekmeksiz tofu menemen + avokado', '150 g tofu, ½ avokado', B, 'kahvalti', 1, ['legume'], 22, 9, 24, { soy: true }),
   f('fistik-yulaf', 'Fıstık ezmeli yulaf', '50 g yulaf, bitkisel süt, 1 yk fıstık ezmesi, meyve', B, 'kahvalti', 1, ['gluten', 'nuts'], 14, 60, 14),
   f('sucuklu-yumurta', 'Sucuklu yumurta + ekmek', '2 yumurta, 30 g sucuk, 1 dilim ekmek', B, 'kahvalti', 1, ['egg', 'redmeat', 'gluten'], 20, 18, 26, { salty: true }),
   f('chia-puding', 'Chia puding', '2 yk chia, 200 ml süt, meyve', B, 'kahvalti', 1, ['dairy'], 10, 26, 12),
   f('simit-peynir', 'Yarım simit + beyaz peynir', '½ simit, 40 g beyaz peynir, domates-salatalık', B, 'kahvalti', 1, ['gluten', 'dairy'], 13, 34, 12, { salty: true }),
-  f('peynirli-omlet', 'Peynirli sebzeli omlet', '3 yumurta, 30 g kaşar, biber, ıspanak', B, 'kahvalti', 1, ['egg', 'dairy'], 27, 5, 24),
+  f('peynirli-omlet', 'Peynirli sebzeli omlet', '3 yumurta, 30 g kaşar, biber, ıspanak', ['breakfast', 'lunch'], 'kahvalti', 1, ['egg', 'dairy'], 27, 5, 24),
   f('soya-yogurt-chia', 'Soya yoğurdu + chia + ceviz (şekersiz)', '200 g soya yoğurdu, 1 yk chia, 15 g ceviz', B, 'kahvalti', 1, ['legume', 'nuts'], 14, 9, 18, { soy: true }),
   f('tofu-avokado-tost', 'Tofu-avokado tost', '1 dilim tam tahıllı ekmek, 100 g tofu, ¼ avokado', B, 'kahvalti', 1, ['legume', 'gluten'], 18, 20, 16, { soy: true }),
   f('yulaf-protein', 'Proteinli yulaf', '40 g yulaf, 200 ml süt, 150 g süzme yoğurt, meyve', B, 'kahvalti', 1, ['dairy', 'gluten'], 26, 50, 9),
@@ -153,6 +157,10 @@ export const FOODS: Food[] = [
   f('hindi-sandvic', 'Hindi füme sandviç + ayran', '2 dilim tam buğday ekmek, 60 g hindi füme', LD, 'ana', 1, ['chicken', 'gluten', 'dairy'], 26, 40, 10, { salty: true }),
   f('yogurt-kasesi', 'Yoğurt kasesi (süzme yoğurt, yulaf, meyve, ceviz)', '200 g süzme yoğurt, 3 yk yulaf, 1 meyve, 15 g ceviz', ['breakfast', 'lunch'], 'kahvalti', 1, ['dairy', 'gluten', 'nuts'], 26, 42, 14),
   f('lor-tost-ayran', 'Lor peynirli tost + ayran', '2 dilim tam buğday ekmek, 80 g lor', LD, 'ana', 1, ['dairy', 'gluten'], 24, 36, 10),
+  f('peynir-tabagi-ayran', 'Peynir tabağı + 1 dilim tam buğday ekmek + ayran', '60 g beyaz peynir, domates-salatalık, ceviz', LD, 'ana', 1, ['dairy', 'gluten', 'nuts'], 22, 28, 18, { salty: true }),
+  f('yumurtali-sandvic', 'Haşlanmış yumurtalı sandviç + domates', '2 yumurta, 2 dilim tam buğday ekmek', LD, 'ana', 1, ['egg', 'gluten'], 18, 34, 12),
+  f('tavuklu-wrap-hafif', 'Tavuklu mini dürüm + ayran', '½ lavaş, 80 g tavuk, yeşillik', LD, 'ana', 1, ['chicken', 'gluten', 'dairy'], 28, 26, 9),
+  f('mercimek-corbasi-yogurt-hafif', 'Mercimek çorbası + yoğurt', '1 kase çorba, 150 g yoğurt', LD, 'corba', 1, ['legume', 'dairy'], 15, 32, 8),
   f('humus-sebze-tabak', 'Humus + sebze + 1 dilim ekmek + yumurta', '4 yk humus, 1 yumurta', LD, 'ana', 1, ['legume', 'egg', 'gluten'], 16, 30, 16),
 
   // ── Ara öğün ─────────────────────────────────────────────
@@ -254,12 +262,33 @@ export const FOODS: Food[] = [
   f('fistik-ezmesi-kakao', 'Fıstık ezmesi + kakao (şekersiz)', '1 yk fıstık ezmesi', NONE, 'tatli', 1, ['nuts'], 4, 4, 8, { sweet: true }),
 ]
 
+// Light sweet recipes (tatlı krizi) as foods, so they can be checked and logged like anything else.
+for (const r of SWEET_RECIPES) {
+  FOODS.push({
+    id: `rc-${r.id}`,
+    name: r.name,
+    portion: '1 porsiyon (tarif)',
+    slots: [],
+    group: 'tatli',
+    prep: r.minutes <= 10 ? 1 : 2,
+    tags: r.tags,
+    protein: r.perServing.protein,
+    carb: r.perServing.carb,
+    fat: r.perServing.fat,
+    kcal: r.perServing.kcal,
+    sweet: true,
+    recipeId: r.id,
+  })
+}
+
 // Light / hearty and traditional annotations for main-meal dishes.
 const LIGHT = [
+  'lorlu-omlet', 'peynirli-omlet', 'yogurt-meyve-ceviz', 'kasarli-tost', 'avokado-yumurta', 'menemen',
   'ton-salata', 'tavuk-salata', 'nohut-salatasi', 'kisir-yogurt', 'sebzeli-omlet', 'humus-tabagi', 'kinoa-salata',
-  'hellim-salata', 'somon-avokado', 'levrek-roka', 'yesil-mercimek-salata', 'tavuk-durum-ev', 'mercimek-corba-yogurt',
+  'hellim-salata', 'yesil-mercimek-salata', 'tavuk-durum-ev', 'mercimek-corba-yogurt',
   'tavuk-corba-salata', 'ezogelin-peynir', 'yayla-corbasi-salata', 'tarhana-yumurta', 'sebze-corbasi-ton',
   'peynirli-durum', 'ton-sandvic', 'hindi-sandvic', 'yogurt-kasesi', 'lor-tost-ayran', 'humus-sebze-tabak',
+  'peynir-tabagi-ayran', 'yumurtali-sandvic', 'tavuklu-wrap-hafif', 'mercimek-corbasi-yogurt-hafif',
   'tofu-brokoli', 'kabak-yemegi', 'pirasa', 'taze-fasulye',
 ]
 const HEARTY = [

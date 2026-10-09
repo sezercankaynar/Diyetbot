@@ -16,6 +16,14 @@ export type EatingOut = 'rare' | 'some' | 'often'
 export type HungerTime = 'evening' | 'allday' | 'stable'
 /** How substantial a meal should be: a quick snack-style plate or a full meal. */
 export type MealStyle = 'light' | 'normal' | 'hearty'
+/** Start times ("HH:MM") of each meal. */
+export interface MealTimes {
+  breakfast: string
+  lunch: string
+  snack: string
+  nightSnack: string
+  dinner: string
+}
 export interface MealStyles {
   breakfast: MealStyle
   lunch: MealStyle
@@ -57,6 +65,7 @@ export interface Profile {
   dislikes: FoodTag[]
   /** Which meals are big and which are light (öğün düzeni). */
   mealStyle: MealStyles
+  mealTimes: MealTimes
   health: HealthFlags
 }
 
@@ -133,6 +142,8 @@ export interface Exercise {
   name: string
   sets: string
   reps: string
+  /** Movement pattern (matches the exercise guide content). */
+  slot?: string
 }
 export interface TrainingDay {
   name: string

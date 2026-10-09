@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { getFood, TAG_LABEL, type FoodTag, type Profile } from '@/engine'
+import { computed, ref, watch } from 'vue'
+import { getFood, slotPlan, TAG_LABEL, timingTips, type FoodTag, type Profile } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SegControl from '@/components/SegControl.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
@@ -9,6 +9,7 @@ import * as L from '@/content/labels'
 const store = useAppStore()
 const emit = defineEmits<{ done: []; go: [tab: string] }>()
 const TAGS = Object.entries(TAG_LABEL) as [FoodTag, string][]
+const timeTips = computed(() => timingTips(slotPlan(draft.value), draft.value.mealTimes))
 function toggleDislike(t: FoodTag) {
   const d = draft.value.dislikes
   draft.value.dislikes = d.includes(t) ? d.filter((x) => x !== t) : [...d, t]
@@ -66,12 +67,13 @@ watch(
 <template>
   <div class="page">
     <header class="page-head">
-      <h1>Profil</h1>
+      <h2>Bilgilerin</h2>
       <span class="sub">{{ saved ? 'kaydedildi ✓' : valid(draft) ? 'otomatik kayıt' : 'değerleri kontrol edin' }}</span>
     </header>
 
-    <fieldset>
-      <legend>Vücut</legend>
+    <details class="fold" :open="!store.hasProfile">
+      <summary>Vücut <span class="hint">{{ `${draft.weightKg} kg · ${draft.heightCm} cm` }}</span></summary>
+      <div class="fold-body">
       <div class="field">
         <span class="label">Cinsiyet</span>
         <SegControl v-model="draft.sex" :options="L.SEX" label="Cinsiyet" />
@@ -93,28 +95,34 @@ watch(
         <SegControl v-model="draft.activity" :options="L.ACTIVITY" label="Aktivite" />
         <p class="small muted">{{ L.ACTIVITY.find((a) => a.value === draft.activity)?.hint }}</p>
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Hedef</legend>
+    <details class="fold">
+      <summary>Hedef <span class="hint">{{ L.GOAL.find((g) => g.value === draft.goal)?.label }}</span></summary>
+      <div class="fold-body">
       <div class="field"><span class="label">Amaç</span>
         <SegControl v-model="draft.goal" :options="L.GOAL" label="Amaç" /></div>
       <div v-if="draft.goal === 'lose'" class="field"><span class="label">Haftalık hız (vücut ağırlığının %)</span>
         <SegControl v-model="draft.weeklyRate" :options="L.RATE" label="Haftalık hız" /></div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Antrenman</legend>
+    <details class="fold">
+      <summary>Antrenman <span class="hint">{{ `haftada ${draft.trainingDays} gün` }}</span></summary>
+      <div class="fold-body">
       <div class="field"><span class="label">Haftada antrenman günü</span>
         <SegControl v-model="draft.trainingDays" :options="L.DAYS" label="Gün" /></div>
       <div class="field"><span class="label">Deneyim</span>
         <SegControl v-model="draft.experience" :options="L.EXPERIENCE" label="Deneyim" /></div>
       <div class="field"><span class="label">Ekipman</span>
         <SegControl v-model="draft.equipment" :options="L.EQUIPMENT" label="Ekipman" /></div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Beslenme alışkanlıkları</legend>
+    <details class="fold">
+      <summary>Beslenme alışkanlıkları</summary>
+      <div class="fold-body">
       <div class="field"><span class="label">Hayvansal gıdalar</span>
         <SegControl v-model="draft.animalFoods" :options="L.ANIMAL" label="Hayvansal gıdalar" /></div>
       <div class="field"><span class="label">Ekmek-pilav-makarnaya bağlılık</span>
@@ -131,10 +139,12 @@ watch(
         <SegControl v-model="draft.tracksCalories" :options="L.YESNO" label="Kalori takibi" /></div>
       <div class="field"><span class="label">En çok ne zaman acıkıyorsunuz?</span>
         <SegControl v-model="draft.hungerTime" :options="L.HUNGER" label="Açlık" /></div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Öğün düzeni</legend>
+    <details class="fold">
+      <summary>Öğün düzeni</summary>
+      <div class="fold-body">
       <p class="small muted">
         Hangi öğünü doyurucu, hangisini hafif yemeyi seversin? Aynı günlük kaloride öğün dağılımı kilo kaybını değiştirmez;
         en iyi düzen sürdürebildiğin düzendir.
@@ -145,10 +155,23 @@ watch(
         <SegControl v-model="draft.mealStyle.lunch" :options="L.MEAL_STYLE" label="Öğle" /></div>
       <div class="field"><span class="label">Akşam</span>
         <SegControl v-model="draft.mealStyle.dinner" :options="L.MEAL_STYLE" label="Akşam" /></div>
-    </fieldset>
+      <div class="field">
+        <span class="label">Öğün saatleri (başlangıç)</span>
+        <div class="times">
+          <label><span class="small muted">Kahvaltı</span><input v-model="draft.mealTimes.breakfast" type="time" /></label>
+          <label><span class="small muted">Öğle</span><input v-model="draft.mealTimes.lunch" type="time" /></label>
+          <label><span class="small muted">Ara öğün</span><input v-model="draft.mealTimes.snack" type="time" /></label>
+          <label><span class="small muted">Akşam</span><input v-model="draft.mealTimes.dinner" type="time" /></label>
+          <label><span class="small muted">Gece ara öğün</span><input v-model="draft.mealTimes.nightSnack" type="time" /></label>
+        </div>
+        <ul v-if="timeTips.length" class="small tips"><li v-for="t in timeTips" :key="t">{{ t }}</li></ul>
+      </div>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Damak zevki</legend>
+    <details class="fold">
+      <summary>Damak zevki</summary>
+      <div class="fold-body">
       <p class="small muted">Yemediğin ya da sevmediğin şeyleri işaretle; menüde hiç çıkmazlar.</p>
       <label v-for="[t, name] in TAGS" :key="t" class="check">
         <input type="checkbox" :checked="draft.dislikes.includes(t)" @change="toggleDislike(t)" />
@@ -165,25 +188,33 @@ watch(
           <button type="button" class="btn ghost small" @click="store.rateDish(id, null)">Tekrar göster</button>
         </div>
       </template>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Sağlık</legend>
+    <details class="fold">
+      <summary>Sağlık</summary>
+      <div class="fold-body">
       <label v-for="h in L.HEALTH" :key="h.key" class="check">
         <input v-model="draft.health[h.key]" type="checkbox" />
         <span>{{ h.label }}</span>
       </label>
-    </fieldset>
+    </div>
+    </details>
 
     <div class="btn-row">
       <button class="btn" type="button" :disabled="!valid(draft)" @click="finish">Planımı göster →</button>
     </div>
 
-    <BackupPanel />
-    <p class="small"><a href="#kanit" @click.prevent="emit('go', 'kanit')">Kuralların dayandığı çalışmalar (Kanıt) →</a></p>
+    <details class="fold">
+      <summary>Yedekleme</summary>
+      <div class="fold-body"><BackupPanel /></div>
+    </details>
   </div>
 </template>
 
 <style scoped>
+.times { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.times label { display: grid; gap: 4px; }
+.tips { color: var(--warn-ink); margin-top: 8px; }
 .pref { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
 </style>

@@ -57,9 +57,10 @@ const RELATED: Record<FoodGroup, FoodGroup[]> = {
   ara: ['ara', 'tatli'],
   yan: ['yan', 'salata'],
   paket: ['paket', 'ara', 'tatli'],
+  ev: ['ana', 'salata', 'corba', 'ev'],
 }
 
-const MAIN_GROUPS: FoodGroup[] = ['kebap', 'hamur', 'fast', 'ana', 'corba', 'salata', 'kahvalti']
+const MAIN_GROUPS: FoodGroup[] = ['kebap', 'hamur', 'fast', 'ana', 'corba', 'salata', 'kahvalti', 'ev']
 
 export function evaluateMeal(items: CheckItem[], ctx: CheckContext): CheckResult {
   const valid = items.filter((i) => getFood(i.foodId) && i.factor > 0)

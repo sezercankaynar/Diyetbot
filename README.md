@@ -2,14 +2,17 @@
 
 A personal nutrition & training planner. It's a mobile-first PWA with a Turkish UI. It has a single user and no backend: all data stays in the browser's IndexedDB.
 
-Screens (bottom tab bar):
+Screens (bottom tab bar: **Bugün · Menü · Spor · İlerleme · Ben**):
 - **Bugün**: what's left of today's kcal/protein/carb/fat budget, water glasses, 1–3 daily habits, an end-of-day review, today's menu with "eaten" ticks and items eaten off-menu. It also opens three helpers:
   - *Bunu yiyebilir miyim?* Pick one or more foods and portions to get a verdict (fits / careful / smaller portion / over budget), diet-rule warnings, tips and better alternatives.
   - *Dışarıda yiyorum*: best picks, tips and things to avoid for 9 venue types (kebapçı, dönerci, esnaf lokantası, pide, fast food, pizza, balıkçı, kahvaltı, kafe). It also lists **chain restaurant menus** ranked for the user, using values the chains publish themselves (see `src/engine/chains.ts` for the sources).
   - *Paketli ürün ekle* (inside "Bunu yiyebilir miyim?") lets you add packaged products in three ways: scan the barcode (Android app, Google code scanner), search by name, or type the values from the label. The first two use [Open Food Facts](https://world.openfoodfacts.org) and need internet. Saved products stay on the device and show up in search.
   - *Tatlı krizi*: step-by-step craving plan, light sweet options that fit the remaining budget and the diet, and prevention tips.
 - **Menü**: a weekly menu built from a Turkish dish database, including home-cooked dishes, soups and light lunch plates. Each meal follows the user's **meal pattern**: breakfast, lunch and dinner can each be light, normal or hearty. It fits the kcal target, diet, animal-food preference, disliked ingredients and cooking time. You can swap any meal for an alternative, like dishes (they show up more often) or hide them for good, and rebuild the week.
-- **Plan**: targets, diet recommendation, meal rules and the training week. A link opens **Kanıt** (the studies behind the rules + disclaimer).
+- **Spor**: weekly schedule (strength / cardio / active rest / rest), today's workout with how-to guides per exercise (steps, cues, rest, easier/harder versions), a step tracker with a 7-day chart, cardio types, warm-up and evidence (`src/content/exercises.ts`).
+- **Ben**: *Planım* (targets, diet style, plate rules, IF, calculation details), *Profil* (questionnaire in collapsible sections, including meal pattern and meal times) and *Kanıtlar* (all studies + disclaimer).
+- **Kendi yemeğim** (from Bugün): build a home-cooked dish from ingredients with grams (`src/engine/ingredients.ts`, USDA FDC / TürKomp per 100 g) or type in values. It can be logged and optionally suggested in weekly menus.
+- **Tatlı krizi** now includes 25 lighter sweet recipes (`src/content/sweetRecipes.ts`) with filters.
 - **Takip**: weigh-ins, trend chart and the weekly adjustment, plus a dietitian-style **weekly check-in**. The check-in records waist, neck and hip (body fat by the U.S. Navy method), hunger, energy, sleep, adherence and difficulties. It returns rule-based feedback (wins, up to 3 focus points, tips) and keeps a history with a waist trend.
 - **Profil**: the questionnaire (including *Damak zevki* / dislikes), backup and restore.
 
@@ -95,7 +98,10 @@ src/
     chains.ts      Chain menus. Each chain has a source. Published values are used as-is; macros that don't
                    add up to the kcal are dropped (kcal-only). Per-100 g/ml values get an assumed serving.
                    Brands without published values map to generic recipes and are marked `estimated`.
-    coach.ts       Weekly check-in feedback, Navy body fat, habits, water, end-of-day review
+    coach.ts       Weekly check-in feedback, Navy body fat, habits, water, steps, end-of-day review
+    timing.ts      Meal time windows and timing tips
+    homeRecipe.ts  Home recipes from ingredients or values
+    ingredients.ts Ingredient nutrition per 100 g with sources
     packaged.ts    Label → food conversion, Open Food Facts product parsing, label validation
   off/             Open Food Facts client (network)
   native/          Barcode scanning (Capacitor ML Kit plugin, Android only)

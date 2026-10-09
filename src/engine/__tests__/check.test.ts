@@ -83,11 +83,12 @@ describe('eating out', () => {
 describe('sweet cravings', () => {
   const p = profile()
   const ctx = { remainingKcal: 300, diet: 'hp' as const, animalFoods: p.animalFoods, dislikes: [], health: p.health, hungerTime: p.hungerTime }
-  it('gives steps and light sweet options ≤ 220 kcal', () => {
+  it('gives steps and light sweet options ≤ 230 kcal, including recipes', () => {
     const c = cravingPlan(ctx)
     expect(c.steps.length).toBeGreaterThanOrEqual(3)
-    expect(c.options.length).toBeGreaterThanOrEqual(5)
-    for (const o of c.options) expect(o.kcal).toBeLessThanOrEqual(220)
+    expect(c.options.length).toBeGreaterThanOrEqual(20)
+    for (const o of c.options) expect(o.kcal).toBeLessThanOrEqual(230)
+    expect(c.options.filter((o) => o.recipeId).length).toBeGreaterThanOrEqual(15)
     expect(c.options.map((o) => o.foodId)).not.toContain('sutlu-cikolata')
   })
   it('vegan, keto and blood-sugar filters', () => {

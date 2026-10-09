@@ -41,8 +41,9 @@ describe('meal styles (öğün düzeni)', () => {
     const m = generateWeekMenu(ctx, WEEK)
     const lunches = m.days.map((d) => d.items.find((i) => i.slot === 'lunch')!.foodId)
     const dinners = m.days.map((d) => d.items.find((i) => i.slot === 'dinner')!.foodId)
-    expect(lunches.filter(light).length).toBeGreaterThanOrEqual(6)
-    expect(lunches.some(hearty)).toBe(false)
+    expect(lunches.every(light)).toBe(true)
+    // no fresh-fish plates as a light lunch
+    expect(lunches.some((id) => ['levrek-roka', 'somon-avokado', 'levrek-bugulama', 'firin-hamsi', 'somon-sebze'].includes(id))).toBe(false)
     expect(dinners.filter(hearty).length).toBeGreaterThanOrEqual(6)
   })
 

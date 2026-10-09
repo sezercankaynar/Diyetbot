@@ -7,7 +7,10 @@ describe('food database', () => {
   it('has unique ids and kcal consistent with macros', () => {
     expect(new Set(FOODS.map((f) => f.id)).size).toBe(FOODS.length)
     for (const f of FOODS) {
-      expect(Math.abs(f.kcal - (f.protein * 4 + f.carb * 4 + f.fat * 9))).toBeLessThanOrEqual(5)
+      const fromMacros = f.protein * 4 + f.carb * 4 + f.fat * 9
+      // recipes are computed from ingredient tables (fiber etc.) → allow ±12 %
+      if (f.recipeId) expect(Math.abs(f.kcal - fromMacros) / f.kcal, f.id).toBeLessThanOrEqual(0.12)
+      else expect(Math.abs(f.kcal - fromMacros)).toBeLessThanOrEqual(5)
       expect(f.kcal).toBeGreaterThan(0)
     }
   })

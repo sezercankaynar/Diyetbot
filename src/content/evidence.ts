@@ -81,6 +81,14 @@ export const STUDIES: Study[] = [
     rule: 'Öğün düzenini (hafif/doyurucu öğle ve akşam) kişi seçer; hedef kalori aynı kalır. Akşam açlığı yaşayanlara akşama pay bırakılır.',
   },
   {
+    id: 'late-eating',
+    title: 'Öğün saati ve kilo kaybı',
+    citation: 'Garaulet M ve ark. Int J Obes 2013;37(4):604–611',
+    summary:
+      '420 kişilik 20 haftalık bir kilo verme programında ana öğününü (öğle) geç saatte yiyenler, erken yiyenlere göre daha az kilo verdi; enerji alımları ve uyku süreleri benzerdi. Gözlemsel bir çalışmadır, neden-sonuç kanıtlamaz.',
+    rule: 'Öğün saatleri kişiye göre ayarlanır; son öğünün çok geç olması ve 7 saati aşan açlık aralıkları için uyarı verilir.',
+  },
+  {
     id: 'msj',
     title: 'Mifflin-St Jeor doğruluğu',
     citation: 'Frankenfield D ve ark. J Am Diet Assoc 2005;105:775–789',

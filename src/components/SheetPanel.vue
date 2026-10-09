@@ -34,7 +34,7 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: var(--paper);
+  background: var(--bg);
   display: flex;
   flex-direction: column;
 }
@@ -44,16 +44,16 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 8px;
   padding: calc(12px + env(safe-area-inset-top)) 14px 10px;
-  border-bottom: 2px solid var(--ink);
-  background: var(--paper-2);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--line);
 }
 .sheet-head h1 { font-size: 1.25rem; }
 .close {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px solid var(--rule-strong);
-  background: var(--paper);
+  border: 0;
+  background: var(--surface-2);
   color: var(--ink);
   font-size: 1.1rem;
   cursor: pointer;

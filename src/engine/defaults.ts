@@ -24,6 +24,7 @@ export function defaultProfile(): Profile {
     hungerTime: 'stable',
     dislikes: [],
     mealStyle: { breakfast: 'normal', lunch: 'normal', dinner: 'normal' },
+    mealTimes: { breakfast: '08:00', lunch: '13:00', snack: '16:30', nightSnack: '21:30', dinner: '19:30' },
     health: {
       hypertension: false,
       insulinResistance: false,

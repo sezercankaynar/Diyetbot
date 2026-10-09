@@ -1,5 +1,5 @@
 import { dayIndex } from './tracking'
-import { FOODS, getFood, type Food, type FoodTag, type Slot } from './foods'
+import { allFoods, getFood, type Food, type FoodTag, type Slot } from './foods'
 import { fitsAnimal, fitsDiet, fitsDislikes } from './foodRules'
 import type { AnimalFoods, DietId, HungerTime, Level3, MealsPerDay, MealStyle, MealStyles, Plan, Profile } from './types'
 
@@ -106,9 +106,14 @@ export function addDays(date: string, n: number): string {
 }
 
 function candidatePool(slot: Slot, ctx: MenuContext): Food[] {
-  const base = FOODS.filter(
+  // Built-in dishes plus the user's own recipes that they allowed in menus (chains have no slots).
+  const all = allFoods().filter(
     (f) => f.slots.includes(slot) && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes) && !ctx.dislikedFoods.includes(f.id),
   )
+  // A light lunch/dinner means a quick, snack-like plate – only light dishes qualify.
+  const style = slot === 'snack' ? 'normal' : (ctx.mealStyle ?? DEFAULT_STYLES)[slot]
+  const lightOnly = style === 'light' && slot !== 'breakfast' ? all.filter((f) => f.kind === 'light') : all
+  const base = lightOnly.length >= 3 ? lightOnly : all
   const quick = base.filter((f) => f.prep <= MAX_PREP[ctx.cookingTime])
   return quick.length >= 3 ? quick : base
 }
@@ -141,10 +146,15 @@ export interface Scored {
 function styleBonus(f: Food, slot: Slot, style: MealStyle): number {
   if (slot === 'snack') return 0
   const trad = f.trad && slot !== 'breakfast' ? 0.25 : 0
-  if (style === 'light') return trad / 2 + (f.kind === 'light' ? 0.7 : f.kind === 'hearty' ? -1.2 : 0)
-  if (style === 'hearty') return trad + (f.kind === 'hearty' ? 0.7 : f.kind === 'light' ? -0.8 : 0)
+  if (style === 'light') {
+    // Quick plates; fish dishes feel out of place as a light lunch.
+    return trad / 2 + (f.kind === 'light' ? 0.7 : f.kind === 'hearty' ? -1.2 : 0) + (f.prep === 1 ? 0.3 : 0) - (f.tags.includes('fish') ? 0.6 : 0)
+  }
+  // Breakfast-type plates only make sense as a light lunch/dinner.
+  const breakfastPlate = f.group === 'kahvalti' && slot !== 'breakfast' ? -0.6 : 0
+  if (style === 'hearty') return breakfastPlate + trad + (f.kind === 'hearty' ? 0.7 : f.kind === 'light' ? -0.8 : 0)
   // normal: Turkish habit – lunch either way, dinner leans to a cooked meal
-  return trad + (slot === 'dinner' ? (f.kind === 'hearty' ? 0.3 : f.kind === 'light' ? -0.3 : 0) : 0)
+  return breakfastPlate + trad + (slot === 'dinner' ? (f.kind === 'hearty' ? 0.3 : f.kind === 'light' ? -0.3 : 0) : 0)
 }
 
 export function scoreSlot(

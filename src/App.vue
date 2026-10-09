@@ -3,35 +3,45 @@ import { onMounted, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import TodayView from '@/views/TodayView.vue'
 import MenuView from '@/views/MenuView.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import PlanView from '@/views/PlanView.vue'
 import TrackView from '@/views/TrackView.vue'
-import EvidenceView from '@/views/EvidenceView.vue'
+import SportView from '@/views/SportView.vue'
+import MeView from '@/views/MeView.vue'
 
-type Tab = 'bugun' | 'menu' | 'plan' | 'takip' | 'profil' | 'kanit'
+type Tab = 'bugun' | 'menu' | 'spor' | 'takip' | 'ben'
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'bugun', label: 'Bugün', icon: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4M8 14h3v3H8z' },
+  { id: 'bugun', label: 'Bugün', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2' },
   { id: 'menu', label: 'Menü', icon: 'M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 21V3c-2 1-3 4-3 8h3' },
-  { id: 'plan', label: 'Plan', icon: 'M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4' },
-  { id: 'takip', label: 'Takip', icon: 'M4 19h16M5 15l4-4 3 3 6-7' },
-  { id: 'profil', label: 'Profil', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0' },
+  { id: 'spor', label: 'Spor', icon: 'M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10' },
+  { id: 'takip', label: 'İlerleme', icon: 'M4 19h16M5 15l4-4 3 3 6-7' },
+  { id: 'ben', label: 'Ben', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0' },
 ]
-/** Reachable by link (Plan, Profil) but not in the tab bar. */
-const ALL: Tab[] = [...TABS.map((t) => t.id), 'kanit']
+const ALL: Tab[] = TABS.map((t) => t.id)
+/** Old links (#plan, #profil, #kanit) open the matching part of "Ben". */
+const meSub = ref<'plan' | 'profil' | 'kanit' | undefined>()
 
 const store = useAppStore()
 const fromHash = (): Tab | null => {
-  const h = location.hash.slice(1) as Tab
-  return ALL.includes(h) ? h : null
+  const h = location.hash.slice(1)
+  if (h === 'plan' || h === 'profil' || h === 'kanit') {
+    meSub.value = h
+    return 'ben'
+  }
+  return ALL.includes(h as Tab) ? (h as Tab) : null
 }
-const tab = ref<Tab>(fromHash() ?? 'profil')
+const tab = ref<Tab>(fromHash() ?? 'ben')
 const go = (t: string) => {
-  if (ALL.includes(t as Tab)) tab.value = t as Tab
+  if (t === 'plan' || t === 'profil' || t === 'kanit') {
+    meSub.value = t
+    tab.value = 'ben'
+  } else if (ALL.includes(t as Tab)) tab.value = t as Tab
 }
 
 onMounted(async () => {
   await store.load()
-  if (!fromHash()) tab.value = store.hasProfile ? 'bugun' : 'profil'
+  if (!fromHash()) {
+    if (!store.hasProfile) meSub.value = 'profil'
+    tab.value = store.hasProfile ? 'bugun' : 'ben'
+  }
 })
 watch(tab, (t) => {
   history.replaceState(null, '', `#${t}`)
@@ -52,10 +62,9 @@ window.addEventListener('hashchange', () => {
   <main v-if="store.loaded">
     <TodayView v-if="tab === 'bugun'" @go="go" />
     <MenuView v-else-if="tab === 'menu'" @go="go" />
-    <ProfileView v-else-if="tab === 'profil'" @done="tab = 'bugun'" @go="go" />
-    <PlanView v-else-if="tab === 'plan'" @go="go" />
+    <SportView v-else-if="tab === 'spor'" @go="go" />
     <TrackView v-else-if="tab === 'takip'" />
-    <EvidenceView v-else />
+    <MeView v-else :initial="meSub" @go="go" @done="meSub = 'plan'; tab = 'bugun'" />
   </main>
   <div v-else class="page muted">Yükleniyor…</div>
 
@@ -76,15 +85,20 @@ window.addEventListener('hashchange', () => {
 <style scoped>
 .tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  max-width: 560px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  background: var(--paper-2);
-  border-top: 2px solid var(--ink);
+  height: var(--tabbar-h);
+  padding: 6px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 22px;
+  box-shadow: 0 8px 30px rgba(10, 30, 20, 0.14);
   z-index: 10;
 }
 .tabbar button {
@@ -95,8 +109,10 @@ window.addEventListener('hashchange', () => {
   gap: 2px;
   background: none;
   border: 0;
+  border-radius: 16px;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
   color: var(--ink-3);
   cursor: pointer;
 }
@@ -105,12 +121,13 @@ window.addEventListener('hashchange', () => {
   height: 22px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .tabbar button[aria-current='page'] {
   color: var(--accent);
-  font-weight: 700;
+  background: var(--accent-soft);
+  font-weight: 800;
 }
 </style>

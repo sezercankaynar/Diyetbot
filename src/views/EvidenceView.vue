@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { DISCLAIMER, STUDIES } from '@/content/evidence'
+import { TRAINING_EVIDENCE } from '@/content/exercises'
+const ALL = [...STUDIES, ...TRAINING_EVIDENCE]
 </script>
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <h1>Kanıt</h1>
-      <a href="#plan" class="sub">← Plan</a>
-    </header>
-    <p class="muted small">Plandaki kuralların dayandığı başlıca çalışmalar ve kısa özetleri.</p>
+    <p class="muted small">Uygulamadaki beslenme ve antrenman kurallarının dayandığı {{ ALL.length }} çalışma.</p>
 
-    <article v-for="s in STUDIES" :key="s.id" class="card">
+    <article v-for="s in ALL" :key="s.id" class="card">
       <h2>{{ s.title }}</h2>
       <p class="cite mono small">{{ s.citation }}</p>
       <p>{{ s.summary }}</p>

@@ -76,3 +76,24 @@ describe('meal guide', () => {
     expect(g.hungerTips.join(' ')).toMatch(/yoğurt veya lor/)
   })
 })
+
+describe('weekly training schedule', () => {
+  it('spreads strength days, adds cardio and one rest day', async () => {
+    const { weekSchedule, generateTraining, stepTarget } = await import('../training')
+    for (const td of [2, 3, 4, 5, 6] as const) {
+      for (const goal of ['lose', 'maintain', 'gain'] as const) {
+        const p = profile({ trainingDays: td, goal })
+        const s = weekSchedule(p, generateTraining(p))
+        expect(s).toHaveLength(7)
+        expect(s.filter((d) => d.type === 'strength')).toHaveLength(td)
+        const cardio = s.filter((d) => d.type === 'cardio').length + s.filter((d) => d.plusCardio).length
+        expect(cardio).toBe(goal === 'lose' ? 3 : goal === 'gain' ? 1 : 2)
+        expect(s.filter((d) => d.type === 'rest').length).toBeLessThanOrEqual(1)
+        if (td < 7) expect(s.some((d) => d.type === 'rest')).toBe(true)
+      }
+    }
+    expect(stepTarget('lose')).toBe(9000)
+    // exercises carry their slot for the how-to guide
+    expect(generateTraining(profile()).days[0].exercises[0].slot).toBe('squat')
+  })
+})

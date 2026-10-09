@@ -235,7 +235,7 @@ export function parseBackup(raw: unknown): Backup {
   const customFoods = Array.isArray(o.customFoods)
     ? (o.customFoods as unknown[]).map((x) => {
         const f = x as Food
-        const ok = f && typeof f.id === 'string' && f.id.startsWith('pk-') && typeof f.name === 'string' &&
+        const ok = f && typeof f.id === 'string' && (f.id.startsWith('pk-') || f.id.startsWith('ev-')) && typeof f.name === 'string' &&
           [f.kcal, f.protein, f.carb, f.fat].every((n) => typeof n === 'number' && Number.isFinite(n))
         if (!ok) fail('hatalı paketli ürün kaydı')
         return f
@@ -252,7 +252,13 @@ export function parseBackup(raw: unknown): Backup {
     ? (o.daily as unknown[]).map((x) => {
         const l = x as DailyLog
         if (!l || !DATE_RE.test(l.date) || typeof l.water !== 'number') fail('hatalı günlük takip kaydı')
-        return { date: l.date, water: l.water, habits: Array.isArray(l.habits) ? l.habits : [] }
+        return {
+          date: l.date,
+          water: l.water,
+          habits: Array.isArray(l.habits) ? l.habits : [],
+          ...(typeof l.steps === 'number' ? { steps: l.steps } : {}),
+          ...(typeof l.workout === 'boolean' ? { workout: l.workout } : {}),
+        }
       })
     : []
   return {

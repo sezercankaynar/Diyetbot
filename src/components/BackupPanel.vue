@@ -57,8 +57,7 @@ async function onFile(e: Event) {
 </script>
 
 <template>
-  <section class="card" style="margin-top: 18px">
-    <h2>Yedekleme</h2>
+  <section>
     <p class="small muted">Veriler yalnızca bu cihazda (IndexedDB) saklanır. Düzenli olarak JSON yedeği alın.</p>
     <div class="btn-row">
       <button class="btn ghost" type="button" @click="doExport">JSON dışa aktar</button>

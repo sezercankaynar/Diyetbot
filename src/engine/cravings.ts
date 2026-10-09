@@ -4,6 +4,7 @@ import type { AnimalFoods, DietId, HealthFlags, HungerTime } from './types'
 
 export interface CravingOption {
   foodId: string
+  recipeId?: string
   name: string
   portion: string
   kcal: number
@@ -18,7 +19,7 @@ export interface CravingPlan {
   notes: string[]
 }
 
-const MAX_KCAL = 220
+const MAX_KCAL = 230
 
 export function cravingPlan(ctx: {
   remainingKcal: number
@@ -43,6 +44,7 @@ export function cravingPlan(ctx: {
   )
     .map((f) => ({
       foodId: f.id,
+      recipeId: f.recipeId,
       name: f.name,
       portion: f.portion,
       kcal: f.kcal,
