@@ -8,6 +8,7 @@ import { fmt } from '@/content/labels'
 import type { DietId } from '@/engine'
 
 const store = useAppStore()
+const emit = defineEmits<{ go: [tab: string] }>()
 const plan = computed(() => store.plan)
 const maxScore = computed(() => Math.max(1, ...(plan.value.diets ?? []).map((d) => d.score)))
 const topId = computed(() => plan.value.diets?.find((d) => !d.excluded)?.id)
@@ -21,7 +22,7 @@ function choose(id: DietId) {
   <div class="page">
     <header class="page-head">
       <h1>Plan</h1>
-      <span v-if="plan.energy" class="sub">günlük hedef</span>
+      <a href="#kanit" class="sub" @click.prevent="emit('go', 'kanit')">Kanıtlar →</a>
     </header>
 
     <template v-if="plan.safety.stop">

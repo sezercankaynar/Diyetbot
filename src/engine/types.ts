@@ -1,4 +1,5 @@
 // Pure domain types. No UI or browser dependencies.
+import type { FoodTag } from './foods'
 
 export type Sex = 'm' | 'f'
 export type ActivityMultiplier = 1.2 | 1.375 | 1.55 | 1.725
@@ -45,6 +46,8 @@ export interface Profile {
   eatingOut: EatingOut
   tracksCalories: boolean
   hungerTime: HungerTime
+  /** Ingredients the user doesn't eat or dislikes (menu never uses them). */
+  dislikes: FoodTag[]
   health: HealthFlags
 }
 

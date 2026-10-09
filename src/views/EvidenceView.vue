@@ -6,7 +6,7 @@ import { DISCLAIMER, STUDIES } from '@/content/evidence'
   <div class="page">
     <header class="page-head">
       <h1>Kanıt</h1>
-      <span class="sub">{{ STUDIES.length }} çalışma</span>
+      <a href="#plan" class="sub">← Plan</a>
     </header>
     <p class="muted small">Plandaki kuralların dayandığı başlıca çalışmalar ve kısa özetleri.</p>
 

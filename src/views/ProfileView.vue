@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { Profile } from '@/engine'
+import { getFood, TAG_LABEL, type FoodTag, type Profile } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SegControl from '@/components/SegControl.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
 import * as L from '@/content/labels'
 
 const store = useAppStore()
-const emit = defineEmits<{ done: [] }>()
+const emit = defineEmits<{ done: []; go: [tab: string] }>()
+const TAGS = Object.entries(TAG_LABEL) as [FoodTag, string][]
+function toggleDislike(t: FoodTag) {
+  const d = draft.value.dislikes
+  draft.value.dislikes = d.includes(t) ? d.filter((x) => x !== t) : [...d, t]
+}
 
 const draft = ref<Profile>(JSON.parse(JSON.stringify(store.profile)))
 const saved = ref(false)
@@ -35,6 +40,14 @@ const valid = (p: Profile) =>
   })
 
 let timer: ReturnType<typeof setTimeout> | undefined
+
+// Save right away (even if nothing was changed from the defaults), then show the plan.
+async function finish() {
+  if (!valid(draft.value)) return
+  clearTimeout(timer)
+  await store.saveProfile(JSON.parse(JSON.stringify(draft.value)))
+  emit('done')
+}
 watch(
   draft,
   (p) => {
@@ -121,6 +134,26 @@ watch(
     </fieldset>
 
     <fieldset>
+      <legend>Damak zevki</legend>
+      <p class="small muted">Yemediğin ya da sevmediğin şeyleri işaretle; menüde hiç çıkmazlar.</p>
+      <label v-for="[t, name] in TAGS" :key="t" class="check">
+        <input type="checkbox" :checked="draft.dislikes.includes(t)" @change="toggleDislike(t)" />
+        <span>{{ name }}</span>
+      </label>
+      <template v-if="store.liked.length || store.disliked.length">
+        <p class="small muted" style="margin-top: 10px">Menüde işaretlediğin yemekler:</p>
+        <div v-for="id in store.liked" :key="'l' + id" class="pref">
+          <span>♥ {{ getFood(id)?.name }}</span>
+          <button type="button" class="btn ghost small" @click="store.rateDish(id, null)">Kaldır</button>
+        </div>
+        <div v-for="id in store.disliked" :key="'d' + id" class="pref">
+          <span>✕ {{ getFood(id)?.name }}</span>
+          <button type="button" class="btn ghost small" @click="store.rateDish(id, null)">Tekrar göster</button>
+        </div>
+      </template>
+    </fieldset>
+
+    <fieldset>
       <legend>Sağlık</legend>
       <label v-for="h in L.HEALTH" :key="h.key" class="check">
         <input v-model="draft.health[h.key]" type="checkbox" />
@@ -129,9 +162,14 @@ watch(
     </fieldset>
 
     <div class="btn-row">
-      <button class="btn" type="button" :disabled="!valid(draft)" @click="emit('done')">Planımı göster →</button>
+      <button class="btn" type="button" :disabled="!valid(draft)" @click="finish">Planımı göster →</button>
     </div>
 
     <BackupPanel />
+    <p class="small"><a href="#kanit" @click.prevent="emit('go', 'kanit')">Kuralların dayandığı çalışmalar (Kanıt) →</a></p>
   </div>
 </template>
+
+<style scoped>
+.pref { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
+</style>

@@ -2,7 +2,15 @@
 
 A personal nutrition & training planner. It's a mobile-first PWA with a Turkish UI. It has a single user and no backend: all data stays in the browser's IndexedDB.
 
-Screens (bottom tab bar): **Profil** (questionnaire) · **Plan** (targets, diet recommendation, meal rules, training week) · **Takip** (weigh-ins, trend chart, weekly adjustment) · **Kanıt** (studies behind the rules + disclaimer).
+Screens (bottom tab bar):
+- **Bugün**: what's left of today's kcal/protein budget, today's menu with "eaten" ticks and items eaten off-menu. It also opens three helpers:
+  - *Bunu yiyebilir miyim?* Pick one or more foods and portions to get a verdict (fits / careful / smaller portion / over budget), diet-rule warnings, tips and better alternatives.
+  - *Dışarıda yiyorum*: best picks, tips and things to avoid for 9 venue types (kebapçı, dönerci, esnaf lokantası, pide, fast food, pizza, balıkçı, kahvaltı, kafe).
+  - *Tatlı krizi*: step-by-step craving plan, light sweet options that fit the remaining budget and the diet, and prevention tips.
+- **Menü**: a weekly menu built from a Turkish dish database. It fits the kcal target, diet, animal-food preference, disliked ingredients and cooking time. You can swap any meal for an alternative, like dishes (they show up more often) or hide them for good, and rebuild the week.
+- **Plan**: targets, diet recommendation, meal rules and the training week. A link opens **Kanıt** (the studies behind the rules + disclaimer).
+- **Takip**: weigh-ins, trend chart and the weekly adjustment.
+- **Profil**: the questionnaire (including *Damak zevki* / dislikes), backup and restore.
 
 ## Stack
 
@@ -60,7 +68,7 @@ Without them, the APK is signed with the local debug key. Android only installs 
 
 ## Data & backup
 
-Profile, weigh-ins, accepted adjustments and the chosen diet are stored in IndexedDB (database `diyetbot`). Use **Profil → Yedekleme** to export or import a JSON backup. Importing **replaces** all current data, and the file is validated before anything is written.
+Profile, weigh-ins, accepted adjustments, the chosen diet, menu feedback, the weekly menu and the food diary are stored in IndexedDB (database `diyetbot`, schema v2). Use **Profil → Yedekleme** to export or import a JSON backup. Importing **replaces** all current data, and the file is validated before anything is written.
 
 ## Architecture
 
@@ -75,6 +83,13 @@ src/
     meals.ts       Protein per meal, filtered protein sources, plate rules, hunger tips
     training.ts    Split generator, gym/home exercise swaps, cardio/steps/sleep
     tracking.ts    7-day rolling average, weekly analysis, adjustment cooldown
+    foods.ts       Turkish dish/food database (approximate macros per portion; kcal derived from macros)
+    foodRules.ts   Animal-food, dislike and diet compatibility (keto/low-carb carb caps, DASH salt, plant)
+    menu.ts        Weekly menu generator (seeded, deterministic), alternatives, swaps, totals
+    check.ts       "Can I eat this?" verdict + alternatives
+    eatingOut.ts   Venue guides filtered by preferences and remaining budget
+    cravings.ts    Sweet-craving plan
+    diary.ts       Daily eaten log totals
     plan.ts        buildPlan(): orchestrates everything into one Plan object
     defaults.ts    Default profile
     __tests__/     Vitest suites

@@ -2,13 +2,24 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
   analyzeWeek,
+  buildMenuContext,
   buildPlan,
   defaultProfile,
+  diaryTotals,
+  generateWeekMenu,
+  menuOutdated as isMenuOutdated,
+  mondayOf,
+  removeDish,
   sortLogs,
+  swapItem,
   type Adjustment,
   type AdjustmentOption,
+  type CheckItem,
+  type DiaryEntry,
   type DietId,
   type Profile,
+  type Slot,
+  type WeekMenu,
   type WeighIn,
 } from '@/engine'
 import { parseBackup, repo, type Backup } from '@/db'
@@ -26,6 +37,12 @@ export const useAppStore = defineStore('app', () => {
   const weighLogs = ref<WeighIn[]>([])
   const adjustments = ref<Adjustment[]>([])
   const dietChoice = ref<DietId | null>(null)
+  const liked = ref<string[]>([])
+  const disliked = ref<string[]>([])
+  const diary = ref<DiaryEntry[]>([])
+  const menu = ref<WeekMenu | null>(null)
+  /** Refreshed when the app comes back to the foreground, so "today" rolls over at midnight. */
+  const todayDate = ref(today())
 
   const kcalOffset = computed(() => adjustments.value.reduce((s, a) => s + a.kcalDelta, 0))
   const stepsOffset = computed(() => adjustments.value.reduce((s, a) => s + a.stepsDelta, 0))
@@ -41,6 +58,13 @@ export const useAppStore = defineStore('app', () => {
       weightKg: profile.value.weightKg,
     }),
   )
+  const menuCtx = computed(() =>
+    buildMenuContext(profile.value, plan.value, { liked: liked.value, disliked: disliked.value }),
+  )
+  const todayMenu = computed(() => menu.value?.days.find((d) => d.date === todayDate.value) ?? null)
+  const todayDiary = computed(() => diary.value.filter((e) => e.date === todayDate.value))
+  const todayTotals = computed(() => diaryTotals(diary.value, todayDate.value))
+  const menuOutdated = computed(() => !!menu.value && !!menuCtx.value && isMenuOutdated(menu.value, menuCtx.value))
   const sortedAdjustments = computed(() => [...adjustments.value].sort((a, b) => b.date.localeCompare(a.date)))
 
   async function load() {
@@ -59,7 +83,78 @@ export const useAppStore = defineStore('app', () => {
     weighLogs.value = logs
     adjustments.value = adj
     dietChoice.value = settings?.diet ?? null
+    liked.value = settings?.liked ?? []
+    disliked.value = settings?.disliked ?? []
+    diary.value = await repo.listDiary()
+    menu.value = (await repo.loadMenu()) ?? null
     loaded.value = true
+    await ensureMenu()
+  }
+
+  const saveSettings = () =>
+    repo.saveSettings({ diet: dietChoice.value, liked: liked.value, disliked: disliked.value })
+
+  /** Builds this week's menu if there is none yet (or it's from an earlier week). */
+  async function ensureMenu() {
+    todayDate.value = today()
+    const ctx = menuCtx.value
+    if (!ctx || !hasProfile.value) return
+    const week = mondayOf(todayDate.value)
+    if (menu.value?.weekStart === week) return
+    menu.value = generateWeekMenu(ctx, week)
+    await repo.saveMenu(menu.value)
+  }
+
+  async function regenerateMenu() {
+    const ctx = menuCtx.value
+    if (!ctx) return
+    const week = mondayOf(todayDate.value)
+    const seed = menu.value?.weekStart === week ? menu.value.seed + 1 : 1
+    menu.value = generateWeekMenu(ctx, week, seed)
+    await repo.saveMenu(menu.value)
+  }
+
+  async function swapMenu(date: string, slot: Slot, foodId: string, factor: number) {
+    if (!menu.value) return
+    menu.value = swapItem(menu.value, date, slot, foodId, factor)
+    await repo.saveMenu(menu.value)
+  }
+
+  async function rateDish(foodId: string, rating: 'like' | 'dislike' | null) {
+    liked.value = liked.value.filter((x) => x !== foodId)
+    disliked.value = disliked.value.filter((x) => x !== foodId)
+    if (rating === 'like') liked.value = [...liked.value, foodId]
+    if (rating === 'dislike') {
+      disliked.value = [...disliked.value, foodId]
+      if (menu.value && menuCtx.value) {
+        menu.value = removeDish(menu.value, menuCtx.value, foodId)
+        await repo.saveMenu(menu.value)
+      }
+    }
+    await saveSettings()
+  }
+
+  const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+
+  async function logFoods(items: CheckItem[], menuSlot?: Slot) {
+    for (const i of items) {
+      const e: DiaryEntry = { id: newId(), date: todayDate.value, foodId: i.foodId, factor: i.factor, menuSlot }
+      await repo.putDiary(e)
+      diary.value = [...diary.value, e]
+    }
+  }
+
+  async function deleteDiary(id: string) {
+    await repo.deleteDiary(id)
+    diary.value = diary.value.filter((e) => e.id !== id)
+  }
+
+  /** Ticks/unticks a planned menu meal for today. */
+  async function toggleMenuEaten(slot: Slot) {
+    const existing = todayDiary.value.find((e) => e.menuSlot === slot)
+    if (existing) return deleteDiary(existing.id)
+    const item = todayMenu.value?.items.find((i) => i.slot === slot)
+    if (item) await logFoods([{ foodId: item.foodId, factor: item.factor }], slot)
   }
 
   async function saveProfile(p: Profile) {
@@ -93,7 +188,7 @@ export const useAppStore = defineStore('app', () => {
 
   async function setDiet(id: DietId | null) {
     dietChoice.value = id
-    await repo.saveSettings({ diet: id })
+    await saveSettings()
   }
 
   async function applyAdjustment(opt: AdjustmentOption, reason: string) {
@@ -132,7 +227,9 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
+    liked, disliked, diary, menu, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
+    ensureMenu, regenerateMenu, swapMenu, rateDish, logFoods, deleteDiary, toggleMenuEaten,
   }
 })

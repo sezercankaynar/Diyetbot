@@ -22,6 +22,7 @@ export function defaultProfile(): Profile {
     eatingOut: 'some',
     tracksCalories: true,
     hungerTime: 'stable',
+    dislikes: [],
     health: {
       hypertension: false,
       insulinResistance: false,
