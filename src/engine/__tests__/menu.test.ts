@@ -29,6 +29,38 @@ describe('slot plan', () => {
   })
 })
 
+describe('meal styles (öğün düzeni)', () => {
+  const light = (id: string) => getFood(id)!.kind === 'light'
+  const hearty = (id: string) => getFood(id)!.kind === 'hearty'
+
+  it('light lunch + hearty dinner: smaller lunch share, light lunches, cooked dinners', () => {
+    const ctx = ctxFor({ mealStyle: { breakfast: 'normal', lunch: 'light', dinner: 'hearty' } })
+    const sp = slotPlan(ctx)
+    const share = (s: string) => sp.find((x) => x.slot === s)!.share
+    expect(share('lunch')).toBeLessThan(share('dinner') / 2)
+    const m = generateWeekMenu(ctx, WEEK)
+    const lunches = m.days.map((d) => d.items.find((i) => i.slot === 'lunch')!.foodId)
+    const dinners = m.days.map((d) => d.items.find((i) => i.slot === 'dinner')!.foodId)
+    expect(lunches.filter(light).length).toBeGreaterThanOrEqual(6)
+    expect(lunches.some(hearty)).toBe(false)
+    expect(dinners.filter(hearty).length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('the opposite pattern (big lunch, light dinner) flips it', () => {
+    const m = generateWeekMenu(ctxFor({ mealStyle: { breakfast: 'normal', lunch: 'hearty', dinner: 'light' } }), WEEK)
+    const dinners = m.days.map((d) => d.items.find((i) => i.slot === 'dinner')!.foodId)
+    expect(dinners.filter(light).length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('normal days include Turkish home cooking (sulu yemek) and few salad dinners', () => {
+    const m = generateWeekMenu(ctxFor(), WEEK)
+    const mains = m.days.flatMap((d) => d.items.filter((i) => i.slot !== 'breakfast' && i.slot !== 'snack'))
+    expect(mains.filter((i) => getFood(i.foodId)!.trad).length).toBeGreaterThanOrEqual(5)
+    const dinners = m.days.map((d) => d.items.find((i) => i.slot === 'dinner')!.foodId)
+    expect(dinners.filter(light).length).toBeLessThanOrEqual(2)
+  })
+})
+
 describe('weekly menu', () => {
   it('7 days, one item per slot, day kcal close to target', () => {
     const ctx = ctxFor()

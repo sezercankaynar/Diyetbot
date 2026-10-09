@@ -4,6 +4,7 @@ import { adjustmentCooldown, MIN_DAYS, type AdjustmentOption } from '@/engine'
 import { today, useAppStore } from '@/stores/app'
 import WeightChart from '@/components/WeightChart.vue'
 import StatBox from '@/components/StatBox.vue'
+import CoachSection from '@/components/CoachSection.vue'
 import { fmt } from '@/content/labels'
 
 const store = useAppStore()
@@ -105,6 +106,8 @@ async function apply(o: AdjustmentOption) {
         </template>
       </template>
     </section>
+
+    <CoachSection v-if="!store.plan.safety.stop" />
 
     <section v-if="store.sortedAdjustments.length" class="card">
       <h2>Düzeltme geçmişi</h2>

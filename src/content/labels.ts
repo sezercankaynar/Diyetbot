@@ -1,6 +1,6 @@
 import type {
   ActivityMultiplier, AnimalFoods, EatingOut, Equipment, Experience, Goal, HealthFlags,
-  HungerTime, Level3, MealsPerDay, Sex, TrainingDays, WeeklyRate,
+  HungerTime, Level3, MealsPerDay, MealStyle, Sex, TrainingDays, WeeklyRate,
 } from '@/engine'
 
 type Opt<T> = { value: T; label: string }[]
@@ -91,3 +91,9 @@ export const HEALTH: { key: keyof HealthFlags; label: string }[] = [
 
 export const fmt = (n: number, digits = 0): string =>
   n.toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+
+export const MEAL_STYLE: Opt<MealStyle> = [
+  { value: 'light', label: 'Hafif' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'hearty', label: 'Doyurucu' },
+]

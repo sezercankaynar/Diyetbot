@@ -20,8 +20,7 @@ const t = computed(() => itemTotals(props.foodId, props.factor))
     <div class="nums">
       <div class="num kcal">{{ t.kcal }}<span class="unit"> kcal</span></div>
       <div v-if="food.kcalOnly" class="small muted">makro yok</div>
-      <div v-else-if="!compact" class="num small muted">P {{ t.protein }} · K {{ t.carb }} · Y {{ t.fat }}</div>
-      <div v-else class="num small muted">P {{ t.protein }} g</div>
+      <div v-else class="num small muted">P {{ t.protein }} · K {{ t.carb }} · Y {{ t.fat }}</div>
     </div>
   </div>
 </template>

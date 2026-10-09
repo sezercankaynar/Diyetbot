@@ -134,6 +134,20 @@ watch(
     </fieldset>
 
     <fieldset>
+      <legend>Öğün düzeni</legend>
+      <p class="small muted">
+        Hangi öğünü doyurucu, hangisini hafif yemeyi seversin? Aynı günlük kaloride öğün dağılımı kilo kaybını değiştirmez;
+        en iyi düzen sürdürebildiğin düzendir.
+      </p>
+      <div class="field"><span class="label">Kahvaltı</span>
+        <SegControl v-model="draft.mealStyle.breakfast" :options="L.MEAL_STYLE" label="Kahvaltı" /></div>
+      <div class="field"><span class="label">Öğle</span>
+        <SegControl v-model="draft.mealStyle.lunch" :options="L.MEAL_STYLE" label="Öğle" /></div>
+      <div class="field"><span class="label">Akşam</span>
+        <SegControl v-model="draft.mealStyle.dinner" :options="L.MEAL_STYLE" label="Akşam" /></div>
+    </fieldset>
+
+    <fieldset>
       <legend>Damak zevki</legend>
       <p class="small muted">Yemediğin ya da sevmediğin şeyleri işaretle; menüde hiç çıkmazlar.</p>
       <label v-for="[t, name] in TAGS" :key="t" class="check">

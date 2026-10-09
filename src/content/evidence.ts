@@ -73,6 +73,14 @@ export const STUDIES: Study[] = [
     rule: '6 saatin altındaki uykuda uyarı; 7–9 saat düzenli uyku hedefi.',
   },
   {
+    id: 'meal-timing',
+    title: 'Öğün zamanlaması ve dağılımı',
+    citation: 'Ruddick-Collins LC ve ark. Cell Metab 2022;34(10):1472–1485',
+    summary:
+      'Obez yetişkinlerde aynı günlük kaloriyi sabaha ya da akşama yüklemenin karşılaştırıldığı çapraz çalışmada 4 haftalık kilo kaybı ve enerji harcaması farklı değildi; kaloriyi sabaha yüklemek gün içindeki açlık hissini azalttı.',
+    rule: 'Öğün düzenini (hafif/doyurucu öğle ve akşam) kişi seçer; hedef kalori aynı kalır. Akşam açlığı yaşayanlara akşama pay bırakılır.',
+  },
+  {
     id: 'msj',
     title: 'Mifflin-St Jeor doğruluğu',
     citation: 'Frankenfield D ve ark. J Am Diet Assoc 2005;105:775–789',

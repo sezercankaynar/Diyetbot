@@ -91,7 +91,9 @@ async function regenerate() {
       <section class="card">
         <h2>{{ WEEKDAY_TR[dayIdx] }}</h2>
         <BudgetBar label="Menü kalorisi" :value="totals.kcal" :target="store.plan.energy?.target ?? 0" unit="kcal" />
-        <BudgetBar label="Menü proteini" :value="totals.protein" :target="store.plan.macros?.proteinG ?? 0" unit="g" />
+        <BudgetBar label="Protein" :value="totals.protein" :target="store.plan.macros?.proteinG ?? 0" unit="g" />
+        <BudgetBar label="Karbonhidrat" :value="totals.carb" :target="store.plan.macros?.carbG ?? 0" unit="g" />
+        <BudgetBar label="Yağ" :value="totals.fat" :target="store.plan.macros?.fatG ?? 0" unit="g" />
       </section>
 
       <section v-for="item in day.items" :key="item.slot" class="card meal">

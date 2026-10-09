@@ -39,6 +39,10 @@ export interface Food {
   unknownTags?: boolean
   /** Only energy is published (e.g. Starbucks TR); protein/carb/fat are unknown (stored as 0). */
   kcalOnly?: boolean
+  /** Light (salad, soup, sandwich, snack plate) vs hearty (sulu yemek + pilav) main meal. */
+  kind?: 'light' | 'hearty'
+  /** Traditional Turkish home cooking (ev yemeği). */
+  trad?: boolean
 }
 
 type Opts = { salty?: boolean; sweet?: boolean; soy?: boolean; treat?: boolean }
@@ -112,6 +116,40 @@ export const FOODS: Food[] = [
   f('mantarli-tavuk', 'Fırında tavuk + bulgur + yoğurt', '150 g tavuk, 3 yk bulgur, 100 g yoğurt', LD, 'ana', 2, ['chicken', 'gluten', 'dairy'], 46, 34, 12),
   f('yesil-mercimek-salata', 'Yeşil mercimek salatası + yumurta', '150 g mercimek, 1 yumurta, sebze', LD, 'salata', 1, ['legume', 'egg'], 22, 40, 12),
 
+  // ── Ev yemekleri (sulu yemekler) ve çorbalar ─────────────
+  f('etli-turlu', 'Etli türlü + bulgur pilavı + yoğurt', '1 tabak, 4 yk bulgur, 150 g yoğurt', LD, 'ana', 3, ['redmeat', 'gluten', 'dairy'], 28, 48, 18),
+  f('kabak-yemegi', 'Zeytinyağlı kabak yemeği + yoğurt + ekmek', '1 tabak, 150 g yoğurt, 1 dilim ekmek', LD, 'ana', 2, ['dairy', 'gluten'], 12, 32, 14),
+  f('etli-kabak', 'Kıymalı kabak yemeği + bulgur + yoğurt', '1 tabak, 3 yk bulgur, 150 g yoğurt', LD, 'ana', 2, ['redmeat', 'dairy', 'gluten'], 26, 38, 16),
+  f('yumurtali-ispanak', 'Yumurtalı ıspanak + yoğurt + ekmek', '1 tabak, 2 yumurta, 150 g yoğurt, 1 dilim ekmek', LD, 'ana', 1, ['egg', 'dairy', 'gluten'], 24, 28, 18),
+  f('pirasa', 'Zeytinyağlı pırasa + yoğurt + ekmek', '1 tabak, 150 g yoğurt, 1 dilim ekmek', LD, 'ana', 2, ['dairy', 'gluten'], 10, 40, 12),
+  f('kiymali-karnabahar', 'Kıymalı karnabahar + yoğurt', '1 tabak, 150 g yoğurt', LD, 'ana', 2, ['redmeat', 'dairy'], 24, 18, 18),
+  f('etli-bezelye', 'Etli bezelye + bulgur pilavı', '1 tabak, 4 yk bulgur', LD, 'ana', 2, ['redmeat', 'gluten'], 28, 52, 16),
+  f('etli-bamya', 'Etli bamya + pirinç pilavı', '1 tabak, 3 yk pilav', LD, 'ana', 3, ['redmeat'], 24, 46, 16),
+  f('biber-dolmasi', 'Etli biber dolması + yoğurt', '4 adet, 150 g yoğurt', LD, 'ana', 3, ['redmeat', 'dairy'], 22, 38, 20),
+  f('yaprak-sarma', 'Zeytinyağlı yaprak sarma + yoğurt', '8 adet, 150 g yoğurt', LD, 'ana', 3, ['dairy'], 10, 46, 18),
+  f('tavuk-haslama', 'Sebzeli tavuk haşlama + bulgur pilavı', '150 g tavuk, 3 yk bulgur', LD, 'ana', 2, ['chicken', 'gluten'], 40, 36, 10),
+  f('izmir-kofte', 'İzmir köfte + bulgur pilavı', '5–6 köfte, 3 yk bulgur', LD, 'kebap', 3, ['redmeat', 'gluten'], 30, 42, 22),
+  f('firin-tavuk-patates', 'Fırında tavuk + patates + salata', '150 g tavuk, 1 orta patates', LD, 'ana', 2, ['chicken'], 40, 38, 14),
+  f('etli-kuru-fasulye', 'Etli kuru fasulye + pirinç pilavı + turşu', '1 tabak, 3 yk pilav', LD, 'ana', 3, ['redmeat', 'legume'], 30, 70, 18, { salty: true }),
+  f('yesil-mercimek-yemegi', 'Yeşil mercimek yemeği + bulgur + yoğurt', '1 tabak, 3 yk bulgur, 150 g yoğurt', LD, 'ana', 2, ['legume', 'gluten', 'dairy'], 24, 60, 10),
+  f('tavuklu-pilav', 'Tavuklu bulgur pilavı + cacık', '1 tabak, 1 kase cacık', LD, 'ana', 2, ['chicken', 'gluten', 'dairy'], 36, 55, 12),
+  f('manti', 'Yoğurtlu mantı', '1 porsiyon', LD, 'hamur', 3, ['redmeat', 'gluten', 'dairy'], 24, 60, 20),
+  f('levrek-bugulama', 'Levrek buğulama + salata', '200 g levrek, sebze', LD, 'ana', 2, ['fish'], 36, 10, 12),
+  f('kiymali-patates', 'Kıymalı patates yemeği + yoğurt', '1 tabak, 150 g yoğurt', LD, 'ana', 2, ['redmeat', 'dairy'], 24, 36, 18),
+  f('nohut-yemegi-etsiz', 'Zeytinyağlı nohut yemeği + bulgur + salata', '1 tabak, 3 yk bulgur', LD, 'ana', 2, ['legume', 'gluten'], 18, 62, 12),
+  f('ezogelin-peynir', 'Ezogelin çorbası + ekmek + beyaz peynir', '1 kase, 1 dilim ekmek, 40 g peynir', LD, 'corba', 2, ['legume', 'gluten', 'dairy'], 18, 46, 12, { salty: true }),
+  f('yayla-corbasi-salata', 'Yayla çorbası + tavuklu salata', '1 kase, 100 g tavuk', LD, 'corba', 2, ['dairy', 'chicken'], 30, 24, 14),
+  f('tarhana-yumurta', 'Tarhana çorbası + 2 haşlanmış yumurta + ekmek', '1 kase, 2 yumurta, 1 dilim ekmek', LD, 'corba', 1, ['gluten', 'egg', 'dairy'], 20, 40, 14),
+  f('sebze-corbasi-ton', 'Sebze çorbası + ton balıklı salata', '1 kase, ½ kutu ton', LD, 'corba', 1, ['fish'], 26, 26, 12),
+
+  // ── Hafif öğle (atıştırma tarzı) ─────────────────────────
+  f('peynirli-durum', 'Beyaz peynirli tam buğday dürüm + ayran', '1 lavaş, 50 g peynir, domates, yeşillik', LD, 'ana', 1, ['dairy', 'gluten'], 20, 40, 14, { salty: true }),
+  f('ton-sandvic', 'Ton balıklı tam buğday sandviç', '2 dilim ekmek, ½ kutu ton, yeşillik', LD, 'ana', 1, ['fish', 'gluten'], 28, 38, 10),
+  f('hindi-sandvic', 'Hindi füme sandviç + ayran', '2 dilim tam buğday ekmek, 60 g hindi füme', LD, 'ana', 1, ['chicken', 'gluten', 'dairy'], 26, 40, 10, { salty: true }),
+  f('yogurt-kasesi', 'Yoğurt kasesi (süzme yoğurt, yulaf, meyve, ceviz)', '200 g süzme yoğurt, 3 yk yulaf, 1 meyve, 15 g ceviz', ['breakfast', 'lunch'], 'kahvalti', 1, ['dairy', 'gluten', 'nuts'], 26, 42, 14),
+  f('lor-tost-ayran', 'Lor peynirli tost + ayran', '2 dilim tam buğday ekmek, 80 g lor', LD, 'ana', 1, ['dairy', 'gluten'], 24, 36, 10),
+  f('humus-sebze-tabak', 'Humus + sebze + 1 dilim ekmek + yumurta', '4 yk humus, 1 yumurta', LD, 'ana', 1, ['legume', 'egg', 'gluten'], 16, 30, 16),
+
   // ── Ara öğün ─────────────────────────────────────────────
   f('yogurt-tarcin', 'Yoğurt + tarçın', '200 g yoğurt', S, 'ara', 1, ['dairy'], 8, 10, 6),
   f('lor-domates', 'Lor peyniri + domates', '100 g lor', S, 'ara', 1, ['dairy'], 12, 5, 5),
@@ -176,6 +214,35 @@ export const FOODS: Food[] = [
   f('cilekli-yogurt', 'Çilek + yoğurt', '1 kase çilek, 100 g yoğurt', NONE, 'tatli', 1, ['dairy'], 5, 14, 3, { sweet: true }),
   f('fistik-ezmesi-kakao', 'Fıstık ezmesi + kakao (şekersiz)', '1 yk fıstık ezmesi', NONE, 'tatli', 1, ['nuts'], 4, 4, 8, { sweet: true }),
 ]
+
+// Light / hearty and traditional annotations for main-meal dishes.
+const LIGHT = [
+  'ton-salata', 'tavuk-salata', 'nohut-salatasi', 'kisir-yogurt', 'sebzeli-omlet', 'humus-tabagi', 'kinoa-salata',
+  'hellim-salata', 'somon-avokado', 'levrek-roka', 'yesil-mercimek-salata', 'tavuk-durum-ev', 'mercimek-corba-yogurt',
+  'tavuk-corba-salata', 'ezogelin-peynir', 'yayla-corbasi-salata', 'tarhana-yumurta', 'sebze-corbasi-ton',
+  'peynirli-durum', 'ton-sandvic', 'hindi-sandvic', 'yogurt-kasesi', 'lor-tost-ayran', 'humus-sebze-tabak',
+  'tofu-brokoli', 'kabak-yemegi', 'pirasa', 'taze-fasulye',
+]
+const HEARTY = [
+  'tavuk-bulgur', 'somon-sebze', 'kuru-fasulye', 'etli-nohut', 'tavuk-sote', 'karniyarik', 'barbunya', 'patlican-musakka',
+  'mantarli-tavuk', 'etli-turlu', 'etli-kabak', 'etli-bezelye', 'etli-bamya', 'biber-dolmasi', 'yaprak-sarma',
+  'tavuk-haslama', 'izmir-kofte', 'firin-tavuk-patates', 'etli-kuru-fasulye', 'yesil-mercimek-yemegi', 'tavuklu-pilav',
+  'manti', 'kiymali-patates', 'nohut-yemegi-etsiz', 'tofu-wok', 'kofte-sebze', 'mercimek-kofte', 'kiymali-karnabahar',
+  'yumurtali-ispanak', 'kiymali-ispanak',
+]
+const TRAD = [
+  'kuru-fasulye', 'etli-nohut', 'taze-fasulye', 'karniyarik', 'kiymali-ispanak', 'mercimek-corba-yogurt', 'mercimek-kofte',
+  'barbunya', 'patlican-musakka', 'kisir-yogurt', 'etli-turlu', 'kabak-yemegi', 'etli-kabak', 'yumurtali-ispanak', 'pirasa',
+  'kiymali-karnabahar', 'etli-bezelye', 'etli-bamya', 'biber-dolmasi', 'yaprak-sarma', 'tavuk-haslama', 'izmir-kofte',
+  'etli-kuru-fasulye', 'yesil-mercimek-yemegi', 'tavuklu-pilav', 'manti', 'levrek-bugulama', 'kiymali-patates',
+  'nohut-yemegi-etsiz', 'ezogelin-peynir', 'yayla-corbasi-salata', 'tarhana-yumurta', 'kofte-sebze', 'firin-hamsi',
+  'menemen', 'yumurta-kahvalti', 'simit-peynir', 'sucuklu-yumurta',
+]
+for (const x of FOODS) {
+  if (LIGHT.includes(x.id)) x.kind = 'light'
+  else if (HEARTY.includes(x.id)) x.kind = 'hearty'
+  if (TRAD.includes(x.id)) x.trad = true
+}
 
 export const FOOD_BY_ID: Record<string, Food> = Object.fromEntries([...FOODS, ...CHAIN_FOODS].map((x) => [x.id, x]))
 

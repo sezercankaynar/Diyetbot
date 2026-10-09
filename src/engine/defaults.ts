@@ -23,6 +23,7 @@ export function defaultProfile(): Profile {
     tracksCalories: true,
     hungerTime: 'stable',
     dislikes: [],
+    mealStyle: { breakfast: 'normal', lunch: 'normal', dinner: 'normal' },
     health: {
       hypertension: false,
       insulinResistance: false,

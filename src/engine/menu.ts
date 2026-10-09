@@ -1,7 +1,7 @@
 import { dayIndex } from './tracking'
 import { FOODS, getFood, type Food, type FoodTag, type Slot } from './foods'
 import { fitsAnimal, fitsDiet, fitsDislikes } from './foodRules'
-import type { AnimalFoods, DietId, HungerTime, Level3, MealsPerDay, Plan, Profile } from './types'
+import type { AnimalFoods, DietId, HungerTime, Level3, MealsPerDay, MealStyle, MealStyles, Plan, Profile } from './types'
 
 export interface MenuItem {
   slot: Slot
@@ -35,30 +35,42 @@ export interface MenuContext {
   mealsPerDay: MealsPerDay
   canSkipBreakfast: boolean
   hungerTime: HungerTime
+  mealStyle: MealStyles
 }
 
 export interface SlotPlan {
   slot: Slot
   label: string
   share: number
+  style: MealStyle
 }
+
+/** Relative size of a meal by style (light ≈ snack-like plate, hearty ≈ full home-cooked meal). */
+export const STYLE_WEIGHT: Record<MealStyle, number> = { light: 0.6, normal: 1, hearty: 1.4 }
+const DEFAULT_STYLES: MealStyles = { breakfast: 'normal', lunch: 'normal', dinner: 'normal' }
 
 const BASE_SHARE: Record<Slot, number> = { breakfast: 0.27, lunch: 0.33, dinner: 0.33, snack: 0.12 }
 
 /** Which meals the day has, and what share of the kcal target each gets. */
-export function slotPlan(ctx: Pick<MenuContext, 'mealsPerDay' | 'canSkipBreakfast' | 'hungerTime'>): SlotPlan[] {
+export function slotPlan(
+  ctx: Pick<MenuContext, 'mealsPerDay' | 'canSkipBreakfast' | 'hungerTime'> & { mealStyle?: MealStyles },
+): SlotPlan[] {
+  const styles = ctx.mealStyle ?? DEFAULT_STYLES
+  const styleOf = (s: Slot): MealStyle => (s === 'snack' ? 'normal' : styles[s])
   let slots: Slot[]
   if (ctx.mealsPerDay === 2) slots = ctx.canSkipBreakfast ? ['lunch', 'dinner'] : ['breakfast', 'dinner']
   else if (ctx.mealsPerDay === 3) slots = ctx.hungerTime === 'evening' ? ['breakfast', 'lunch', 'dinner', 'snack'] : ['breakfast', 'lunch', 'dinner']
   else slots = ['breakfast', 'lunch', 'snack', 'dinner']
 
-  const weight = (s: Slot) => BASE_SHARE[s] + (s === 'dinner' && ctx.hungerTime === 'evening' ? 0.05 : 0)
+  const weight = (s: Slot) =>
+    (BASE_SHARE[s] + (s === 'dinner' && ctx.hungerTime === 'evening' ? 0.05 : 0)) * STYLE_WEIGHT[styleOf(s)]
   const total = slots.reduce((a, s) => a + weight(s), 0)
   const nightSnack = ctx.hungerTime === 'evening' && slots.at(-1) === 'snack'
   return slots.map((s) => ({
     slot: s,
     label: s === 'snack' && nightSnack ? 'Gece ara öğün' : SLOT_LABEL_TR[s],
     share: weight(s) / total,
+    style: styleOf(s),
   }))
 }
 
@@ -125,11 +137,22 @@ export interface Scored {
 }
 
 /** Best portion of every candidate food for a slot, scored. */
+/** Light/hearty fit for the meal's style; traditional dishes get a small bonus at main meals. */
+function styleBonus(f: Food, slot: Slot, style: MealStyle): number {
+  if (slot === 'snack') return 0
+  const trad = f.trad && slot !== 'breakfast' ? 0.25 : 0
+  if (style === 'light') return trad / 2 + (f.kind === 'light' ? 0.7 : f.kind === 'hearty' ? -1.2 : 0)
+  if (style === 'hearty') return trad + (f.kind === 'hearty' ? 0.7 : f.kind === 'light' ? -0.8 : 0)
+  // normal: Turkish habit – lunch either way, dinner leans to a cooked meal
+  return trad + (slot === 'dinner' ? (f.kind === 'hearty' ? 0.3 : f.kind === 'light' ? -0.3 : 0) : 0)
+}
+
 export function scoreSlot(
   slot: Slot, target: number, ctx: MenuContext,
   recency: (foodId: string) => number = () => 0,
   noise: () => number = () => 0,
 ): Scored[] {
+  const style: MealStyle = slot === 'snack' ? 'normal' : (ctx.mealStyle ?? DEFAULT_STYLES)[slot]
   const factors = slot === 'snack' ? SNACK_FACTORS : MAIN_FACTORS
   const pool = candidatePool(slot, ctx)
   const strict = pool.filter((f) => factors.some((x) => fitsDiet(f, ctx.diet, slot, x)))
@@ -151,7 +174,8 @@ export function scoreSlot(
         Math.abs(x - 1) * 0.3 + // prefer natural portion sizes
         (ctx.likedFoods.includes(f.id) ? 0.6 : 0) +
         (f.soy && (ctx.animalFoods === 'all' || ctx.animalFoods === 'pescatarian') ? -0.4 : 0) +
-        dietBonus(f, ctx.diet) -
+        dietBonus(f, ctx.diet) +
+        styleBonus(f, slot, style) -
         recency(f.id)
       if (!best || score > best.score) best = { foodId: f.id, factor: x, kcal: Math.round(kcal), protein: Math.round(protein), score }
     }
@@ -200,7 +224,8 @@ export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1):
 
 /** Changes when a preference that shapes the menu changes (not liked/disliked dishes). */
 export function menuSignature(ctx: MenuContext): string {
-  return [ctx.diet, ctx.animalFoods, [...ctx.dislikes].sort().join('+'), ctx.cookingTime, ctx.mealsPerDay, ctx.canSkipBreakfast, ctx.hungerTime].join('|')
+  const st = ctx.mealStyle ?? DEFAULT_STYLES
+  return [ctx.diet, ctx.animalFoods, [...ctx.dislikes].sort().join('+'), ctx.cookingTime, ctx.mealsPerDay, ctx.canSkipBreakfast, ctx.hungerTime, st.breakfast, st.lunch, st.dinner].join('|')
 }
 
 /** True when the menu no longer matches the current target or preferences. */
@@ -295,5 +320,6 @@ export function buildMenuContext(
     mealsPerDay: p.mealsPerDay,
     canSkipBreakfast: p.canSkipBreakfast,
     hungerTime: p.hungerTime,
+    mealStyle: p.mealStyle ?? DEFAULT_STYLES,
   }
 }

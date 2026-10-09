@@ -6,6 +6,12 @@ import {
   buildPlan,
   defaultProfile,
   diaryTotals,
+  intakeStats,
+  lastDays,
+  habitRate,
+  waterRate,
+  waterGlassesTarget,
+  type CoachContext,
   generateWeekMenu,
   menuOutdated as isMenuOutdated,
   mondayOf,
@@ -17,6 +23,8 @@ import {
   type AdjustmentOption,
   type CheckItem,
   type DiaryEntry,
+  type CheckIn,
+  type DailyLog,
   type Food,
   type DietId,
   type Profile,
@@ -46,6 +54,35 @@ export const useAppStore = defineStore('app', () => {
   /** Packaged products the user saved (from barcode, search or label). */
   const customFoods = ref<Food[]>([])
   const syncExtraFoods = () => setExtraFoods(customFoods.value)
+  const checkIns = ref<CheckIn[]>([])
+  const daily = ref<DailyLog[]>([])
+  const activeHabits = ref<string[]>([])
+  const todayLog = computed<DailyLog>(
+    () => daily.value.find((l) => l.date === todayDate.value) ?? { date: todayDate.value, water: 0, habits: [] },
+  )
+  const waterTarget = computed(() => waterGlassesTarget(plan.value.macros?.waterMl ?? 2000))
+  /** Last-7-days numbers a dietitian would look at in a follow-up. */
+  const coachContext = computed<CoachContext | null>(() => {
+    const e = plan.value.energy
+    const m = plan.value.macros
+    if (!e || !m) return null
+    const days = lastDays(todayDate.value, 7)
+    const perDay = Object.fromEntries(days.map((d) => [d, diaryTotals(diary.value, d)]))
+    const a = analysis.value
+    return {
+      sex: profile.value.sex,
+      heightCm: profile.value.heightCm,
+      goal: profile.value.goal,
+      weeklyRate: a.status === 'ready' ? a.weeklyRate : undefined,
+      targetRate: a.status === 'ready' ? a.targetRate : undefined,
+      kcalTarget: e.target,
+      proteinTarget: m.proteinG,
+      ...intakeStats(perDay, days),
+      habitRate: habitRate(daily.value, activeHabits.value, days),
+      waterRate: waterRate(daily.value, waterTarget.value, days),
+    }
+  })
+  const sortedCheckIns = computed(() => [...checkIns.value].sort((a, b) => b.date.localeCompare(a.date)))
   /** Refreshed when the app comes back to the foreground, so "today" rolls over at midnight. */
   const todayDate = ref(today())
 
@@ -92,6 +129,9 @@ export const useAppStore = defineStore('app', () => {
     disliked.value = settings?.disliked ?? []
     diary.value = await repo.listDiary()
     customFoods.value = await repo.listCustomFoods()
+    checkIns.value = await repo.listCheckIns()
+    daily.value = await repo.listDaily()
+    activeHabits.value = settings?.habits ?? []
     syncExtraFoods()
     menu.value = (await repo.loadMenu()) ?? null
     loaded.value = true
@@ -99,7 +139,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const saveSettings = () =>
-    repo.saveSettings({ diet: dietChoice.value, liked: liked.value, disliked: disliked.value })
+    repo.saveSettings({ diet: dietChoice.value, liked: liked.value, disliked: disliked.value, habits: activeHabits.value })
 
   /** Builds this week's menu if there is none yet (or it's from an earlier week). */
   async function ensureMenu() {
@@ -155,6 +195,29 @@ export const useAppStore = defineStore('app', () => {
     await repo.putCustomFood(f)
     customFoods.value = [...customFoods.value.filter((x) => x.id !== f.id), f]
     syncExtraFoods()
+  }
+
+  async function updateToday(patch: Partial<Omit<DailyLog, 'date'>>) {
+    const next: DailyLog = { ...todayLog.value, ...patch }
+    await repo.putDaily(next)
+    daily.value = [...daily.value.filter((l) => l.date !== next.date), next]
+  }
+  const addWater = (delta: number) => updateToday({ water: Math.max(0, todayLog.value.water + delta) })
+  function toggleHabit(id: string) {
+    const h = todayLog.value.habits
+    return updateToday({ habits: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] })
+  }
+  async function setHabits(ids: string[]) {
+    activeHabits.value = ids
+    await saveSettings()
+  }
+  async function saveCheckIn(c: CheckIn) {
+    await repo.putCheckIn(c)
+    checkIns.value = [...checkIns.value.filter((x) => x.id !== c.id), c]
+  }
+  async function deleteCheckIn(id: string) {
+    await repo.deleteCheckIn(id)
+    checkIns.value = checkIns.value.filter((x) => x.id !== id)
   }
 
   async function deleteDiary(id: string) {
@@ -240,7 +303,8 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
-    liked, disliked, diary, menu, customFoods, saveCustomFood, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
+    liked, disliked, diary, menu, customFoods, saveCustomFood,
+    checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
     ensureMenu, regenerateMenu, swapMenu, rateDish, logFoods, deleteDiary, toggleMenuEaten,

@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Adjustment, DiaryEntry, DietId, Food, Profile, WeekMenu, WeighIn } from '@/engine'
+import type { Adjustment, CheckIn, DailyLog, DiaryEntry, DietId, Food, Profile, WeekMenu, WeighIn } from '@/engine'
 
 export interface Settings {
   /** User-chosen diet; null → use the top-scored one. */
@@ -7,6 +7,8 @@ export interface Settings {
   /** Menu feedback: dishes the user liked / doesn't want to see again. */
   liked?: string[]
   disliked?: string[]
+  /** Habit ids the user chose to follow. */
+  habits?: string[]
 }
 
 interface DiyetDB extends DBSchema {
@@ -17,11 +19,13 @@ interface DiyetDB extends DBSchema {
   diary: { key: string; value: DiaryEntry; indexes: { byDate: string } }
   menus: { key: string; value: WeekMenu }
   customFoods: { key: string; value: Food }
+  checkins: { key: string; value: CheckIn }
+  daily: { key: string; value: DailyLog }
 }
 
 export interface Backup {
   app: 'diyetbot'
-  version: 3
+  version: 4
   exportedAt: string
   profile: Profile | null
   weighLogs: WeighIn[]
@@ -31,6 +35,8 @@ export interface Backup {
   menu: WeekMenu | null
   /** Packaged products the user saved (diary entries may point to them). */
   customFoods: Food[]
+  checkins: CheckIn[]
+  daily: DailyLog[]
 }
 
 const DB_NAME = 'diyetbot'
@@ -39,7 +45,7 @@ const MAIN = 'main'
 let dbPromise: Promise<IDBPDatabase<DiyetDB>> | null = null
 
 export function db(): Promise<IDBPDatabase<DiyetDB>> {
-  dbPromise ??= openDB<DiyetDB>(DB_NAME, 3, {
+  dbPromise ??= openDB<DiyetDB>(DB_NAME, 4, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore('profile')
@@ -53,6 +59,10 @@ export function db(): Promise<IDBPDatabase<DiyetDB>> {
       }
       if (oldVersion < 3) {
         d.createObjectStore('customFoods', { keyPath: 'id' })
+      }
+      if (oldVersion < 4) {
+        d.createObjectStore('checkins', { keyPath: 'id' })
+        d.createObjectStore('daily', { keyPath: 'date' })
       }
     },
   })
@@ -121,11 +131,27 @@ export const repo = {
     await (await db()).delete('customFoods', id)
   },
 
+  async listCheckIns() {
+    return (await db()).getAll('checkins')
+  },
+  async putCheckIn(c: CheckIn) {
+    await (await db()).put('checkins', plain(c))
+  },
+  async deleteCheckIn(id: string) {
+    await (await db()).delete('checkins', id)
+  },
+  async listDaily() {
+    return (await db()).getAll('daily')
+  },
+  async putDaily(l: DailyLog) {
+    await (await db()).put('daily', plain(l))
+  },
+
   async exportAll(): Promise<Backup> {
     const d = await db()
     return {
       app: 'diyetbot',
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       profile: (await d.get('profile', MAIN)) ?? null,
       weighLogs: await d.getAll('weighLogs'),
@@ -134,13 +160,15 @@ export const repo = {
       diary: await d.getAll('diary'),
       menu: (await d.get('menus', MAIN)) ?? null,
       customFoods: await d.getAll('customFoods'),
+      checkins: await d.getAll('checkins'),
+      daily: await d.getAll('daily'),
     }
   },
 
   /** Replaces all data with the backup contents. */
   async importAll(b: Backup) {
     const d = await db()
-    const tx = d.transaction(['profile', 'weighLogs', 'adjustments', 'settings', 'diary', 'menus', 'customFoods'], 'readwrite')
+    const tx = d.transaction(['profile', 'weighLogs', 'adjustments', 'settings', 'diary', 'menus', 'customFoods', 'checkins', 'daily'], 'readwrite')
     await Promise.all([
       tx.objectStore('profile').clear(),
       tx.objectStore('weighLogs').clear(),
@@ -149,6 +177,8 @@ export const repo = {
       tx.objectStore('diary').clear(),
       tx.objectStore('menus').clear(),
       tx.objectStore('customFoods').clear(),
+      tx.objectStore('checkins').clear(),
+      tx.objectStore('daily').clear(),
     ])
     if (b.profile) await tx.objectStore('profile').put(b.profile, MAIN)
     if (b.settings) await tx.objectStore('settings').put(b.settings, MAIN)
@@ -157,6 +187,8 @@ export const repo = {
     for (const e of b.diary) await tx.objectStore('diary').put(e)
     if (b.menu) await tx.objectStore('menus').put(b.menu, MAIN)
     for (const f of b.customFoods) await tx.objectStore('customFoods').put(f)
+    for (const c of b.checkins) await tx.objectStore('checkins').put(c)
+    for (const l of b.daily) await tx.objectStore('daily').put(l)
     await tx.done
   },
 }
@@ -171,7 +203,7 @@ export function parseBackup(raw: unknown): Backup {
   if (!raw || typeof raw !== 'object') fail('JSON nesnesi değil')
   const o = raw as Record<string, unknown>
   if (o.app !== 'diyetbot') fail('Diyetbot yedeği değil')
-  if (o.version !== 1 && o.version !== 2 && o.version !== 3) fail('desteklenmeyen sürüm')
+  if (![1, 2, 3, 4].includes(o.version as number)) fail('desteklenmeyen sürüm')
   if (!Array.isArray(o.weighLogs) || !Array.isArray(o.adjustments)) fail('eksik alanlar')
   const weighLogs = (o.weighLogs as unknown[]).map((w) => {
     const x = w as WeighIn
@@ -209,9 +241,23 @@ export function parseBackup(raw: unknown): Backup {
         return f
       })
     : []
+  const checkins = Array.isArray(o.checkins)
+    ? (o.checkins as unknown[]).map((x) => {
+        const c = x as CheckIn
+        if (!c || typeof c.id !== 'string' || !DATE_RE.test(c.date) || typeof c.hunger !== 'number') fail('hatalı görüşme kaydı')
+        return { ...c, difficulties: Array.isArray(c.difficulties) ? c.difficulties : [] }
+      })
+    : []
+  const daily = Array.isArray(o.daily)
+    ? (o.daily as unknown[]).map((x) => {
+        const l = x as DailyLog
+        if (!l || !DATE_RE.test(l.date) || typeof l.water !== 'number') fail('hatalı günlük takip kaydı')
+        return { date: l.date, water: l.water, habits: Array.isArray(l.habits) ? l.habits : [] }
+      })
+    : []
   return {
     app: 'diyetbot',
-    version: 3,
+    version: 4,
     exportedAt: typeof o.exportedAt === 'string' ? o.exportedAt : '',
     profile,
     weighLogs,
@@ -220,5 +266,7 @@ export function parseBackup(raw: unknown): Backup {
     diary,
     menu,
     customFoods,
+    checkins,
+    daily,
   }
 }

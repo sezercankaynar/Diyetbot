@@ -8,6 +8,7 @@ import FoodRow from '@/components/FoodRow.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
 import CravingPanel from '@/components/CravingPanel.vue'
+import DailyCoach from '@/components/DailyCoach.vue'
 import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
@@ -59,6 +60,8 @@ const extras = computed(() => store.todayDiary.filter((e) => !e.menuSlot))
         </div>
         <BudgetBar label="Kalori" :value="store.todayTotals.kcal" :target="target" unit="kcal" />
         <BudgetBar label="Protein" :value="store.todayTotals.protein" :target="proteinTarget" unit="g" />
+        <BudgetBar label="Karbonhidrat" :value="store.todayTotals.carb" :target="store.plan.macros?.carbG ?? 0" unit="g" />
+        <BudgetBar label="Yağ" :value="store.todayTotals.fat" :target="store.plan.macros?.fatG ?? 0" unit="g" />
       </section>
 
       <div class="actions">
@@ -86,6 +89,8 @@ const extras = computed(() => store.todayDiary.filter((e) => !e.menuSlot))
         <p class="small muted" style="margin-top: 8px">Yediğin öğünü işaretle. Değiştirmek istersen:</p>
         <button type="button" class="btn ghost small" @click="emit('go', 'menu')">Haftalık menüye git →</button>
       </section>
+
+      <DailyCoach />
 
       <section v-if="extras.length" class="card">
         <h2>Menü dışı yediklerin</h2>

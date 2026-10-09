@@ -13,6 +13,8 @@ describe('IndexedDB repo', () => {
     await repo.putDiary({ id: 'd1', date: '2026-01-15', foodId: 'ayran', factor: 1 })
     await repo.saveMenu({ weekStart: '2026-01-12', seed: 1, days: [] })
     await repo.putCustomFood({ id: 'pk-1-30', name: 'Gofret', portion: '30 g', slots: [], group: 'paket', prep: 1, tags: [], protein: 2, carb: 18, fat: 10, kcal: 170 })
+    await repo.putCheckIn({ id: 'c1', date: '2026-01-15', hunger: 3, energy: 3, sleep: 3, adherence: 70, difficulties: ['tatli'], waistCm: 88 })
+    await repo.putDaily({ date: '2026-01-15', water: 6, habits: ['protein'] })
     const backup = await repo.exportAll()
     expect(backup.weighLogs).toEqual([{ date: '2026-01-01', kg: 79.5 }])
 
@@ -27,6 +29,8 @@ describe('IndexedDB repo', () => {
     expect(await repo.listDiary('2026-01-16')).toHaveLength(0)
     expect((await repo.loadMenu())?.weekStart).toBe('2026-01-12')
     expect((await repo.listCustomFoods())[0].name).toBe('Gofret')
+    expect((await repo.listCheckIns())[0].waistCm).toBe(88)
+    expect((await repo.listDaily())[0].habits).toEqual(['protein'])
   })
 
   it('accepts version 1 backups (no diary/menu)', () => {
@@ -34,6 +38,8 @@ describe('IndexedDB repo', () => {
     expect(b.diary).toEqual([])
     expect(b.menu).toBeNull()
     expect(b.customFoods).toEqual([])
+    expect(b.checkins).toEqual([])
+    expect(b.daily).toEqual([])
   })
 
   it('rejects invalid backups', () => {

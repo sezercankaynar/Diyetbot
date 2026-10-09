@@ -14,6 +14,13 @@ export type Level3 = 'high' | 'mid' | 'low'
 export type MealsPerDay = 2 | 3 | 4
 export type EatingOut = 'rare' | 'some' | 'often'
 export type HungerTime = 'evening' | 'allday' | 'stable'
+/** How substantial a meal should be: a quick snack-style plate or a full meal. */
+export type MealStyle = 'light' | 'normal' | 'hearty'
+export interface MealStyles {
+  breakfast: MealStyle
+  lunch: MealStyle
+  dinner: MealStyle
+}
 
 export interface HealthFlags {
   hypertension: boolean
@@ -48,6 +55,8 @@ export interface Profile {
   hungerTime: HungerTime
   /** Ingredients the user doesn't eat or dislikes (menu never uses them). */
   dislikes: FoodTag[]
+  /** Which meals are big and which are light (öğün düzeni). */
+  mealStyle: MealStyles
   health: HealthFlags
 }
 
