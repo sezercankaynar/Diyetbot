@@ -71,10 +71,12 @@ async function eat(foodId: string, factor: number) {
 
     <template v-if="chains.length">
       <h2 class="sec">Zincir restoranlar</h2>
-      <p class="small muted">Zincirlerin kendi yayımladığı besin değerleri.</p>
+      <p class="small muted">
+        Zincirlerin kendi yayımladığı besin değerleri. "tahmini" yazanlar değer yayımlamıyor; benzer standart tariften hesaplandı.
+      </p>
       <div class="venues" role="group" aria-label="Zincir">
         <button v-for="c in chains" :key="c.brand" type="button" :aria-pressed="chain === c.brand" @click="pickChain(c.brand)">
-          {{ c.brand }}
+          {{ c.brand }}<span v-if="c.estimated" class="small"> · tahmini</span>
         </button>
       </div>
     </template>

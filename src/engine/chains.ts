@@ -1,4 +1,4 @@
-import type { Food, FoodGroup, FoodTag } from './foods'
+import { FOODS, type Food, type FoodGroup, type FoodTag } from './foodList'
 
 // Fast-food / café chain menu items, from each chain's own published nutrition
 // tables (values per serving as published; see `source`). Chains that publish
@@ -23,14 +23,18 @@ type Row = [
  */
 export const MACRO_MISMATCH = 0.12
 
-function chain(brand: string, source: string, rows: Row[]): Food[] {
-  const slug = brand
+function slugOf(brand: string): string {
+  return brand
     .toLocaleLowerCase('tr')
     .replace(/ı/g, 'i')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\(.*\)/g, '')
     .replace(/[^a-z0-9]+/g, '')
+}
+
+function chain(brand: string, source: string, rows: Row[]): Food[] {
+  const slug = slugOf(brand)
   return rows.map(([id, name, portion, group, kcal, protein, carb, fat, tags, opts]) => {
     const missing = protein === null || carb === null || fat === null
     const fromMacros = missing ? 0 : protein * 4 + carb * 4 + fat * 9
@@ -51,6 +55,40 @@ function chain(brand: string, source: string, rows: Row[]): Food[] {
       source,
       ...(kcalOnly ? { kcalOnly: true } : {}),
       ...opts,
+    }
+  })
+}
+
+/** [id, menu name, portion, generic food id it is estimated from, portion factor] */
+type EstRow = [id: string, name: string, portion: string, baseId: string, factor: number]
+
+export const ESTIMATE_NOTE = 'Marka resmi besin değeri yayımlamıyor; değerler benzer standart tarife göre tahminidir.'
+
+/**
+ * Brands without published values: items are mapped to a comparable generic food
+ * from the built-in list, so every number stays traceable to one place.
+ */
+export function estimatedChain(brand: string, menuSource: string, rows: EstRow[]): Food[] {
+  const slug = slugOf(brand)
+  return rows.map(([id, name, portion, baseId, factor]) => {
+    const base = FOODS.find((f) => f.id === baseId)
+    if (!base) throw new Error(`Unknown base food ${baseId}`)
+    const r1 = (x: number) => Math.round(x * 10) / 10
+    return {
+      ...base,
+      id: `ch-${slug}-${id}`,
+      name,
+      portion,
+      slots: [],
+      kcal: Math.round((base.kcal * factor) / 5) * 5,
+      protein: r1(base.protein * factor),
+      carb: r1(base.carb * factor),
+      fat: r1(base.fat * factor),
+      brand,
+      source: `${ESTIMATE_NOTE} Menü: ${menuSource}`,
+      estimated: true,
+      kind: undefined,
+      trad: undefined,
     }
   })
 }

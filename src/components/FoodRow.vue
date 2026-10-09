@@ -15,6 +15,7 @@ const t = computed(() => itemTotals(props.foodId, props.factor))
         {{ factor === 1 ? food.portion : `${portionText(factor)} (1 porsiyon: ${food.portion})` }}
       </div>
       <div v-if="note" class="small note">{{ note }}</div>
+      <div v-if="food.estimated" class="small est">tahmini değer</div>
       <slot name="extra" />
     </div>
     <div class="nums">
@@ -30,6 +31,7 @@ const t = computed(() => itemTotals(props.foodId, props.factor))
 .main { min-width: 0; }
 .name { font-weight: 600; }
 .note { color: var(--accent); margin-top: 2px; }
+.est { color: var(--warn-ink); font-style: italic; }
 .nums { text-align: right; white-space: nowrap; }
 .kcal { font-size: 1.05rem; }
 .unit { font-size: 0.75rem; color: var(--ink-3); }

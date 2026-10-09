@@ -176,6 +176,8 @@ export interface ChainInfo {
   brand: string
   source: string
   count: number
+  /** True when the brand publishes no values and items are estimates. */
+  estimated: boolean
 }
 
 /** Chains that have published nutrition values in the database. */
@@ -183,7 +185,7 @@ export function chainList(): ChainInfo[] {
   const map = new Map<string, ChainInfo>()
   for (const f of CHAIN_FOODS) {
     if (!f.brand) continue
-    const c = map.get(f.brand) ?? { brand: f.brand, source: f.source ?? '', count: 0 }
+    const c = map.get(f.brand) ?? { brand: f.brand, source: f.source ?? '', count: 0, estimated: !!f.estimated }
     c.count++
     map.set(f.brand, c)
   }
