@@ -126,7 +126,7 @@ async function regenerate() {
       </section>
 
       <p class="small muted">
-        Beğendiğin yemekler sonraki menülerde daha sık çıkar. Değerler yaklaşık porsiyonlara göredir.
+        Her gün kalori, protein, karbonhidrat ve yağ hedefini aşmayacak şekilde hazırlanır; “Değiştir” seçenekleri de buna uyar. Beğendiğin yemekler sonraki menülerde daha sık çıkar. Değerler yaklaşık porsiyonlara göredir.
       </p>
       <div class="btn-row">
         <button type="button" class="btn ghost" @click="regenerate">Haftayı yeniden oluştur</button>

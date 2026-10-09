@@ -5,8 +5,14 @@ import { useAppStore } from '@/stores/app'
 import SegControl from '@/components/SegControl.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
 import * as L from '@/content/labels'
+import { setTheme, theme, type Theme } from '@/theme'
 
 const store = useAppStore()
+const THEMES: { value: Theme; label: string }[] = [
+  { value: 'system', label: 'Sistem' },
+  { value: 'light', label: '☀️ Açık' },
+  { value: 'dark', label: '🌙 Koyu' },
+]
 const emit = defineEmits<{ done: []; go: [tab: string] }>()
 const timeTips = computed(() => timingTips(slotPlan(draft.value), draft.value.mealTimes))
 
@@ -96,6 +102,11 @@ watch(
       <h2>Bilgilerin</h2>
       <span class="sub">{{ saved ? 'kaydedildi ✓' : valid(draft) ? 'otomatik kayıt' : 'değerleri kontrol edin' }}</span>
     </header>
+
+    <div class="field theme">
+      <span class="label">Görünüm (tema)</span>
+      <SegControl :model-value="theme" :options="THEMES" label="Tema" @update:model-value="setTheme($event as Theme)" />
+    </div>
 
     <details class="fold" :open="!store.hasProfile">
       <summary>Vücut <span class="hint">{{ `${draft.weightKg} kg · ${draft.heightCm} cm` }}</span></summary>
@@ -249,6 +260,7 @@ watch(
 </template>
 
 <style scoped>
+.theme { margin: 0 0 14px; }
 .meal-chips, .taste-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .meal-chips button, .taste-chips button {
   border: 0; border-radius: 999px; padding: 8px 12px; font: inherit; font-size: 0.85rem; font-weight: 600;

@@ -210,3 +210,51 @@ describe('weekly menu', () => {
     expect(buildMenuContext(p, buildPlan(p))).toBeNull()
   })
 })
+
+describe('daily budget (never over kcal or macros)', () => {
+  const cases: [string, Parameters<typeof profile>[0], Parameters<typeof buildPlan>[1]?][] = [
+    ['default', {}],
+    ['light lunch, hearty dinner', { mealStyle: { breakfast: 'normal', lunch: 'light', dinner: 'hearty' } }],
+    ['no lunch + snacks', { mealSlots: ['breakfast', 'snack', 'dinner', 'night'] }],
+    ['two meals', { mealSlots: ['lunch', 'dinner'] }],
+    ['low carb', {}, { diet: 'lowcarb' }],
+    ['keto', {}, { diet: 'keto' }],
+    ['vegetarian', { animalFoods: 'vegetarian' }],
+    ['high protein', {}, { diet: 'hp' }],
+    ['small woman', { sex: 'f', weightKg: 58, heightCm: 158, age: 45 }],
+  ]
+  for (const [name, over, diet] of cases) {
+    it(`${name}: every day stays inside every target and gets close to the kcal`, () => {
+      const ctx = ctxFor(over, diet)
+      for (const seed of [1, 2, 3]) {
+        for (const day of generateWeekMenu(ctx, WEEK, seed).days) {
+          const t = dayTotals(day)
+          expect(t.kcal).toBeLessThanOrEqual(ctx.kcal)
+          expect(t.protein).toBeLessThanOrEqual(ctx.proteinG)
+          expect(t.carb).toBeLessThanOrEqual(ctx.carbG!)
+          expect(t.fat).toBeLessThanOrEqual(ctx.fatG!)
+          // Keto's 30 g carb cap leaves few dishes; the menu stays under target rather than over the carb limit.
+          expect(t.kcal).toBeGreaterThan(ctx.kcal * (diet?.diet === 'keto' ? 0.45 : 0.65))
+        }
+      }
+    })
+  }
+
+  it('alternatives keep the day inside the budget', () => {
+    const ctx = ctxFor()
+    const menu = generateWeekMenu(ctx, WEEK)
+    for (const day of menu.days) {
+      for (const item of day.items) {
+        const alts = alternativesFor(ctx, day, item.slot, 6)
+        expect(alts.length).toBeGreaterThan(0)
+        for (const a of alts) {
+          const t = dayTotals(swapItem(menu, day.date, item.slot, a.foodId, a.factor).days.find((d) => d.date === day.date)!)
+          expect(t.kcal).toBeLessThanOrEqual(ctx.kcal)
+          expect(t.fat).toBeLessThanOrEqual(ctx.fatG!)
+          expect(t.carb).toBeLessThanOrEqual(ctx.carbG!)
+          expect(t.protein).toBeLessThanOrEqual(ctx.proteinG)
+        }
+      }
+    }
+  })
+})

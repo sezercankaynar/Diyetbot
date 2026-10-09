@@ -45,8 +45,9 @@
   color-scheme: light;
 }
 
+/* Dark: follows the system unless the user picked a theme in Profil (html[data-theme]). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #0e1311;
     --surface: #171e1b;
     --surface-2: #1e2723;
@@ -79,6 +80,40 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0e1311;
+  --surface: #171e1b;
+  --surface-2: #1e2723;
+  --ink: #e8efeb;
+  --ink-2: #a7b3ad;
+  --ink-3: #737f79;
+  --line: #26302b;
+  --accent: #48c286;
+  --accent-ink: #0b1a12;
+  --accent-soft: #19362a;
+  --accent-2: #f3a061;
+  --accent-2-soft: #3a2a1c;
+  --c-protein: #6f9cf0;
+  --c-carb: #f0b65a;
+  --c-fat: #e07ab2;
+  --c-water: #62b6ea;
+  --warn-bg: #362b14;
+  --warn-border: #d9a33b;
+  --warn-ink: #f4d89a;
+  --stop-bg: #3a1c17;
+  --stop-border: #e0654f;
+  --stop-ink: #f7c3b9;
+  --info-bg: #1b2a36;
+  --info-border: #6f97b8;
+  --info-ink: #c5dbec;
+  --chart-point: #737f79;
+  --chart-line: #48c286;
+  --rule-strong: #34403a;
+  --bar-dim: #2c4237;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

@@ -27,6 +27,9 @@ export interface WeekMenu {
 export interface MenuContext {
   kcal: number
   proteinG: number
+  /** Daily carb/fat targets; when set, a day's menu never goes over them. */
+  carbG?: number
+  fatG?: number
   diet: DietId
   animalFoods: AnimalFoods
   dislikes: readonly string[]
@@ -87,6 +90,9 @@ const SLOT_LABEL_TR: Record<Slot, string> = { breakfast: 'Kahvaltı', lunch: 'Ö
 
 const MAIN_FACTORS = [0.75, 1, 1.25, 1.5, 1.75, 2]
 const SNACK_FACTORS = [1, 1.5, 2]
+/** Smaller portions allowed only to stay inside the daily budget. */
+const SMALL_FACTORS = [0.5]
+const ALL_FACTORS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const MAX_PREP: Record<Level3, number> = { low: 1, mid: 2, high: 3 }
 
 /** Deterministic PRNG so the same week + seed always gives the same menu. */
@@ -170,19 +176,28 @@ export function scoreSlot(
   slot: Slot, target: number, ctx: MenuContext,
   recency: (foodId: string) => number = () => 0,
   noise: () => number = () => 0,
+  /** Upper limit for this meal (what's left of the day's budget); portions over it are skipped. */
+  cap?: Totals,
 ): Scored[] {
   const style: MealStyle = isSnackSlot(slot) ? 'normal' : (ctx.mealStyle ?? DEFAULT_STYLES)[slot as keyof MealStyles]
-  const factors = isSnackSlot(slot) ? SNACK_FACTORS : MAIN_FACTORS
+  const base = isSnackSlot(slot) ? SNACK_FACTORS : MAIN_FACTORS
+  const factors = cap ? [...SMALL_FACTORS, ...base] : base
   const pool = candidatePool(slot, ctx)
   const strict = pool.filter((f) => factors.some((x) => fitsDiet(f, ctx.diet, slot, x)))
   const foods = strict.length > 0 ? strict : pool // never leave a slot empty because of diet rules
   const enforce = strict.length > 0
 
+  // Foods whose carb/fat share is far above the day's targets crowd out the other meals.
+  const limit = dayLimit(ctx)
+  const shareOf = target / ctx.kcal
+  const imbalance = (t: Totals) =>
+    (['carb', 'fat'] as const).reduce((a, k) => a + Math.max(0, t[k] / limit[k] - t.kcal / limit.kcal), 0) / Math.max(shareOf, 0.05)
   const out: Scored[] = []
   for (const f of foods) {
     let best: Scored | null = null
     for (const x of factors) {
       if (enforce && !fitsDiet(f, ctx.diet, slot, x)) continue
+      if (cap && !within(itemTotals(f.id, x), cap)) continue
       const kcal = f.kcal * x
       const protein = f.protein * x
       const closeness = Math.abs(kcal - target) / target
@@ -196,6 +211,7 @@ export function scoreSlot(
         dietBonus(f, ctx.diet) +
         styleBonus(f, slot, style) +
         Math.min(2, likeMatches(f, ctx.likes ?? [])) * 0.35 -
+        imbalance(itemTotals(f.id, x)) * 1.5 -
         recency(f.id)
       if (!best || score > best.score) best = { foodId: f.id, factor: x, kcal: Math.round(kcal), protein: Math.round(protein), score }
     }
@@ -217,6 +233,7 @@ function mainProtein(foodId: string): string[] {
 export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1): WeekMenu {
   const rand = rng(dayIndex(weekStart) * 7919 + seed)
   const plan = slotPlan(ctx)
+  const limit = dayLimit(ctx)
   const lastUsed = new Map<string, number>()
   const useCount = new Map<string, number>()
   const days: MenuDay[] = []
@@ -231,22 +248,35 @@ export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1):
         const sameProteinToday = mainProtein(id).some((t) => todaysProteins.has(t)) ? 0.8 : 0
         return (gap === 0 ? 5 : gap === 1 ? 2 : gap === 2 ? 1 : 0) + (useCount.get(id) ?? 0) * 0.4 + sameProteinToday
       }
-      const [pick] = scoreSlot(sp.slot, ctx.kcal * sp.share, ctx, recency, () => rand() * 0.5)
+      // Leave room for the meals still to come, so the day as a whole stays inside the budget.
+      const left = minus(limit, sumTotals(items.map((i) => itemTotals(i.foodId, i.factor))))
+      const later = plan.slice(plan.indexOf(sp) + 1).reduce((a, s) => a + s.share, 0)
+      const cap = minus(left, scale(limit, later * RESERVE))
+      const noise = () => rand() * 0.5
+      const target = ctx.kcal * sp.share
+      const [pick] = [
+        ...scoreSlot(sp.slot, target, ctx, recency, noise, cap),
+        ...scoreSlot(sp.slot, target, ctx, recency, noise, left),
+        ...scoreSlot(sp.slot, target, ctx, recency, noise),
+      ]
       if (!pick) continue
       items.push({ slot: sp.slot, foodId: pick.foodId, factor: pick.factor })
       lastUsed.set(pick.foodId, d)
       useCount.set(pick.foodId, (useCount.get(pick.foodId) ?? 0) + 1)
     }
-    days.push({ date: addDays(weekStart, d), items })
+    days.push({ date: addDays(weekStart, d), items: fillDay(fitDay(items, limit), limit, ctx.diet) })
   }
   return { weekStart, seed, kcal: ctx.kcal, sig: menuSignature(ctx), days }
 }
+
+/** Bumped when the generator's rules change, so older menus get flagged for a refresh. */
+const MENU_VERSION = 'v2'
 
 /** Changes when a preference that shapes the menu changes (not liked/disliked dishes). */
 export function menuSignature(ctx: MenuContext): string {
   const st = ctx.mealStyle ?? DEFAULT_STYLES
   return [
-    ctx.diet, ctx.animalFoods, [...ctx.dislikes].sort().join('+'), [...(ctx.likes ?? [])].sort().join('+'), ctx.cookingTime,
+    MENU_VERSION, ctx.diet, ctx.animalFoods, [...ctx.dislikes].sort().join('+'), [...(ctx.likes ?? [])].sort().join('+'), ctx.cookingTime,
     slotPlan(ctx).map((s) => s.slot).join('+'), ctx.hungerTime, st.breakfast, st.lunch, st.dinner,
   ].join('|')
 }
@@ -256,12 +286,17 @@ export function menuOutdated(menu: WeekMenu, ctx: MenuContext): boolean {
   return Math.abs((menu.kcal ?? 0) - ctx.kcal) > 100 || (menu.sig !== undefined && menu.sig !== menuSignature(ctx))
 }
 
+/** Alternatives for one meal that keep the day inside its kcal and macro budget. */
 export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 4): Scored[] {
   const sp = slotPlan(ctx).find((s) => s.slot === slot)
   const target = ctx.kcal * (sp?.share ?? 0.3)
   const current = day.items.find((i) => i.slot === slot)?.foodId
   const sameDay = new Set(day.items.map((i) => i.foodId))
-  return scoreSlot(slot, target, ctx).filter((s) => s.foodId !== current && !sameDay.has(s.foodId)).slice(0, n)
+  const others = sumTotals(day.items.filter((i) => i.slot !== slot).map((i) => itemTotals(i.foodId, i.factor)))
+  const ok = (s: Scored) => s.foodId !== current && !sameDay.has(s.foodId)
+  const fitting = scoreSlot(slot, target, ctx, undefined, undefined, minus(dayLimit(ctx), others)).filter(ok)
+  // Only when the rest of the day already uses up the budget: show the closest options anyway.
+  return (fitting.length ? fitting : scoreSlot(slot, target, ctx).filter(ok)).slice(0, n)
 }
 
 export function swapItem(menu: WeekMenu, date: string, slot: Slot, foodId: string, factor: number): WeekMenu {
@@ -313,6 +348,67 @@ export function sumTotals(list: Totals[]): Totals {
   )
 }
 
+/** The day's upper limits: kcal plus protein/carb/fat targets (unknown ones are unlimited). */
+export function dayLimit(ctx: Pick<MenuContext, 'kcal' | 'proteinG' | 'carbG' | 'fatG'>): Totals {
+  return { kcal: ctx.kcal, protein: ctx.proteinG, carb: ctx.carbG ?? Infinity, fat: ctx.fatG ?? Infinity }
+}
+
+/** Share of later meals' budget held back while picking an earlier meal. */
+const RESERVE = 0.7
+
+const KEYS = ['kcal', 'protein', 'carb', 'fat'] as const
+export function within(t: Totals, cap: Totals): boolean {
+  return KEYS.every((k) => t[k] <= cap[k])
+}
+function minus(a: Totals, b: Totals): Totals {
+  return { kcal: a.kcal - b.kcal, protein: a.protein - b.protein, carb: a.carb - b.carb, fat: a.fat - b.fat }
+}
+function scale(a: Totals, x: number): Totals {
+  return { kcal: a.kcal * x, protein: a.protein * x, carb: a.carb * x, fat: a.fat * x }
+}
+
+/** Shrinks portions until the day is inside every limit (safety net after picking meals). */
+export function fitDay(items: MenuItem[], limit: Totals): MenuItem[] {
+  let out = items
+  for (let guard = 0; guard < 40; guard++) {
+    const t = sumTotals(out.map((i) => itemTotals(i.foodId, i.factor)))
+    const over = KEYS.filter((k) => t[k] > limit[k])
+    if (!over.length) return out
+    // Worst overshoot (relative), then shrink the item that contributes most to it.
+    const k = over.sort((a, b) => t[b] / limit[b] - t[a] / limit[a])[0]
+    const shrinkable = out.filter((i) => ALL_FACTORS.some((x) => x < i.factor))
+    if (!shrinkable.length) return out
+    const worst = shrinkable.sort((a, b) => itemTotals(b.foodId, b.factor)[k] - itemTotals(a.foodId, a.factor)[k])[0]
+    const next = [...ALL_FACTORS].reverse().find((x) => x < worst.factor)!
+    out = out.map((i) => (i === worst ? { ...i, factor: next } : i))
+  }
+  return out
+}
+
+/** Enlarges portions step by step while the day stays inside every limit, to get close to the kcal target. */
+export function fillDay(items: MenuItem[], limit: Totals, diet?: DietId): MenuItem[] {
+  let out = items
+  for (let guard = 0; guard < 40; guard++) {
+    const t = sumTotals(out.map((i) => itemTotals(i.foodId, i.factor)))
+    if (t.kcal >= limit.kcal * 0.97) return out
+    let best: { item: MenuItem; factor: number; gain: number } | null = null
+    for (const i of out) {
+      const next = ALL_FACTORS.find((x) => x > i.factor)
+      const f = getFood(i.foodId)
+      if (!next || !f || (diet && !fitsDiet(f, diet, i.slot, next))) continue
+      const added = minus(itemTotals(i.foodId, next), itemTotals(i.foodId, i.factor))
+      if (!within(sumTotals([t, added]), limit)) continue
+      // Prefer growing protein-rich items, then the larger kcal step.
+      const gain = added.kcal + added.protein * 8
+      if (!best || gain > best.gain) best = { item: i, factor: next, gain }
+    }
+    if (!best) return out
+    const b = best
+    out = out.map((i) => (i === b.item ? { ...i, factor: b.factor } : i))
+  }
+  return out
+}
+
 export function dayTotals(day: MenuDay): Totals {
   return sumTotals(day.items.map((i) => itemTotals(i.foodId, i.factor)))
 }
@@ -334,6 +430,8 @@ export function buildMenuContext(
   return {
     kcal: plan.energy.target,
     proteinG: plan.macros.proteinG,
+    carbG: plan.macros.carbG,
+    fatG: plan.macros.fatG,
     diet: plan.recommendedDiet.id,
     animalFoods: p.animalFoods,
     dislikes: p.dislikes,
