@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import {
-  dayTotals, foldTr, itemTotals, sumTotals, foodFromRecipe, getFood, INGREDIENTS, ingredientById, isSnackSlot, placeDish, portionText, recipeTotals,
+  dayTotals, foldTr, itemTotals, mealTitle, sumTotals, foodFromRecipe, getFood, INGREDIENTS, ingredientById, isSnackSlot, placeDish, portionText, recipeTotals,
   searchFoods, stems, validateRecipe, type RecipeLine, type Slot,
 } from '@/engine'
 import { useAppStore } from '@/stores/app'
@@ -120,7 +120,7 @@ async function saveManual() {
     <p class="small muted">
       <template v-if="slot">Menü dışında yemek istediğin bir şeyi ara ve seç. Kalorisi ve değerleri hazır gelir.</template>
       <template v-else>Öğünler dışında yediğin bir şeyi (cips, patlamış mısır, kuruyemiş, tatlı…) ara ve ekle; bugünün toplamına yazılır.</template>
-      <template v-if="current"> Seçtiğin yemek <strong>{{ getFood(current.foodId)?.name }}</strong> yerine geçer.</template>
+      <template v-if="current"> Seçtiğin yemek bu öğündeki <strong>{{ mealTitle(current) }}</strong> tabağının yerine geçer.</template>
     </p>
 
     <input ref="input" v-model="query" type="search" placeholder="Ör. tavuklu pilav, mercimek çorbası, lahmacun" aria-label="Yemek ara" @input="picked = null" />

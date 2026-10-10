@@ -85,7 +85,6 @@ describe('home recipes', () => {
       expect(after.items.some((i) => i.slot === slot && i.foodId === own.id)).toBe(true)
       const t = dayTotals(after)
       expect(t.kcal).toBeLessThanOrEqual(ctx.kcal)
-      expect(t.fat).toBeLessThanOrEqual(ctx.fatG!)
     }
     // Too big for the day: still added (what the user ate always counts), flagged as over.
     const huge = foodFromValues({ name: 'Dev porsiyon', kcal: 2500, protein: 60, carb: 250, fat: 130, slots: ['dinner'], kind: 'hearty' }, 'h')

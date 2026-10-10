@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getFood, itemTotals, portionText } from '@/engine'
+import { amountText, getFood, itemTotals } from '@/engine'
 
 const props = defineProps<{ foodId: string; factor: number; note?: string; compact?: boolean }>()
 const food = computed(() => getFood(props.foodId))
 const t = computed(() => itemTotals(props.foodId, props.factor))
-// Per-100 g/ml items read as an amount ("350 ml"), others as portions.
+// Household units ("2 dilim"), per-100 g amounts ("350 ml") or portions.
 const amount = computed(() => {
   const f = food.value
   if (!f) return ''
-  const per100 = /^100 (g|ml)$/.exec(f.portion)
-  if (per100) return `${Math.round(props.factor * 100)} ${per100[1]}${f.defaultFactor ? ' (yaklaşık porsiyon)' : ''}`
-  return props.factor === 1 ? f.portion : `${portionText(props.factor)} (1 porsiyon: ${f.portion})`
+  const t = amountText(props.foodId, props.factor)
+  return f.defaultFactor && /^100 (g|ml)$/.test(f.portion) ? `${t} (yaklaşık porsiyon)` : t
 })
 </script>
 

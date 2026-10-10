@@ -3,10 +3,11 @@
 import { FOODS, type Food, type FoodTag, type Slot } from './foodList'
 import { CHAIN_FOODS } from './chains'
 import { LIBRARY_FOODS } from './dishLibrary'
+import { PART_FOODS } from './plateParts'
 
 export * from './foodList'
 
-export const FOOD_BY_ID: Record<string, Food> = Object.fromEntries([...FOODS, ...LIBRARY_FOODS, ...CHAIN_FOODS].map((x) => [x.id, x]))
+export const FOOD_BY_ID: Record<string, Food> = Object.fromEntries([...FOODS, ...LIBRARY_FOODS, ...PART_FOODS, ...CHAIN_FOODS].map((x) => [x.id, x]))
 
 // The user's saved packaged products. Set at start-up and when one is saved.
 let extra: Food[] = []
@@ -19,7 +20,7 @@ export function setExtraFoods(list: Food[]): void {
 
 /** Built-in + chain + saved foods (minus deleted ones) – what search and "can I eat this?" see. */
 export function allFoods(): Food[] {
-  return [...FOODS, ...LIBRARY_FOODS, ...CHAIN_FOODS, ...extra.filter((x) => !x.hidden)]
+  return [...FOODS, ...LIBRARY_FOODS, ...PART_FOODS, ...CHAIN_FOODS, ...extra.filter((x) => !x.hidden)]
 }
 
 export function getFood(id: string): Food | undefined {

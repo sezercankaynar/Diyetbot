@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { itemTotals, getFood, mealWindow, slotPlan, type Slot } from '@/engine'
+import { getFood, mealTitle, mealTotals, mealWindow, slotPlan, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
+import MealPlate from '@/components/MealPlate.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
 import MealAddPanel from '@/components/MealAddPanel.vue'
@@ -39,7 +40,8 @@ const meals = computed(() => {
         ...sp,
         item,
         food: item ? getFood(item.foodId) : undefined,
-        totals: item ? itemTotals(item.foodId, item.factor) : undefined,
+        title: item ? mealTitle(item) : '',
+        totals: item ? mealTotals(item) : undefined,
         window: mealWindow(sp, store.profile.mealTimes),
       }
     })
@@ -111,7 +113,7 @@ const ACTIONS = [
             <div class="time num">{{ m.window.split('–')[0] }}</div>
             <div class="meal-text">
               <div class="label">{{ m.label }}</div>
-              <div class="dish">{{ m.food!.name }}</div>
+              <div class="dish">{{ m.title }}</div>
               <div class="small muted num">
                 {{ m.totals!.kcal }} kcal · <span class="macro-p">P {{ m.totals!.protein }}</span> ·
                 <span class="macro-c">K {{ m.totals!.carb }}</span> · <span class="macro-f">Y {{ m.totals!.fat }}</span>
@@ -124,7 +126,7 @@ const ACTIONS = [
             @click="store.toggleMenuEaten(m.slot)"
           >✓</button>
           <div v-if="openMeal === m.slot" class="meal-more small muted">
-            <FoodRow :food-id="m.item!.foodId" :factor="m.item!.factor" />
+            <MealPlate :item="m.item!" />
             <div>Önerilen saat: <span class="num">{{ m.window }}</span></div>
           </div>
         </div>

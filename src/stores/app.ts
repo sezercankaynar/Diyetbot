@@ -20,7 +20,9 @@ import {
   removeDish,
   setExtraFoods,
   sortLogs,
-  swapItem,
+  setMeal,
+  partsOf,
+  type MenuItem,
   type Adjustment,
   type AdjustmentOption,
   type CheckItem,
@@ -163,9 +165,10 @@ export const useAppStore = defineStore('app', () => {
     await repo.saveMenu(menu.value)
   }
 
-  async function swapMenu(date: string, slot: Slot, foodId: string, factor: number) {
+  /** Puts a whole meal (e.g. a chosen alternative plate) into a menu day. */
+  async function setMenuMeal(date: string, item: MenuItem) {
     if (!menu.value) return
-    menu.value = swapItem(menu.value, date, slot, foodId, factor)
+    menu.value = setMeal(menu.value, date, item)
     await repo.saveMenu(menu.value)
   }
 
@@ -269,10 +272,14 @@ export const useAppStore = defineStore('app', () => {
 
   /** Ticks/unticks a planned menu meal for today. */
   async function toggleMenuEaten(slot: Slot) {
-    const existing = todayDiary.value.find((e) => e.menuSlot === slot)
-    if (existing) return deleteDiary(existing.id)
+    const existing = todayDiary.value.filter((e) => e.menuSlot === slot)
+    if (existing.length) {
+      for (const e of existing) await deleteDiary(e.id)
+      return
+    }
+    // A plate is logged part by part (main, pilav, yoghurt, salad …).
     const item = todayMenu.value?.items.find((i) => i.slot === slot)
-    if (item) await logFoods([{ foodId: item.foodId, factor: item.factor }], slot)
+    if (item) await logFoods(partsOf(item), slot)
   }
 
   async function saveProfile(p: Profile) {
@@ -349,6 +356,6 @@ export const useAppStore = defineStore('app', () => {
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
-    ensureMenu, regenerateMenu, swapMenu, rateDish, logFoods, deleteDiary, toggleMenuEaten,
+    ensureMenu, regenerateMenu, setMenuMeal, rateDish, logFoods, deleteDiary, toggleMenuEaten,
   }
 })

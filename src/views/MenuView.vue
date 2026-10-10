@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type Slot } from '@/engine'
+import { alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type MenuItem, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
-import FoodRow from '@/components/FoodRow.vue'
+import MealPlate from '@/components/MealPlate.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import MealAddPanel from '@/components/MealAddPanel.vue'
 
@@ -40,9 +40,9 @@ watch(dayIdx, () => {
 
 const shortDate = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
 
-async function choose(foodId: string, factor: number) {
-  if (!day.value || !openSlot.value) return
-  await store.swapMenu(day.value.date, openSlot.value, foodId, factor)
+async function choose(item: MenuItem) {
+  if (!day.value) return
+  await store.setMenuMeal(day.value.date, item)
   openSlot.value = null
 }
 async function dislike(foodId: string) {
@@ -112,7 +112,7 @@ async function regenerate() {
           <span class="label">{{ labels[item.slot] }}</span>
           <span class="time num">{{ windows[item.slot] }}</span>
         </div>
-        <FoodRow :food-id="item.foodId" :factor="item.factor" />
+        <MealPlate :item="item" />
         <div class="acts">
           <button type="button" class="act" :aria-expanded="openSlot === item.slot" @click="openSlot = openSlot === item.slot ? null : item.slot">
             ↻ {{ openSlot === item.slot ? 'Kapat' : 'Değiştir' }}
@@ -124,15 +124,15 @@ async function regenerate() {
           <button type="button" class="act no" @click="dislike(item.foodId)">✕ Gösterme</button>
         </div>
         <div v-if="openSlot === item.slot" class="alts">
-          <div v-for="a in alternatives" :key="a.foodId" class="alt">
-            <FoodRow :food-id="a.foodId" :factor="a.factor" compact />
-            <button type="button" class="btn small" @click="choose(a.foodId, a.factor)">Seç</button>
+          <div v-for="a in alternatives" :key="a.title ?? a.foodId" class="alt">
+            <MealPlate :item="a" compact />
+            <button type="button" class="btn small" @click="choose(a)">Seç</button>
           </div>
         </div>
       </section>
 
       <p class="small muted">
-        Her gün kalori, protein, karbonhidrat ve yağ hedefini aşmayacak şekilde hazırlanır; “Değiştir” seçenekleri de buna uyar. Beğendiğin yemekler sonraki menülerde daha sık çıkar. Değerler yaklaşık porsiyonlara göredir.
+        Liste diyetisyen listesi gibi hazırlanır: balık haftada 2, kuru baklagil 2–3 kez, çoğu gün sulu sebze yemeği; her ana öğünde pilav ya da ekmek, yoğurt ve salata. Miktarlar günü kalori hedefinin hemen altına oturtacak şekilde ayarlanır; “Değiştir” seçenekleri de buna uyar. Beğendiğin yemekler sonraki menülerde daha sık çıkar. Değerler yaklaşık porsiyonlara göredir.
       </p>
       <div class="btn-row">
         <button type="button" class="btn ghost" @click="regenerate">Haftayı yeniden oluştur</button>
@@ -166,7 +166,7 @@ async function regenerate() {
 .alts { margin-top: 10px; background: var(--surface-2); border-radius: 14px; padding: 4px 12px; }
 .alt { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
 .alt + .alt { border-top: 1px solid var(--line); }
-.alt :deep(.food-row) { flex: 1; }
+.alt :deep(.plate) { flex: 1; min-width: 0; }
 .outdated {
   background: var(--info-bg); color: var(--info-ink); border-radius: 14px; padding: 12px;
   margin-bottom: 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between;

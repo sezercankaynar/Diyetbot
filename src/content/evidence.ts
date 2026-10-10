@@ -9,6 +9,14 @@ export interface Study {
 
 export const STUDIES: Study[] = [
   {
+    id: 'tuber',
+    title: 'Türkiye Beslenme Rehberi (TÜBER)',
+    citation: 'T.C. Sağlık Bakanlığı Halk Sağlığı Genel Müdürlüğü. Türkiye Beslenme Rehberi 2015 (yay. 2016) ve 2022 güncellemesi',
+    summary:
+      'Her öğünde besin gruplarının her birinden (tahıl, sebze-meyve, süt-yoğurt, et-yumurta-kuru baklagil) yiyecek bulunmasını; balığın haftada en az 2 kez, kuru baklagillerin haftada 2–3 kez yenmesini, süt grubundan günde 2–3 porsiyon alınmasını ve tam tahıllı ekmek tercih edilmesini önerir.',
+    rule: 'Haftalık menü bu sıklıklarla kurulur: balık 2, kuru baklagil 2–3, ağırlıklı sulu sebze yemekleri; her ana öğünde pilav ya da tam buğday ekmeği, yoğurt/cacık/ayran ve salata. Ara öğünler meyve + kuruyemiş ya da süt-yoğurttur.',
+  },
+  {
     id: 'dietfits',
     title: 'DIETFITS',
     citation: 'Gardner CD ve ark. JAMA 2018;319(7):667–679',

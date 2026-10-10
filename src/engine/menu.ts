@@ -2,14 +2,34 @@ import { dayIndex } from './tracking'
 import { allFoods, getFood, isSnackSlot, type Food, type FoodTag, type Slot } from './foods'
 import { fitsAnimal, fitsDiet, fitsDislikes } from './foodRules'
 import { likeMatches } from './foodKeys'
+import { alternativePlates, planWeek } from './planner'
+import { isPart, partLevels } from './plateParts'
 import type { AnimalFoods, DietId, HungerTime, Level3, MealsPerDay, MealStyle, MealStyles, Plan, Profile } from './types'
 
+/** One food in an amount (portion multiplier, or a count of units for plate parts). */
+export interface Part {
+  foodId: string
+  factor: number
+}
+
+/** A meal: its main food plus sides (pilav, bread, yoghurt, salad …) when it's a full plate. */
 export interface MenuItem {
   slot: Slot
   foodId: string
   /** Portion multiplier of the food's standard portion. */
   factor: number
+  sides?: Part[]
+  /** Name of the plate (e.g. "Etli taze fasulye" or "Kahvaltı: yumurta, peynir, zeytin"). */
+  title?: string
 }
+
+export const partsOf = (i: MenuItem): Part[] => [{ foodId: i.foodId, factor: i.factor }, ...(i.sides ?? [])]
+export function mealTotals(i: MenuItem): Totals {
+  return sumTotals(partsOf(i).map((x) => itemTotals(x.foodId, x.factor)))
+}
+/** A dish name inside a plate: "(yalnız tabak)" / "(1 kase)" notes are only needed in search lists. */
+export const plateName = (name: string): string => name.replace(/ \((yalnız( tabak)?|1 kase)\)/, '')
+export const mealTitle = (i: MenuItem): string => plateName(i.title ?? getFood(i.foodId)?.name ?? '')
 export interface MenuDay {
   date: string
   items: MenuItem[]
@@ -230,7 +250,19 @@ function mainProtein(foodId: string): string[] {
   return out
 }
 
+/**
+ * The week's menu: dietitian-style plates (see planner.ts). Vegan and keto profiles use the single-dish
+ * generator below: the plates are built around yoghurt, cheese, bread and vegetable dishes.
+ */
 export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1): WeekMenu {
+  if (ctx.animalFoods === 'vegan' || ctx.diet === 'keto') return legacyWeekMenu(ctx, weekStart, seed)
+  const rand = rng(dayIndex(weekStart) * 7919 + seed)
+  const week = planWeek(ctx, allFoods(), rand)
+  const days = week.map((items, d) => ({ date: addDays(weekStart, d), items }))
+  return { weekStart, seed, kcal: ctx.kcal, sig: menuSignature(ctx), days }
+}
+
+function legacyWeekMenu(ctx: MenuContext, weekStart: string, seed = 1): WeekMenu {
   const rand = rng(dayIndex(weekStart) * 7919 + seed)
   const plan = slotPlan(ctx)
   const limit = dayLimit(ctx)
@@ -270,7 +302,7 @@ export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1):
 }
 
 /** Bumped when the generator's rules change, so older menus get flagged for a refresh. */
-const MENU_VERSION = 'v2'
+const MENU_VERSION = 'v3'
 
 /** Changes when a preference that shapes the menu changes (not liked/disliked dishes). */
 export function menuSignature(ctx: MenuContext): string {
@@ -286,31 +318,39 @@ export function menuOutdated(menu: WeekMenu, ctx: MenuContext): boolean {
   return Math.abs((menu.kcal ?? 0) - ctx.kcal) > 100 || (menu.sig !== undefined && menu.sig !== menuSignature(ctx))
 }
 
-/** Alternatives for one meal that keep the day inside its kcal and macro budget. */
-export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 4): Scored[] {
-  const sp = slotPlan(ctx).find((s) => s.slot === slot)
-  const target = ctx.kcal * (sp?.share ?? 0.3)
-  const current = day.items.find((i) => i.slot === slot)?.foodId
-  const sameDay = new Set(day.items.map((i) => i.foodId))
-  const others = sumTotals(day.items.filter((i) => i.slot !== slot).map((i) => itemTotals(i.foodId, i.factor)))
-  const ok = (s: Scored) => s.foodId !== current && !sameDay.has(s.foodId)
-  const fitting = scoreSlot(slot, target, ctx, undefined, undefined, minus(dayLimit(ctx), others)).filter(ok)
-  // Only when the rest of the day already uses up the budget: show the closest options anyway.
-  return (fitting.length ? fitting : scoreSlot(slot, target, ctx).filter(ok)).slice(0, n)
+/** Alternative plates for one meal, each tuned so the day stays on its targets. */
+export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 4): MenuItem[] {
+  if (ctx.animalFoods === 'vegan' || ctx.diet === 'keto') {
+    const sp = slotPlan(ctx).find((s) => s.slot === slot)
+    const target = ctx.kcal * (sp?.share ?? 0.3)
+    const current = day.items.find((i) => i.slot === slot)?.foodId
+    const sameDay = new Set(day.items.map((i) => i.foodId))
+    const others = sumTotals(day.items.filter((i) => i.slot !== slot).map(mealTotals))
+    const ok = (x: Scored) => x.foodId !== current && !sameDay.has(x.foodId)
+    const fitting = scoreSlot(slot, target, ctx, undefined, undefined, minus(dayLimit(ctx), others)).filter(ok)
+    return (fitting.length ? fitting : scoreSlot(slot, target, ctx).filter(ok)).slice(0, n).map((x) => ({ slot, foodId: x.foodId, factor: x.factor }))
+  }
+  const rand = rng(dayIndex(day.date) * 31 + slot.length)
+  return alternativePlates(ctx, day.items, slot, n, rand)
 }
 
-/** Puts a dish into a day's meal (replacing what's there, or adding the meal if the day lacks it). */
-export function swapItem(menu: WeekMenu, date: string, slot: Slot, foodId: string, factor: number): WeekMenu {
+/** Puts a whole meal into a day (replacing that meal, or adding it if the day lacks it). */
+export function setMeal(menu: WeekMenu, date: string, item: MenuItem): WeekMenu {
   return {
     ...menu,
     days: menu.days.map((d) => {
       if (d.date !== date) return d
-      const items = d.items.some((i) => i.slot === slot)
-        ? d.items.map((i) => (i.slot === slot ? { slot, foodId, factor } : i))
-        : [...d.items, { slot, foodId, factor }].sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+      const items = d.items.some((i) => i.slot === item.slot)
+        ? d.items.map((i) => (i.slot === item.slot ? item : i))
+        : [...d.items, item].sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
       return { ...d, items }
     }),
   }
+}
+
+/** Puts a dish into a day's meal (replacing what's there, or adding the meal if the day lacks it). */
+export function swapItem(menu: WeekMenu, date: string, slot: Slot, foodId: string, factor: number): WeekMenu {
+  return setMeal(menu, date, { slot, foodId, factor })
 }
 
 /**
@@ -318,7 +358,7 @@ export function swapItem(menu: WeekMenu, date: string, slot: Slot, foodId: strin
  * the preferred portion if it fits, else the largest smaller one; null when even half a portion doesn't fit.
  */
 export function fitPortion(ctx: MenuContext, day: MenuDay, slot: Slot, foodId: string, prefer = 1): number | null {
-  const others = sumTotals(day.items.filter((i) => i.slot !== slot).map((i) => itemTotals(i.foodId, i.factor)))
+  const others = sumTotals(day.items.filter((i) => i.slot !== slot).map(mealTotals))
   const cap = minus(dayLimit(ctx), others)
   return ALL_FACTORS.filter((x) => x <= prefer).reverse().find((x) => within(itemTotals(foodId, x), cap)) ?? null
 }
@@ -347,7 +387,7 @@ export function placeDish(
   const factor = opts.factor ?? 1
   const limit = dayLimit(ctx)
   const others = day.items.filter((i) => i.slot !== slot)
-  const total = (items: MenuItem[]) => sumTotals([itemTotals(foodId, factor), ...items.map((i) => itemTotals(i.foodId, i.factor))])
+  const total = (items: MenuItem[]) => sumTotals([itemTotals(foodId, factor), ...items.map(mealTotals)])
   if (within(total(others), limit)) return { menu: swapItem(menu, date, slot, foodId, factor), factor, shrunk: false, over: false }
 
   const locked = others.filter((i) => opts.locked?.includes(i.slot))
@@ -355,8 +395,8 @@ export function placeDish(
   const room = minus(limit, total(locked))
   // Shrink the other meals as far as needed (or as far as they go, when even that isn't enough).
   const fitted = fitDay(free, room)
-  const shrunk = fitted.some((i, k) => i.factor !== free[k].factor)
-  const over = !within(sumTotals(fitted.map((i) => itemTotals(i.foodId, i.factor))), room)
+  const shrunk = fitted.some((i, k) => JSON.stringify(partsOf(i)) !== JSON.stringify(partsOf(free[k])))
+  const over = !within(sumTotals(fitted.map(mealTotals)), room)
   const next = { ...menu, days: menu.days.map((d) => (d.date === date ? { ...d, items: [...locked, ...fitted] } : d)) }
   return { menu: swapItem(next, date, slot, foodId, factor), factor, shrunk, over }
 }
@@ -367,16 +407,16 @@ export function refitMenu(menu: WeekMenu, ctx: MenuContext): WeekMenu {
   return { ...menu, days: menu.days.map((d) => (within(dayTotals(d), limit) ? d : { ...d, items: fitDay(d.items, limit) })) }
 }
 
-/** Replaces every occurrence of a dish (e.g. after "don't show again") with its best alternative. */
+/** Replaces every meal built around a dish (e.g. after "don't show again") with its best alternative. */
 export function removeDish(menu: WeekMenu, ctx: MenuContext, foodId: string): WeekMenu {
   const c = { ...ctx, dislikedFoods: [...ctx.dislikedFoods, foodId] }
   let out = menu
   for (const day of menu.days) {
     for (const item of day.items) {
-      if (item.foodId !== foodId) continue
+      if (!partsOf(item).some((x) => x.foodId === foodId)) continue
       const current = out.days.find((d) => d.date === day.date)!
       const [alt] = alternativesFor(c, current, item.slot, 1)
-      if (alt) out = swapItem(out, day.date, item.slot, alt.foodId, alt.factor)
+      if (alt) out = setMeal(out, day.date, alt)
     }
   }
   return out
@@ -426,20 +466,33 @@ function scale(a: Totals, x: number): Totals {
   return { kcal: a.kcal * x, protein: a.protein * x, carb: a.carb * x, fat: a.fat * x }
 }
 
-/** Shrinks portions until the day is inside every limit (safety net after picking meals). */
+/** Shrinks amounts until the day is inside every limit: sides step down their household amounts first. */
 export function fitDay(items: MenuItem[], limit: Totals): MenuItem[] {
   let out = items
-  for (let guard = 0; guard < 40; guard++) {
-    const t = sumTotals(out.map((i) => itemTotals(i.foodId, i.factor)))
+  for (let guard = 0; guard < 80; guard++) {
+    const t = sumTotals(out.map(mealTotals))
     const over = KEYS.filter((k) => t[k] > limit[k])
     if (!over.length) return out
-    // Worst overshoot (relative), then shrink the item that contributes most to it.
+    // Worst overshoot (relative), then shrink the part that contributes most to it.
     const k = over.sort((a, b) => t[b] / limit[b] - t[a] / limit[a])[0]
-    const shrinkable = out.filter((i) => ALL_FACTORS.some((x) => x < i.factor))
-    if (!shrinkable.length) return out
-    const worst = shrinkable.sort((a, b) => itemTotals(b.foodId, b.factor)[k] - itemTotals(a.foodId, a.factor)[k])[0]
-    const next = [...ALL_FACTORS].reverse().find((x) => x < worst.factor)!
-    out = out.map((i) => (i === worst ? { ...i, factor: next } : i))
+    let best: { item: number; part: number; next: number; v: number } | null = null
+    out.forEach((it, ii) => {
+      partsOf(it).forEach((x, pi) => {
+        const levels = isPart(x.foodId) ? partLevels(x.foodId) : ALL_FACTORS
+        const next = [...levels].reverse().find((lv) => lv < x.factor)
+        if (next === undefined || (pi === 0 && next === 0)) return
+        const v = itemTotals(x.foodId, x.factor)[k] - itemTotals(x.foodId, next)[k]
+        if (v > 0 && (!best || v > best.v)) best = { item: ii, part: pi, next, v }
+      })
+    })
+    if (!best) return out
+    const b: { item: number; part: number; next: number } = best
+    out = out.map((it, ii) => {
+      if (ii !== b.item) return it
+      if (b.part === 0) return { ...it, factor: b.next }
+      const sides = (it.sides ?? []).map((x, si) => (si === b.part - 1 ? { ...x, factor: b.next } : x)).filter((x) => x.factor > 0)
+      return { ...it, sides }
+    })
   }
   return out
 }
@@ -469,11 +522,29 @@ export function fillDay(items: MenuItem[], limit: Totals, diet?: DietId): MenuIt
 }
 
 export function dayTotals(day: MenuDay): Totals {
-  return sumTotals(day.items.map((i) => itemTotals(i.foodId, i.factor)))
+  return sumTotals(day.items.map(mealTotals))
 }
 
 export const WEEKDAY_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
 export const WEEKDAY_SHORT_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+
+const num = (x: number) => String(x).replace('.', ',')
+
+/**
+ * How much of a food, as a dietitian would write it: "2 dilim", "6 yemek kaşığı", "1 su bardağı",
+ * "1,25 porsiyon (1 porsiyon: …)" or "350 g" for per-100 g items.
+ */
+export function amountText(foodId: string, factor: number): string {
+  const f = getFood(foodId)
+  if (!f) return ''
+  if (f.unit) return `${num(factor)} ${f.unit}${f.unitGrams ? ` (≈${Math.round(factor * f.unitGrams)} g)` : ''}`
+  const per100 = /^100 (g|ml)$/.exec(f.portion)
+  if (per100) return `${Math.round(factor * 100)} ${per100[1]}`
+  if (factor === 1) return f.portion
+  const g = /^1 porsiyon \(≈?(\d+) g/.exec(f.portion)
+  if (g) return `${portionText(factor)} (≈${Math.round(factor * Number(g[1]))} g)`
+  return `${portionText(factor)} (1 porsiyon: ${f.portion})`
+}
 
 /** Portion multiplier as Turkish text, e.g. 1.5 → "1,5 porsiyon". */
 export function portionText(factor: number): string {
