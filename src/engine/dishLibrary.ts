@@ -128,6 +128,7 @@ export const LIBRARY_DISHES: Dish[] = [
   // --- yumurta ve kahvaltılık
   { id: 'menemen-yalniz', name: 'Menemen (2 yumurtalı, ekmeksiz)', portion: '1 tava', group: 'kahvalti', kind: 'light', lines: [['yumurta', 100], ['domates', 150], ['sivri-biber', 40], ['zeytinyagi', 6]] },
   { id: 'sucuklu-yumurta-yalniz', name: 'Sucuklu yumurta (2 yumurta, ekmeksiz)', portion: '1 tava', group: 'kahvalti', lines: [['yumurta', 100], ['sucuk', 40], ['tereyagi', 3]] },
+  { id: 'sebzeli-omlet', name: 'Sebzeli omlet (2 yumurta)', portion: '1 adet', group: 'kahvalti', kind: 'light', lines: [['yumurta', 100], ['kirmizi-biber', 30], ['mantar', 30], ['ispanak', 30], ['zeytinyagi', 4]] },
   { id: 'sade-omlet', name: 'Sade omlet (2 yumurta)', portion: '1 adet', group: 'kahvalti', kind: 'light', lines: [['yumurta', 100], ['tereyagi', 5]] },
   { id: 'kasarli-omlet', name: 'Kaşarlı omlet (2 yumurta)', portion: '1 adet', group: 'kahvalti', kind: 'light', lines: [['yumurta', 100], ['kasar', 30], ['tereyagi', 5]] },
   { id: 'kahvalti-tabagi', name: 'Kahvaltı tabağı (peynir, zeytin, yumurta, 2 dilim ekmek)', portion: '1 tabak', group: 'kahvalti', lines: [['beyaz-peynir', 40], ['zeytin-siyah', 20], ['domates', 60], ['salatalik', 50], ['ekmek-tam-bugday', 50], ['yumurta', 50]] },

@@ -35,8 +35,12 @@ import {
   type Slot,
   type WeekMenu,
   type WeighIn,
+  DEFAULT_WATER_REMINDER,
+  upcomingReminders,
+  type WaterReminder,
 } from '@/engine'
 import { parseBackup, repo, type Backup } from '@/db'
+import { scheduleWaterNotifications, type ScheduleResult } from '@/native/waterNotifications'
 
 export const today = (): string => {
   const d = new Date()
@@ -61,6 +65,9 @@ export const useAppStore = defineStore('app', () => {
   const checkIns = ref<CheckIn[]>([])
   const daily = ref<DailyLog[]>([])
   const activeHabits = ref<string[]>([])
+  const waterReminder = ref<WaterReminder>({ ...DEFAULT_WATER_REMINDER })
+  /** Result of the last notification scheduling ('denied' → notifications are off for the app). */
+  const waterNotify = ref<ScheduleResult | null>(null)
   const todayLog = computed<DailyLog>(
     () => daily.value.find((l) => l.date === todayDate.value) ?? { date: todayDate.value, water: 0, habits: [] },
   )
@@ -136,14 +143,34 @@ export const useAppStore = defineStore('app', () => {
     checkIns.value = await repo.listCheckIns()
     daily.value = await repo.listDaily()
     activeHabits.value = settings?.habits ?? []
+    waterReminder.value = { ...DEFAULT_WATER_REMINDER, ...settings?.water }
     syncExtraFoods()
     menu.value = (await repo.loadMenu()) ?? null
     loaded.value = true
     await ensureMenu()
+    if (waterReminder.value.on) void rescheduleWater()
   }
 
   const saveSettings = () =>
-    repo.saveSettings({ diet: dietChoice.value, liked: liked.value, disliked: disliked.value, habits: activeHabits.value })
+    repo.saveSettings({
+      diet: dietChoice.value, liked: liked.value, disliked: disliked.value, habits: activeHabits.value, water: waterReminder.value,
+    })
+
+  /** (Re)schedules the next week of water reminders; today's are dropped once the target is reached. */
+  async function rescheduleWater() {
+    try {
+      const times = upcomingReminders(waterReminder.value, new Date(), 7, todayLog.value.water >= waterTarget.value)
+      waterNotify.value = await scheduleWaterNotifications(times, waterTarget.value, () => void addWater(1))
+    } catch {
+      waterNotify.value = null
+    }
+  }
+
+  async function setWaterReminder(r: WaterReminder) {
+    waterReminder.value = r
+    await saveSettings()
+    await rescheduleWater()
+  }
 
   /** Builds this week's menu if there is none yet (or it's from an earlier week). */
   async function ensureMenu() {
@@ -152,7 +179,7 @@ export const useAppStore = defineStore('app', () => {
     if (!ctx || !hasProfile.value) return
     const week = mondayOf(todayDate.value)
     if (menu.value?.weekStart === week) return
-    menu.value = generateWeekMenu(ctx, week)
+    menu.value = generateWeekMenu(ctx, week, 1, menu.value)
     await repo.saveMenu(menu.value)
   }
 
@@ -161,7 +188,7 @@ export const useAppStore = defineStore('app', () => {
     if (!ctx) return
     const week = mondayOf(todayDate.value)
     const seed = menu.value?.weekStart === week ? menu.value.seed + 1 : 1
-    menu.value = generateWeekMenu(ctx, week, seed)
+    menu.value = generateWeekMenu(ctx, week, seed, menu.value)
     await repo.saveMenu(menu.value)
   }
 
@@ -245,7 +272,13 @@ export const useAppStore = defineStore('app', () => {
     await repo.putDaily(next)
     daily.value = [...daily.value.filter((l) => l.date !== next.date), next]
   }
-  const addWater = (delta: number) => updateToday({ water: Math.max(0, todayLog.value.water + delta) })
+  async function addWater(delta: number) {
+    const before = todayLog.value.water
+    await updateToday({ water: Math.max(0, before + delta), ...(delta > 0 ? { lastWaterAt: new Date().toISOString() } : {}) })
+    // Reaching (or dropping back under) the target changes today's reminders.
+    const t = waterTarget.value
+    if (waterReminder.value.on && (before >= t) !== (todayLog.value.water >= t)) await rescheduleWater()
+  }
   function toggleHabit(id: string) {
     const h = todayLog.value.habits
     return updateToday({ habits: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] })
@@ -352,6 +385,7 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
+    waterReminder, waterNotify, setWaterReminder, rescheduleWater,
     liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,

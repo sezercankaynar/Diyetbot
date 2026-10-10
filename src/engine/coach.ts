@@ -188,6 +188,8 @@ export interface DailyLog {
   steps?: number
   /** The planned workout/cardio was done. */
   workout?: boolean
+  /** When the last glass of water was added (ISO time), for water reminders. */
+  lastWaterAt?: string
 }
 
 export const GLASS_ML = 250

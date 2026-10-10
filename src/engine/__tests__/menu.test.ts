@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { alternativesFor, buildMenuContext, menuOutdated, removeDish, dayTotals, generateWeekMenu, mealTotals, mondayOf, partsOf, setMeal, slotPlan, type MenuItem, type WeekMenu } from '../menu'
-import { LIGHT_MAINS, MAINS, SOUPS } from '../plateParts'
+import { alternativesFor, buildMenuContext, menuOutdated, removeDish, dayTotals, generateWeekMenu, mealTitle, mealTotals, plateName, mondayOf, partsOf, setMeal, slotPlan, type MenuItem, type WeekMenu } from '../menu'
+import { LIGHT_MAINS, MAINS, SOUPS, partShort } from '../plateParts'
+import type { Slot } from '../foods'
 import { getFood } from '../foods'
 import { buildPlan } from '../plan'
 import { profile } from './helpers'
@@ -89,7 +90,7 @@ describe('dietitian-style week (TÜBER frequencies)', () => {
       }
     }
   })
-  it('main meals are full plates: grain or bread, yoghurt (not with fish), salad; soups some days', () => {
+  it('main meals are full plates: grain or bread, yoghurt (not with fish), salad; soup only some days', () => {
     for (const m of weeks) {
       let soups = 0
       for (const d of m.days) for (const slot of ['lunch', 'dinner']) {
@@ -100,18 +101,53 @@ describe('dietitian-style week (TÜBER frequencies)', () => {
         expect(ids.some((id) => ['pc-yogurt', 'pc-cacik', 'pc-ayran'].includes(id))).toBe(!fish)
         if (ids.some((id) => SOUPS.includes(id))) soups++
       }
-      expect(soups).toBeGreaterThanOrEqual(3)
+      // Soup is added when the day needs it, not every day.
+      expect(soups).toBeLessThanOrEqual(5)
     }
   })
   it('breakfasts are Turkish breakfast plates; snacks are fruit + nuts or dairy (no odd pairs)', () => {
     const m = generateWeekMenu(ctxFor({ mealSlots: ['breakfast', 'lunch', 'snack', 'dinner'] }), WEEK)
     for (const d of m.days) {
       const b = partsOf(mainOf(d, 'breakfast')).map((x) => x.foodId)
-      expect(b.some((id) => ['pc-yumurta', 'yl-menemen-yalniz', 'yl-kasarli-omlet', 'pc-yulaf', 'pc-lor'].includes(id))).toBe(true)
+      expect(b.some((id) => ['pc-yumurta', 'yl-menemen-yalniz', 'yl-kasarli-omlet', 'yl-sebzeli-omlet', 'pc-yulaf', 'pc-lor', 'pc-yogurt'].includes(id))).toBe(true)
       const s = partsOf(mainOf(d, 'snack')).map((x) => x.foodId)
       expect(s.every((id) => id.startsWith('pc-'))).toBe(true)
       expect(s).not.toEqual(['pc-lor', 'pc-sogus'])
     }
+  })
+  it('plate titles match what is on the plate', () => {
+    for (const over of [{}, { mealSlots: ['breakfast', 'lunch', 'snack', 'dinner', 'night'] as Slot[] }, { mealStyle: { breakfast: 'normal' as const, lunch: 'light' as const, dinner: 'normal' as const } }]) {
+      for (const seed of [1, 2]) {
+        for (const d of generateWeekMenu(ctxFor(over), WEEK, seed).days) {
+          for (const i of d.items) {
+            const title = mealTitle(i).toLocaleLowerCase('tr')
+            // every named part is in the title …
+            for (const x of partsOf(i)) {
+              const n = partShort(x.foodId)
+              const plain = ['pc-ekmek', 'pc-sogus'].includes(x.foodId) && i.slot === 'breakfast'
+              if (n && !plain && (i.slot === 'breakfast' || i.slot === 'snack' || i.slot === 'night')) expect(title, title).toContain(n)
+            }
+            // … and a main dish's plate is named after its main dish
+            if (i.slot === 'lunch' || i.slot === 'dinner') expect(title).toContain(plateName(getFood(i.foodId)!.name).toLocaleLowerCase('tr'))
+          }
+        }
+      }
+    }
+  })
+  it('no dish twice on one day (e.g. menemen at breakfast and lunch)', () => {
+    const m = generateWeekMenu(ctxFor({ mealStyle: { breakfast: 'normal', lunch: 'light', dinner: 'normal' } }), WEEK)
+    for (const d of m.days) {
+      const dishes = d.items.flatMap(partsOf).map((x) => x.foodId).filter((id) => !id.startsWith('pc-'))
+      expect(new Set(dishes).size).toBe(dishes.length)
+    }
+  })
+  it('the next week (and a rebuilt week) brings other main dishes', () => {
+    const ctx = ctxFor()
+    const a = generateWeekMenu(ctx, WEEK)
+    const b = generateWeekMenu(ctx, '2026-10-12', 1, a)
+    const mainsOf = (m: WeekMenu) => new Set(m.days.flatMap((d) => d.items.filter((i) => i.slot === 'lunch' || i.slot === 'dinner').map((i) => i.foodId)))
+    const shared = [...mainsOf(b)].filter((id) => mainsOf(a).has(id)).length
+    expect(shared).toBeLessThanOrEqual(5)
   })
   it('bread: at most 2 slices per meal (3 at breakfast)', () => {
     for (const m of weeks) for (const d of m.days) for (const i of d.items) for (const x of partsOf(i)) {

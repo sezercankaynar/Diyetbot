@@ -254,10 +254,12 @@ function mainProtein(foodId: string): string[] {
  * The week's menu: dietitian-style plates (see planner.ts). Vegan and keto profiles use the single-dish
  * generator below: the plates are built around yoghurt, cheese, bread and vegetable dishes.
  */
-export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1): WeekMenu {
+export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1, previous?: WeekMenu | null): WeekMenu {
   if (ctx.animalFoods === 'vegan' || ctx.diet === 'keto') return legacyWeekMenu(ctx, weekStart, seed)
   const rand = rng(dayIndex(weekStart) * 7919 + seed)
-  const week = planWeek(ctx, allFoods(), rand)
+  // Main dishes of the previous (or replaced) menu come up less, so weeks don't repeat.
+  const recent = (previous?.days ?? []).flatMap((d) => d.items.filter((i) => i.slot === 'lunch' || i.slot === 'dinner').map((i) => i.foodId))
+  const week = planWeek(ctx, allFoods(), rand, recent)
   const days = week.map((items, d) => ({ date: addDays(weekStart, d), items }))
   return { weekStart, seed, kcal: ctx.kcal, sig: menuSignature(ctx), days }
 }

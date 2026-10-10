@@ -11,7 +11,7 @@ import { getFood, isSnackSlot, type Food, type Slot } from './foods'
 import { fitsAnimal, fitsDislikes } from './foodRules'
 import { likeMatches } from './foodKeys'
 import {
-  BREAKFASTS, FRUITS, LEGUME_SOUPS, LIGHT_MAINS, MAINS, NIGHT_SNACKS, SNACKS, SOUPS, isPart, partLevels, partRole,
+  BREAKFASTS, FRUITS, LEGUME_SOUPS, LIGHT_MAINS, MAINS, NIGHT_SNACKS, SNACKS, SOUPS, isPart, partLevels, partRole, partShort,
   type CarbSide, type MainDef, type MainKind, type Template,
 } from './plateParts'
 import { fitDay, itemTotals, mealTotals, slotPlan, sumTotals, type MenuContext, type MenuItem, type Part, type SlotPlan, type Totals } from './menu'
@@ -129,9 +129,15 @@ interface PlatePart {
   foodId: string
   amount: number
   levels: number[]
+  /** The amount a dietitian would start from (0 for optional extras). */
+  usual: number
+  /** Small cost of including it at all (e.g. a soup is added only when the day needs it). */
+  cost?: number
 }
+type PlateKind = 'main' | 'light' | 'template'
 interface Plate {
   slot: Slot
+  kind: PlateKind
   title?: string
   parts: PlatePart[]
 }
@@ -145,7 +151,8 @@ function part(foodId: string, amount: number, levels?: number[], maxBread = MAX_
   let lv = levels ?? partLevels(foodId)
   if (foodId === 'pc-ekmek') lv = lv.filter((l) => l <= maxBread)
   if (amount > 0) lv = lv.filter((l) => l > 0)
-  return { foodId, amount: lv.includes(amount) ? amount : nearest(lv, amount), levels: lv }
+  const a = lv.includes(amount) ? amount : nearest(lv, amount)
+  return { foodId, amount: a, levels: lv, usual: a }
 }
 const nearest = (lv: number[], x: number) => lv.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a))
 const pick = <T>(list: T[], rand: Rand): T => list[Math.floor(rand() * list.length)]
@@ -164,13 +171,13 @@ function mainPlate(
 ): Plate {
   const parts: PlatePart[] = [part(main.id, sp.style === 'hearty' ? 1.25 : 1)]
   const isFish = main.kind === 'balik'
-  const soupChance = sp.style === 'hearty' ? 0.8 : sp.slot === 'lunch' ? 0.5 : 0.3
-  const wantSoup = opts.soup ?? rand() < soupChance
-  if (wantSoup) {
+  // A soup is offered (not forced) on one main meal a day; tuning adds it only when the day's
+  // kcal and macros call for it.
+  if (opts.soup) {
     const soups = SOUPS.filter((id) => allowed(ctx, id) && !(main.kind === 'baklagil' && LEGUME_SOUPS.includes(id)))
       .filter((id) => !lowCarb(ctx) || getFood(id)!.carb <= 12)
     // The main stays first (it names the plate); the soup is listed right after it.
-    if (soups.length) parts.push(part(pickLeastUsed(soups, opts.used, rand), 1, [1]))
+    if (soups.length) parts.push({ ...part(pickLeastUsed(soups, opts.used, rand), 0, [0, 1]), cost: 0.005 })
   }
   if (!(ctx.diet === 'keto')) {
     if (main.carb === 'pilav') {
@@ -198,30 +205,30 @@ function mainPlate(
   if (salad) parts.push(part(salad, 1))
   // Optional fruit after the meal (TÜBER: 2–3 portions of fruit a day).
   if (opts.fruit && ctx.diet !== 'keto' && allowed(ctx, opts.fruit)) parts.push(part(opts.fruit, 0, [0, 1]))
-  return { slot: sp.slot, title: getFood(main.id)?.name, parts }
+  return { slot: sp.slot, kind: 'main', title: getFood(main.id)?.name, parts }
 }
 
-function lightPlate(ctx: MenuContext, sp: SlotPlan, rand: Rand, avoid: Set<string>, used?: Map<string, number>): Plate {
+function lightPlate(
+  ctx: MenuContext, sp: SlotPlan, rand: Rand, avoid: Set<string>, used?: Map<string, number>, soupOk = true,
+): Plate {
   const mains = LIGHT_MAINS.filter((id) => allowed(ctx, id) && !avoid.has(id) && (!lowCarb(ctx) || getFood(id)!.carb <= 20))
   const soups = SOUPS.filter((id) => allowed(ctx, id) && (!lowCarb(ctx) || getFood(id)!.carb <= 12))
-  const useSoup = soups.length && (rand() < 0.5 || !mains.length)
+  const useSoup = soups.length && ((soupOk && rand() < 0.4) || !mains.length)
   const parts: PlatePart[] = []
-  let title: string | undefined
+  const title: string | undefined = undefined
   if (useSoup) {
     const soup = pickLeastUsed(soups, used, rand)
     parts.push(part(soup, 1, [1]))
-    title = `${getFood(soup)!.name.replace(/ \(1 kase\)/, '')} + yoğurt`
     if (allowed(ctx, 'pc-yogurt')) parts.push(part('pc-yogurt', 1))
   } else if (mains.length) {
     const m = pick(mains, rand)
     parts.push(part(m, 1, [0.75, 1, 1.25]))
-    title = getFood(m)!.name
     const fish = getFood(m)!.tags.includes('fish')
     if (!fish && allowed(ctx, 'pc-ayran')) parts.push(part('pc-ayran', 1, [1]))
   }
   if (ctx.diet !== 'keto' && allowed(ctx, 'pc-ekmek')) parts.push(part('pc-ekmek', 1))
   if (useSoup && allowed(ctx, 'pc-salata')) parts.push(part('pc-salata', 1))
-  return { slot: sp.slot, title, parts }
+  return { slot: sp.slot, kind: 'light', title, parts }
 }
 
 function templatePlate(ctx: MenuContext, sp: SlotPlan, t: Template, fruit: string): Plate {
@@ -235,7 +242,7 @@ function templatePlate(ctx: MenuContext, sp: SlotPlan, t: Template, fruit: strin
     const levels = !isPart(id) ? [1, 1.5] : tp.amount === 0 ? partLevels(id).slice(0, 2) : undefined
     parts.push(part(id, tp.amount, levels, sp.slot === 'breakfast' ? MAX_BREAD_BREAKFAST : MAX_BREAD))
   }
-  return { slot: sp.slot, title: t.title, parts }
+  return { slot: sp.slot, kind: 'template', title: t.title, parts }
 }
 
 function pickTemplate(ctx: MenuContext, list: Template[], used: Map<string, number>, rand: Rand, avoid?: string): Template | null {
@@ -284,7 +291,12 @@ export function dayLoss(plates: Plate[], ctx: MenuContext, shares: Map<Slot, num
     loss += 80 * d * d
   })
   // Prefer the usual amounts (small nudge).
-  for (const pl of plates) for (const x of pl.parts) loss += 0.0005 * Math.abs(x.levels.indexOf(x.amount) - x.levels.indexOf(nearest(x.levels, 1)))
+  for (const pl of plates) {
+    for (const x of pl.parts) {
+      loss += 0.0005 * Math.abs(x.levels.indexOf(x.amount) - x.levels.indexOf(x.usual))
+      if (x.cost && x.amount > 0) loss += x.cost
+    }
+  }
   return loss
 }
 
@@ -316,22 +328,42 @@ export function tunePlates(plates: Plate[], ctx: MenuContext, shares: Map<Slot, 
   return cur
 }
 
+const cap = (x: string) => x.charAt(0).toLocaleUpperCase('tr') + x.slice(1)
+
+/** A plate's title from what is actually on it, so the name always matches the content. */
+export function plateTitle(slot: Slot, kind: PlateKind, parts: Part[]): string {
+  const names = parts.map((x) => partShort(x.foodId)).filter((x): x is string => !!x)
+  if (kind === 'template') {
+    // Bread and söğüş come with every Turkish breakfast; the title names what makes this one different.
+    if (slot === 'breakfast') return `Kahvaltı: ${parts.filter((x) => !['bread', 'veg'].includes(partRole(x.foodId) ?? '')).map((x) => partShort(x.foodId)).filter(Boolean).join(', ')}`
+    return cap(names.join(' + '))
+  }
+  const first = getFood(parts[0].foodId)?.name ?? ''
+  if (kind === 'light' && SOUPS.includes(parts[0].foodId)) {
+    const dairy = parts.slice(1).map((x) => partShort(x.foodId)).find((n) => n === 'yoğurt' || n === 'ayran')
+    return dairy ? `${first} + ${dairy}` : first
+  }
+  return first
+}
+
 function toItem(p: Plate): MenuItem | null {
   const parts: Part[] = p.parts.filter((x) => x.amount > 0).map((x) => ({ foodId: x.foodId, factor: x.amount }))
   if (!parts.length) return null
   const [main, ...sides] = parts
-  return { slot: p.slot, foodId: main.foodId, factor: main.factor, ...(sides.length ? { sides } : {}), ...(p.title ? { title: p.title } : {}) }
+  return { slot: p.slot, foodId: main.foodId, factor: main.factor, ...(sides.length ? { sides } : {}), title: plateTitle(p.slot, p.kind, parts) }
 }
 
 /** A menu item back into a tunable plate. */
 export function toPlate(i: MenuItem): Plate {
   const parts = [{ foodId: i.foodId, factor: i.factor }, ...(i.sides ?? [])]
+  const kind: PlateKind = i.slot === 'breakfast' || isSnackSlot(i.slot) ? 'template' : SOUPS.includes(i.foodId) || LIGHT_MAINS.includes(i.foodId) ? 'light' : 'main'
   return {
     slot: i.slot,
+    kind,
     title: i.title,
     parts: parts.map((x) => {
       const lv = SOUPS.includes(x.foodId) ? [1] : partLevels(x.foodId)
-      return { foodId: x.foodId, amount: x.factor, levels: lv.includes(x.factor) ? lv : [...lv, x.factor].sort((a, b) => a - b) }
+      return { foodId: x.foodId, amount: x.factor, levels: lv.includes(x.factor) ? lv : [...lv, x.factor].sort((a, b) => a - b), usual: x.factor }
     }),
   }
 }
@@ -343,7 +375,8 @@ export function sharesOf(ctx: MenuContext): Map<Slot, number> {
 // ---------------------------------------------------------------------------------------------
 // The week
 
-export function planWeek(ctx: MenuContext, all: Food[], rand: Rand): MenuItem[][] {
+/** `recent`: main dishes of the previous week – used less, so weeks don't repeat. */
+export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: string[] = []): MenuItem[][] {
   const plan = slotPlan({ ...ctx, mealStyle: ctx.mealStyle ?? DEFAULT_STYLES })
   const shares = sharesOf(ctx)
   const styleOf = (sp: SlotPlan) => sp.style
@@ -357,10 +390,11 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand): MenuItem[][
   const quota = kindQuota(ctx, mainSlots.length, new Set(byKind.keys()))
   const kinds = assignKinds(mainSlots, quota, rand)
 
-  const usedMains = new Map<string, number>()
+  const usedMains = new Map<string, number>(recent.map((id) => [id, 0.6]))
   const usedTemplates = new Map<string, number>()
   const usedLight = new Set<string>()
   const usedSoups = new Map<string, number>()
+  let lastSoupPlateDay = -9
   const week: MenuItem[][] = []
   let fruitIdx = Math.floor(rand() * FRUITS.length)
   const nextFruit = () => {
@@ -373,6 +407,9 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand): MenuItem[][
   for (let d = 0; d < 7; d++) {
     const plates: Plate[] = []
     let lastSnack: string | undefined
+    // Soup is offered on one main meal a day: the hearty one, else lunch, else dinner.
+    const mainSps = plan.filter((x) => (x.slot === 'lunch' || x.slot === 'dinner') && x.style !== 'light')
+    const soupSlot = (mainSps.find((x) => x.style === 'hearty') ?? mainSps[0])?.slot
     for (const sp of plan) {
       if (sp.slot === 'breakfast') {
         const t = pickTemplate(ctx, BREAKFASTS, usedTemplates, rand)
@@ -385,7 +422,10 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand): MenuItem[][
           plates.push(templatePlate(ctx, sp, t, nextFruit()))
         }
       } else if (styleOf(sp) === 'light') {
-        const pl = lightPlate(ctx, sp, rand, usedLight, usedSoups)
+        // Nothing that was already on today's plates (menemen at breakfast → no menemen at lunch).
+        const today = new Set([...usedLight, ...plates.flatMap((p) => p.parts.map((x) => x.foodId))])
+        const pl = lightPlate(ctx, sp, rand, today, usedSoups, lastSoupPlateDay !== d - 1)
+        if (SOUPS.includes(pl.parts[0]?.foodId)) lastSoupPlateDay = d
         const main = pl.parts[0]?.foodId
         if (main && LIGHT_MAINS.includes(main)) usedLight.add(main)
         if (usedLight.size >= LIGHT_MAINS.length) usedLight.clear()
@@ -397,7 +437,7 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand): MenuItem[][
         const main = chooseMain(ctx, byKind.get(kind) ?? mains, usedMains, todays, rand) ?? chooseMain(ctx, mains, usedMains, todays, rand)
         if (!main) continue
         usedMains.set(main.id, (usedMains.get(main.id) ?? 0) + 1)
-        plates.push(mainPlate(ctx, sp, main, rand, { fruit: nextFruit(), used: usedSoups }))
+        plates.push(mainPlate(ctx, sp, main, rand, { fruit: nextFruit(), used: usedSoups, soup: sp.slot === soupSlot }))
       }
     }
     const tuned = tunePlates(plates, ctx, shares)

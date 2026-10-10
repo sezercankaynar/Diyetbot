@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Adjustment, CheckIn, DailyLog, DiaryEntry, DietId, Food, Profile, WeekMenu, WeighIn } from '@/engine'
+import type { Adjustment, CheckIn, DailyLog, DiaryEntry, DietId, Food, Profile, WaterReminder, WeekMenu, WeighIn } from '@/engine'
 
 export interface Settings {
   /** User-chosen diet; null → use the top-scored one. */
@@ -9,6 +9,8 @@ export interface Settings {
   disliked?: string[]
   /** Habit ids the user chose to follow. */
   habits?: string[]
+  /** Water reminder settings. */
+  water?: WaterReminder
 }
 
 interface DiyetDB extends DBSchema {

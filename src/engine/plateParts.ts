@@ -23,6 +23,8 @@ interface PartDef {
   /** Grams in one unit (for display). */
   grams?: number
   role: PartRole
+  /** Short name for plate titles ("beyaz peynir", "ceviz"); none = left out of titles (bread, söğüş). */
+  short?: string
   group: FoodGroup
   lines: Line[]
   /** Allowed amounts (in units). 0 = may be left out. */
@@ -33,38 +35,38 @@ const r1 = (x: number) => Math.round(x * 10) / 10
 
 const PART_DEFS: PartDef[] = [
   // grains
-  { id: 'ekmek', name: 'Tam buğday ekmeği', unit: 'dilim', grams: 25, role: 'bread', group: 'yan', lines: [['ekmek-tam-bugday', 25]], levels: [0, 1, 2, 3] },
+  { id: 'ekmek', name: 'Tam buğday ekmeği', unit: 'dilim', grams: 25, short: 'ekmek', role: 'bread', group: 'yan', lines: [['ekmek-tam-bugday', 25]], levels: [0, 1, 2, 3] },
   { id: 'bulgur', name: 'Bulgur pilavı', unit: 'yemek kaşığı', grams: 25, role: 'grain', group: 'yan', lines: [['bulgur-haslanmis', 24], ['zeytinyagi', 0.6]], levels: [0, 4, 6, 8, 10] },
   { id: 'pirinc', name: 'Pirinç pilavı', unit: 'yemek kaşığı', grams: 22, role: 'grain', group: 'yan', lines: [['pirinc-haslanmis', 21], ['tereyagi', 0.7]], levels: [0, 4, 6, 8] },
-  { id: 'yulaf', name: 'Yulaf ezmesi', unit: 'yemek kaşığı', grams: 8, role: 'oat', group: 'kahvalti', lines: [['yulaf', 8]], levels: [3, 4, 5, 6, 8] },
+  { id: 'yulaf', name: 'Yulaf ezmesi', unit: 'yemek kaşığı', grams: 8, short: 'yulaf', role: 'oat', group: 'kahvalti', lines: [['yulaf', 8]], levels: [3, 4, 5, 6, 8] },
   // dairy
-  { id: 'yogurt', name: 'Yoğurt (az yağlı)', unit: 'su bardağı', grams: 200, role: 'dairy', group: 'yan', lines: [['yogurt-az', 200]], levels: [0, 1, 1.5, 2] },
-  { id: 'cacik', name: 'Cacık', unit: 'kase', role: 'dairy', group: 'yan', lines: [['yogurt-az', 150], ['salatalik', 80], ['sarimsak', 2], ['dereotu', 3], ['zeytinyagi', 2]], levels: [0, 1, 1.5] },
-  { id: 'ayran', name: 'Ayran', unit: 'su bardağı', grams: 200, role: 'dairy', group: 'icecek', lines: [['ayran', 200]], levels: [0, 1, 2] },
-  { id: 'kefir', name: 'Kefir', unit: 'su bardağı', grams: 200, role: 'milk', group: 'icecek', lines: [['kefir', 200]], levels: [1, 1.5] },
-  { id: 'sut', name: 'Süt (yarım yağlı)', unit: 'su bardağı', grams: 200, role: 'milk', group: 'icecek', lines: [['sut-yarim', 200]], levels: [1, 1.5] },
+  { id: 'yogurt', name: 'Yoğurt (az yağlı)', unit: 'su bardağı', grams: 200, short: 'yoğurt', role: 'dairy', group: 'yan', lines: [['yogurt-az', 200]], levels: [0, 1, 1.5, 2] },
+  { id: 'cacik', name: 'Cacık', unit: 'kase', short: 'cacık', role: 'dairy', group: 'yan', lines: [['yogurt-az', 150], ['salatalik', 80], ['sarimsak', 2], ['dereotu', 3], ['zeytinyagi', 2]], levels: [0, 1, 1.5] },
+  { id: 'ayran', name: 'Ayran', unit: 'su bardağı', grams: 200, short: 'ayran', role: 'dairy', group: 'icecek', lines: [['ayran', 200]], levels: [0, 1, 2] },
+  { id: 'kefir', name: 'Kefir', unit: 'su bardağı', grams: 200, short: 'kefir', role: 'milk', group: 'icecek', lines: [['kefir', 200]], levels: [1, 1.5] },
+  { id: 'sut', name: 'Süt (yarım yağlı)', unit: 'su bardağı', grams: 200, short: 'süt', role: 'milk', group: 'icecek', lines: [['sut-yarim', 200]], levels: [1, 1.5] },
   // salads and vegetables
   { id: 'salata', name: 'Mevsim salata (1 tatlı kaşığı zeytinyağı)', unit: 'kase', role: 'salad', group: 'salata', lines: [['marul', 60], ['domates', 60], ['salatalik', 60], ['havuc', 20], ['roka', 10], ['zeytinyagi', 5], ['limon', 5]], levels: [1, 1.5] },
   { id: 'coban', name: 'Çoban salata (1 tatlı kaşığı zeytinyağı)', unit: 'kase', role: 'salad', group: 'salata', lines: [['domates', 100], ['salatalik', 80], ['sivri-biber', 15], ['sogan', 15], ['maydanoz', 5], ['zeytinyagi', 5], ['limon', 5]], levels: [1, 1.5] },
   { id: 'roka', name: 'Roka-soğan salatası', unit: 'kase', role: 'salad', group: 'salata', lines: [['roka', 50], ['sogan', 30], ['limon', 10], ['zeytinyagi', 5]], levels: [1] },
-  { id: 'sogus', name: 'Söğüş (domates, salatalık, biber, yeşillik)', unit: 'tabak', role: 'veg', group: 'kahvalti', lines: [['domates', 80], ['salatalik', 70], ['sivri-biber', 15], ['maydanoz', 5]], levels: [1] },
+  { id: 'sogus', name: 'Söğüş (domates, salatalık, biber, yeşillik)', unit: 'tabak', short: 'söğüş', role: 'veg', group: 'kahvalti', lines: [['domates', 80], ['salatalik', 70], ['sivri-biber', 15], ['maydanoz', 5]], levels: [1] },
   // breakfast
-  { id: 'yumurta', name: 'Haşlanmış yumurta', unit: 'adet', grams: 50, role: 'egg', group: 'kahvalti', lines: [['yumurta', 50]], levels: [0, 1, 2, 3] },
-  { id: 'peynir', name: 'Beyaz peynir (az yağlı)', unit: 'kibrit kutusu', grams: 30, role: 'cheese', group: 'kahvalti', lines: [['beyaz-peynir-yarim', 30]], levels: [0, 1, 1.5, 2] },
-  { id: 'lor', name: 'Lor peyniri', unit: 'yemek kaşığı', grams: 15, role: 'cheese', group: 'kahvalti', lines: [['lor', 15]], levels: [0, 2, 3, 4, 5] },
-  { id: 'kasar', name: 'Kaşar peyniri', unit: 'ince dilim', grams: 15, role: 'cheese', group: 'kahvalti', lines: [['kasar', 15]], levels: [0, 1, 2] },
-  { id: 'zeytin', name: 'Zeytin', unit: 'adet', grams: 4, role: 'olive', group: 'kahvalti', lines: [['zeytin-siyah', 4]], levels: [0, 4, 6, 8] },
+  { id: 'yumurta', name: 'Haşlanmış yumurta', unit: 'adet', grams: 50, short: 'haşlanmış yumurta', role: 'egg', group: 'kahvalti', lines: [['yumurta', 50]], levels: [0, 1, 2, 3] },
+  { id: 'peynir', name: 'Beyaz peynir (az yağlı)', unit: 'kibrit kutusu', grams: 30, short: 'beyaz peynir', role: 'cheese', group: 'kahvalti', lines: [['beyaz-peynir-yarim', 30]], levels: [0, 1, 1.5, 2] },
+  { id: 'lor', name: 'Lor peyniri', unit: 'yemek kaşığı', grams: 15, short: 'lor peyniri', role: 'cheese', group: 'kahvalti', lines: [['lor', 15]], levels: [0, 2, 3, 4, 5] },
+  { id: 'kasar', name: 'Kaşar peyniri', unit: 'ince dilim', grams: 15, short: 'kaşar', role: 'cheese', group: 'kahvalti', lines: [['kasar', 15]], levels: [0, 1, 2] },
+  { id: 'zeytin', name: 'Zeytin', unit: 'adet', grams: 4, short: 'zeytin', role: 'olive', group: 'kahvalti', lines: [['zeytin-siyah', 4]], levels: [0, 4, 6, 8] },
   // nuts and fruit
-  { id: 'ceviz', name: 'Ceviz içi', unit: 'tam ceviz', grams: 5, role: 'nuts', group: 'ara', lines: [['ceviz', 5]], levels: [0, 2, 3, 4] },
-  { id: 'badem', name: 'Çiğ badem', unit: 'adet', grams: 1.2, role: 'nuts', group: 'ara', lines: [['badem', 1.2]], levels: [0, 6, 10, 15] },
-  { id: 'findik', name: 'Fındık', unit: 'adet', grams: 1.4, role: 'nuts', group: 'ara', lines: [['findik', 1.4]], levels: [0, 6, 10, 15] },
-  { id: 'elma', name: 'Elma', unit: 'orta boy', grams: 150, role: 'fruit', group: 'ara', lines: [['elma', 150]], levels: [1, 2] },
-  { id: 'portakal', name: 'Portakal', unit: 'orta boy', grams: 180, role: 'fruit', group: 'ara', lines: [['portakal', 180]], levels: [1, 2] },
-  { id: 'muz', name: 'Muz', unit: 'küçük boy', grams: 100, role: 'fruit', group: 'ara', lines: [['muz', 100]], levels: [1, 1.5] },
-  { id: 'cilek', name: 'Çilek', unit: 'kase', grams: 150, role: 'fruit', group: 'ara', lines: [['cilek', 150]], levels: [1, 2] },
-  { id: 'uzum', name: 'Üzüm', unit: 'küçük salkım', grams: 100, role: 'fruit', group: 'ara', lines: [['uzum', 100]], levels: [1, 1.5] },
-  { id: 'kayisi', name: 'Kuru kayısı', unit: 'adet', grams: 8, role: 'dried', group: 'ara', lines: [['kuru-kayisi', 8]], levels: [2, 3, 4] },
-  { id: 'incir', name: 'Kuru incir', unit: 'adet', grams: 18, role: 'dried', group: 'ara', lines: [['kuru-incir', 18]], levels: [1, 2] },
+  { id: 'ceviz', name: 'Ceviz içi', unit: 'tam ceviz', grams: 5, short: 'ceviz', role: 'nuts', group: 'ara', lines: [['ceviz', 5]], levels: [0, 2, 3, 4] },
+  { id: 'badem', name: 'Çiğ badem', unit: 'adet', grams: 1.2, short: 'badem', role: 'nuts', group: 'ara', lines: [['badem', 1.2]], levels: [0, 6, 10, 15] },
+  { id: 'findik', name: 'Fındık', unit: 'adet', grams: 1.4, short: 'fındık', role: 'nuts', group: 'ara', lines: [['findik', 1.4]], levels: [0, 6, 10, 15] },
+  { id: 'elma', name: 'Elma', unit: 'orta boy', grams: 150, short: 'elma', role: 'fruit', group: 'ara', lines: [['elma', 150]], levels: [1, 2] },
+  { id: 'portakal', name: 'Portakal', unit: 'orta boy', grams: 180, short: 'portakal', role: 'fruit', group: 'ara', lines: [['portakal', 180]], levels: [1, 2] },
+  { id: 'muz', name: 'Muz', unit: 'küçük boy', grams: 100, short: 'muz', role: 'fruit', group: 'ara', lines: [['muz', 100]], levels: [1, 1.5] },
+  { id: 'cilek', name: 'Çilek', unit: 'kase', grams: 150, short: 'çilek', role: 'fruit', group: 'ara', lines: [['cilek', 150]], levels: [1, 2] },
+  { id: 'uzum', name: 'Üzüm', unit: 'küçük salkım', grams: 100, short: 'üzüm', role: 'fruit', group: 'ara', lines: [['uzum', 100]], levels: [1, 1.5] },
+  { id: 'kayisi', name: 'Kuru kayısı', unit: 'adet', grams: 8, short: 'kuru kayısı', role: 'dried', group: 'ara', lines: [['kuru-kayisi', 8]], levels: [2, 3, 4] },
+  { id: 'incir', name: 'Kuru incir', unit: 'adet', grams: 18, short: 'kuru incir', role: 'dried', group: 'ara', lines: [['kuru-incir', 18]], levels: [1, 2] },
 ]
 
 /** Allowed portions of a main dish. */
@@ -98,6 +100,13 @@ const DEF_BY_ID = new Map(PART_DEFS.map((d) => [`pc-${d.id}`, d]))
 
 export const isPart = (foodId: string): boolean => DEF_BY_ID.has(foodId)
 export const partRole = (foodId: string): PartRole | undefined => DEF_BY_ID.get(foodId)?.role
+
+/** Dishes used inside breakfast plates, by their short title name. */
+const DISH_SHORT: Record<string, string> = {
+  'yl-menemen-yalniz': 'menemen', 'yl-kasarli-omlet': 'kaşarlı omlet', 'yl-sebzeli-omlet': 'sebzeli omlet', 'yl-sade-omlet': 'omlet',
+}
+/** Short name of a plate part for titles; undefined = not named in titles. */
+export const partShort = (foodId: string): string | undefined => DEF_BY_ID.get(foodId)?.short ?? DISH_SHORT[foodId]
 /** Allowed amounts of a plate part (main dishes use MAIN_LEVELS). */
 export function partLevels(foodId: string): number[] {
   const def = DEF_BY_ID.get(foodId)
@@ -179,12 +188,14 @@ export interface Template {
 const P = (id: string, amount: number): TemplatePart => ({ id: id.startsWith('yl-') ? id : `pc-${id}`, amount })
 
 export const BREAKFASTS: Template[] = [
-  { id: 'b-yumurta', title: 'Kahvaltı: yumurta, peynir, zeytin', lowCarb: true, parts: [P('yumurta', 2), P('peynir', 1), P('zeytin', 6), P('sogus', 1), P('ekmek', 2), P('ceviz', 0)] },
-  { id: 'b-menemen', title: 'Kahvaltı: menemen', lowCarb: true, maxPerWeek: 2, parts: [P('yl-menemen-yalniz', 1), P('peynir', 1), P('zeytin', 4), P('ekmek', 2)] },
-  { id: 'b-omlet', title: 'Kahvaltı: kaşarlı omlet', lowCarb: true, maxPerWeek: 2, parts: [P('yl-kasarli-omlet', 1), P('sogus', 1), P('zeytin', 6), P('ekmek', 2)] },
-  { id: 'b-lor', title: 'Kahvaltı: lor peyniri ve yumurta', lowCarb: true, maxPerWeek: 2, parts: [P('lor', 3), P('yumurta', 1), P('sogus', 1), P('zeytin', 6), P('ekmek', 2), P('ceviz', 2)] },
-  { id: 'b-yulaf', title: 'Kahvaltı: sütlü yulaf, meyve, ceviz', maxPerWeek: 2, parts: [P('yulaf', 5), P('sut', 1), P('muz', 1), P('ceviz', 2), P('yumurta', 0)] },
-  { id: 'b-kasar', title: 'Kahvaltı: yumurta, kaşar, ceviz', lowCarb: true, maxPerWeek: 1, parts: [P('yumurta', 2), P('kasar', 1), P('peynir', 1), P('sogus', 1), P('zeytin', 4), P('ekmek', 2), P('ceviz', 2)] },
+  { id: 'b-yumurta', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 2, parts: [P('yumurta', 2), P('peynir', 1), P('zeytin', 6), P('sogus', 1), P('ekmek', 2), P('ceviz', 0)] },
+  { id: 'b-menemen', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('yl-menemen-yalniz', 1), P('peynir', 1), P('zeytin', 4), P('ekmek', 2)] },
+  { id: 'b-omlet', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('yl-kasarli-omlet', 1), P('sogus', 1), P('zeytin', 6), P('ekmek', 2)] },
+  { id: 'b-sebzeli-omlet', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('yl-sebzeli-omlet', 1), P('peynir', 1), P('zeytin', 4), P('ekmek', 2)] },
+  { id: 'b-lor', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('lor', 3), P('yumurta', 1), P('sogus', 1), P('zeytin', 6), P('ekmek', 2), P('ceviz', 2)] },
+  { id: 'b-yulaf', title: 'Kahvaltı', maxPerWeek: 1, parts: [P('yulaf', 5), P('sut', 1), P('muz', 1), P('ceviz', 2), P('yumurta', 0)] },
+  { id: 'b-yogurt-kase', title: 'Kahvaltı', maxPerWeek: 1, parts: [P('yogurt', 1), P('yulaf', 3), P('cilek', 1), P('ceviz', 2), P('yumurta', 0)] },
+  { id: 'b-kasar', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('yumurta', 2), P('kasar', 1), P('sogus', 1), P('zeytin', 4), P('ekmek', 2), P('ceviz', 2)] },
 ]
 
 export const SNACKS: Template[] = [

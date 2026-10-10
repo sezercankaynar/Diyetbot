@@ -50,7 +50,11 @@ watch(tab, (t) => {
 })
 // Coming back to the app on a new day/week: roll "today" and the menu over.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && store.loaded) store.ensureMenu()
+  if (document.visibilityState === 'visible' && store.loaded) {
+    store.ensureMenu()
+    // Keeps a week of water reminders ahead.
+    if (store.waterReminder.on) store.rescheduleWater()
+  }
 })
 window.addEventListener('hashchange', () => {
   const h = fromHash()
