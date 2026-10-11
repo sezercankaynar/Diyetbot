@@ -2,15 +2,27 @@
 import { computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
-import ScoreBar from '@/components/ScoreBar.vue'
 import { fmt } from '@/content/labels'
-import { DRINK_SHARE, waterGlassesTarget, type DietId } from '@/engine'
+import { DRINK_SHARE, OFFERED_DIETS, waterGlassesTarget, type DietId } from '@/engine'
 
 const store = useAppStore()
 const emit = defineEmits<{ go: [tab: string] }>()
 const plan = computed(() => store.plan)
-const maxScore = computed(() => Math.max(1, ...(plan.value.diets ?? []).map((d) => d.score)))
-const topId = computed(() => plan.value.diets?.find((d) => !d.excluded)?.id)
+// The app's own pick among the offered styles (what you get without choosing).
+const topId = computed(() => store.recommendedId)
+const STYLE_TEXT: Record<string, string> = {
+  med: 'Sebze, baklagil, zeytinyağı, yoğurt ve tam tahıl ağırlıklı; balık haftada 2, kırmızı et az. Türk ev yemekleriyle en kolay uyan düzen.',
+  dash: 'Akdeniz tipine benzer, tuzu ve doymuş yağı daha az; yüksek tansiyonda önerilir.',
+  lowcarb: 'Ekmek, pilav ve tatlı daha az; protein ve sebze daha çok. Ekmeğe bağlılığı düşük olanlara ya da insülin direncinde.',
+  plant: 'Et yerine kuru baklagil, tofu, yumurta ve süt ürünleri (vegan için sadece bitkisel).',
+}
+// Offered styles; DASH only when it's relevant (blood pressure) or already the pick.
+const options = computed(() =>
+  (plan.value.diets ?? []).filter(
+    (d) => !d.excluded && OFFERED_DIETS.includes(d.id) && (d.id !== 'dash' || store.profile.health.hypertension || d.id === topId.value || d.id === plan.value.recommendedDiet?.id),
+  ),
+)
+const retired = computed(() => !!plan.value.recommendedDiet && !OFFERED_DIETS.includes(plan.value.recommendedDiet.id))
 
 function choose(id: DietId) {
   store.setDiet(id === topId.value ? null : id)
@@ -48,18 +60,15 @@ function choose(id: DietId) {
         <ul v-if="plan.recommendedDiet.reasons.length" class="small muted reasons">
           <li v-for="r in plan.recommendedDiet.reasons" :key="r">{{ r.replace(/^\+\d+: /, '') }}</li>
         </ul>
-        <details class="inner">
-          <summary>Diğer seçenekler</summary>
-          <ul class="diets">
-            <li v-for="d in plan.diets" :key="d.id" :class="{ excluded: d.excluded }">
-              <button type="button" class="diet-btn" :disabled="d.excluded" :aria-pressed="d.id === plan.recommendedDiet.id" @click="choose(d.id)">
-                <span>{{ d.name }}<span v-if="d.excluded" class="small"> – kapalı</span></span>
-                <span class="num small muted">{{ d.score }}</span>
-              </button>
-              <ScoreBar :score="d.score" :max="maxScore" :highlight="d.id === plan.recommendedDiet.id" />
-            </li>
-          </ul>
-        </details>
+        <p v-if="retired" class="small warn">
+          Bu tarzı daha önce seçmiştin. Artık önerilmiyor: Türk ev yemekleriyle iyi bir haftalık menü kurulamıyor. Aşağıdan birini seçebilirsin.
+        </p>
+        <div class="styles">
+          <button v-for="d in options" :key="d.id" type="button" class="style" :aria-pressed="d.id === plan.recommendedDiet.id" @click="choose(d.id)">
+            <span class="sn">{{ d.name }}<span v-if="d.id === topId" class="tag">önerilen</span></span>
+            <span class="small muted">{{ STYLE_TEXT[d.id] }}</span>
+          </button>
+        </div>
       </section>
 
       <details v-if="plan.meals" class="fold">
@@ -127,4 +136,9 @@ details.inner summary { cursor: pointer; font-weight: 700; color: var(--accent);
 .diet-btn[aria-pressed='true'] { font-weight: 800; color: var(--accent); }
 .excluded { opacity: 0.5; }
 .link-card { width: 100%; display: flex; justify-content: space-between; border: 0; font: inherit; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; }
+.styles { display: grid; gap: 8px; margin-top: 10px; }
+.style { display: grid; gap: 2px; text-align: left; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: var(--surface); font: inherit; color: inherit; cursor: pointer; }
+.style[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.sn { font-weight: 700; }
+.warn { color: var(--warn-ink); background: var(--warn-bg); border-radius: 10px; padding: 8px 10px; }
 </style>

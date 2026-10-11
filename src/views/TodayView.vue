@@ -8,7 +8,6 @@ import MealPlate from '@/components/MealPlate.vue'
 import EatenParts from '@/components/EatenParts.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
-import MealAddPanel from '@/components/MealAddPanel.vue'
 import WeekReview from '@/components/WeekReview.vue'
 import SheetPanel from '@/components/SheetPanel.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
@@ -20,7 +19,7 @@ import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
-const sheet = ref<null | 'check' | 'out' | 'craving' | 'extra' | 'backup'>(null)
+const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup'>(null)
 const isMonday = computed(() => new Date(`${store.todayDate}T12:00:00`).getDay() === 1)
 const daysAgo = (iso: string) => Math.max(0, Math.round((Date.parse(`${store.todayDate}T12:00:00`) - Date.parse(iso)) / 86_400_000))
 const openMeal = ref<Slot | null>(null)
@@ -61,7 +60,7 @@ const eatenSlots = computed(() => new Set(store.todayDiary.filter((e) => e.menuS
 const extras = computed(() => store.todayDiary.filter((e) => !e.menuSlot))
 
 const ACTIONS = [
-  { id: 'check', icon: '🍽️', label: 'Yiyebilir miyim?' },
+  { id: 'check', icon: '🔎', label: 'Ara / yiyebilir miyim?' },
   { id: 'out', icon: '🏪', label: 'Dışarıda' },
   { id: 'craving', icon: '🍫', label: 'Tatlı krizi' },
 ] as const
@@ -157,7 +156,7 @@ const ACTIONS = [
       <section class="card">
         <div class="sec-head">
           <h2>Öğün dışı yediklerin</h2>
-          <button type="button" class="btn small" @click="sheet = 'extra'">＋ Ekle</button>
+          <button type="button" class="btn small" @click="sheet = 'check'">＋ Ekle</button>
         </div>
         <p v-if="!extras.length" class="small muted">Cips, patlamış mısır, kuruyemiş, tatlı… Öğünler dışında yediklerini buraya ekle, günün toplamına yazılsın.</p>
         <div v-for="e in extras" :key="e.id" class="extra">
@@ -184,7 +183,6 @@ const ACTIONS = [
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
     <SheetPanel v-if="sheet === 'backup'" title="Yedekleme" @close="sheet = null"><BackupPanel /></SheetPanel>
-    <MealAddPanel v-if="sheet === 'extra'" :date="store.viewDate" title="Öğün dışı ekle" @close="sheet = null" />
   </div>
 </template>
 

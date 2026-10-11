@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { EVENT_KCAL, alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type MenuItem, type Slot } from '@/engine'
+import { EVENT_KCAL, alternativesFor, dayTotals, mealTitle, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type MenuItem, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import MealPlate from '@/components/MealPlate.vue'
@@ -140,14 +140,15 @@ async function regenerate() {
           <button type="button" class="act" :aria-pressed="store.liked.includes(item.foodId)" @click="toggleLike(item.foodId)">
             {{ store.liked.includes(item.foodId) ? '♥ Beğendim' : '♡ Beğen' }}
           </button>
-          <button type="button" class="act plus" :aria-label="`${labels[item.slot]}: başka bir yemek ara ve ekle`" @click="addSlot = item.slot">＋</button>
-          <button type="button" class="act no" @click="dislike(item.foodId)">✕ Gösterme</button>
         </div>
         <div v-if="openSlot === item.slot" class="alts">
+          <button type="button" class="btn ghost small search-btn" @click="addSlot = item.slot">🔎 Başka bir yemek ara ya da kendi yemeğini ekle</button>
+          <div class="label alt-label">Önerilen tabaklar</div>
           <div v-for="a in alternatives" :key="a.title ?? a.foodId" class="alt">
             <MealPlate :item="a" compact />
             <button type="button" class="btn small" @click="choose(a)">Seç</button>
           </div>
+          <button type="button" class="link no" @click="dislike(item.foodId)">✕ {{ mealTitle(item) }} bir daha önerilmesin</button>
         </div>
       </section>
 
@@ -183,8 +184,10 @@ async function regenerate() {
 .acts { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
 .act { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 0.82rem; font-weight: 700; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
 .act[aria-pressed='true'] { background: var(--stop-bg); color: var(--stop-border); }
-.act.no { margin-left: auto; color: var(--ink-3); }
-.act.plus { background: var(--accent); color: var(--accent-ink); font-size: 1rem; padding: 4px 14px; }
+.search-btn { width: 100%; margin: 8px 0 4px; white-space: normal; line-height: 1.3; height: auto; }
+.alt-label { margin-top: 6px; }
+.link { background: none; border: 0; padding: 10px 0 6px; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.link.no { color: var(--ink-3); }
 .alts { margin-top: 10px; background: var(--surface-2); border-radius: 14px; padding: 4px 12px; }
 .alt { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
 .alt + .alt { border-top: 1px solid var(--line); }

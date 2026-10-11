@@ -5,7 +5,6 @@ import { today, useAppStore } from '@/stores/app'
 import WeightChart from '@/components/WeightChart.vue'
 import StatBox from '@/components/StatBox.vue'
 import CoachSection from '@/components/CoachSection.vue'
-import WeekReview from '@/components/WeekReview.vue'
 import { fmt } from '@/content/labels'
 
 const store = useAppStore()
@@ -105,7 +104,6 @@ async function apply(o: AdjustmentOption) {
       <ul class="small"><li v-for="pt in store.plateau.points" :key="pt">{{ pt }}</li></ul>
     </section>
 
-    <WeekReview />
 
     <section class="card">
       <h2>Trend</h2>

@@ -4,16 +4,16 @@ import { useAppStore } from '@/stores/app'
 import { fmt } from '@/content/labels'
 
 // Last week in numbers, with what went well and one or two things to focus on.
-defineProps<{ compact?: boolean }>()
+defineProps<{ embedded?: boolean }>()
 const store = useAppStore()
 const s = computed(() => store.weekReview)
 const short = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
 </script>
 
 <template>
-  <section class="card">
+  <component :is="embedded ? 'div' : 'section'" :class="embedded ? 'embedded' : 'card'">
     <div class="head">
-      <h2>Haftalık özet</h2>
+      <component :is="embedded ? 'div' : 'h2'" :class="{ label: embedded }">{{ embedded ? 'Geçen haftan' : 'Haftalık özet' }}</component>
       <span class="small muted num">{{ short(s.from) }}–{{ short(s.to) }}</span>
     </div>
     <p v-if="!s.loggedDays && !s.avgSteps && s.weightChange === null" class="small muted">Geçen hafta için kayıt yok. Yediklerini, suyunu ve tartını kaydettikçe burada haftanın özeti çıkar.</p>
@@ -31,7 +31,7 @@ const short = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
       <ul v-if="s.wins.length" class="list small"><li v-for="w in s.wins" :key="w">✅ {{ w }}</li></ul>
       <ul v-if="s.focus.length" class="list small"><li v-for="f in s.focus" :key="f">🎯 {{ f }}</li></ul>
     </template>
-  </section>
+  </component>
 </template>
 
 <style scoped>
@@ -41,4 +41,5 @@ const short = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`
 .v { font-weight: 800; font-size: 1.05rem; }
 .k { font-size: 0.75rem; color: var(--ink-3); }
 .list { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+.embedded { margin: 6px 0 12px; }
 </style>

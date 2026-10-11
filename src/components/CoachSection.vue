@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WeekReview from './WeekReview.vue'
 import { computed, ref } from 'vue'
 import { checkInDue, evaluateCheckIn, navyBodyFat, type CheckIn } from '@/engine'
 import { today, useAppStore } from '@/stores/app'
@@ -36,6 +37,8 @@ async function remove(id: string) {
 <template>
   <section class="card">
     <h2>Haftalık görüşme</h2>
+    <!-- The week in numbers comes first; the check-in adds measurements and how it felt. -->
+    <WeekReview embedded />
     <p v-if="due === 0">
       <strong>Görüşme zamanı.</strong> Ölçülerini al ve haftanı değerlendir; sana özel geri bildirim hazırlayayım.
     </p>

@@ -136,6 +136,8 @@ export const useAppStore = defineStore('app', () => {
       weightKg: profile.value.weightKg,
     }),
   )
+  /** The style the app recommends (without the user's own choice). */
+  const recommendedId = computed(() => buildPlan(profile.value, { kcalOffset: kcalOffset.value }).recommendedDiet?.id ?? null)
   const menuCtx = computed(() =>
     buildMenuContext(profile.value, plan.value, { liked: liked.value, disliked: disliked.value }),
   )
@@ -507,7 +509,7 @@ export const useAppStore = defineStore('app', () => {
     weighReminder, weighNotify, setWeighReminder, markBackup, lastBackupAt, firstUse, weekReview, plateau, backupReminder,
     liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
-    viewDate, isViewToday, dayLog, shiftView,
+    viewDate, isViewToday, dayLog, shiftView, recommendedId,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
     ensureMenu, regenerateMenu, setMenuMeal, toggleSpecialDay, rateDish, logFoods, deleteDiary, setDiaryAmount, toggleMenuEaten,

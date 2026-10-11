@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { evaluateMeal, getFood, searchFoods, type CheckItem } from '@/engine'
+import { evaluateMeal, getFood, searchFoods, type CheckItem, type Food } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
 import PackagedPanel from './PackagedPanel.vue'
+import RecipeBuilder from './RecipeBuilder.vue'
 
+defineProps<{ title?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
@@ -14,6 +16,13 @@ const items = ref<CheckItem[]>([])
 const saved = ref(false)
 
 const showPackaged = ref(false)
+// Not in the list: build it from ingredients; it's saved and put on the plate.
+const building = ref(false)
+async function saveBuilt(f: Food) {
+  await store.saveCustomFood(f)
+  building.value = false
+  add(f.id)
+}
 const results = computed(() => {
   void store.customFoods.length // re-run when a product is saved
   return searchFoods(query.value, 30)
@@ -72,12 +81,15 @@ async function eat() {
 </script>
 
 <template>
-  <SheetPanel title="Bunu yiyebilir miyim?" @close="emit('close')">
+  <SheetPanel :title="title ?? 'Ara, değerlendir, kaydet'" @close="emit('close')">
     <template v-if="!ctx">
       <p class="muted">Güvenlik durdurması olduğu için kalori değerlendirmesi yapılmıyor.</p>
     </template>
     <template v-else>
-      <p class="small muted">Yemeğini ara ve ekle. Birden fazla şey ekleyebilir, porsiyonu değiştirebilirsin.</p>
+      <p class="small muted">
+        Yemeğini ara ve tabağa ekle (birden fazla olabilir, porsiyonu − / + ile değiştir). Uygulama yiyip yiyemeyeceğini söyler;
+        yediysen "Yedim, kaydet" de.
+      </p>
       <input
         v-model="query"
         type="text"
@@ -97,12 +109,14 @@ async function eat() {
           </button>
         </li>
       </ul>
-      <p v-else-if="query.trim()" class="small muted">Bulunamadı. Benzer bir yemek dene (ör. "köfte", "pilav") ya da paketli ürünse aşağıdan ekle.</p>
-      <button type="button" class="btn ghost small" style="margin-top: 8px" @click="showPackaged = true">
-        📦 Paketli ürün ekle (barkod / arama / etiket)
-      </button>
+      <p v-else-if="query.trim()" class="small muted">Bulunamadı. Benzer bir yemek dene (ör. "köfte", "pilav") ya da aşağıdan ekle.</p>
+      <div class="add-row">
+        <button type="button" class="btn ghost small" @click="building = true">＋ Yemek ekle (malzemelerden)</button>
+        <button type="button" class="btn ghost small" @click="showPackaged = true">📦 Paketli ürün (barkod / etiket)</button>
+      </div>
+      <RecipeBuilder v-if="building" :initial-name="query.trim()" save-label="Kaydet ve tabağa ekle" @save="saveBuilt" @cancel="building = false" />
 
-      <p v-if="saved" class="small saved" role="status">Kaydedildi ✓ Bugünkü listene eklendi.</p>
+      <p v-if="saved" class="small saved" role="status">Kaydedildi ✓ {{ store.isViewToday ? 'Bugünkü' : 'O günkü' }} listene eklendi.</p>
 
       <section v-if="items.length" class="card" style="margin-top: 12px">
         <h2>Tabağın</h2>
@@ -123,7 +137,7 @@ async function eat() {
           {{ result.macrosKnown ? `${result.totals.protein} g protein` : 'protein bilinmiyor' }}
         </p>
         <p class="small">
-          Bugün kalan: <span class="num">{{ result.remainingBefore }}</span> kcal →
+          {{ store.isViewToday ? 'Bugün' : 'O gün' }} kalan: <span class="num">{{ result.remainingBefore }}</span> kcal →
           yersen <span class="num">{{ result.remainingAfter }}</span> kcal
         </p>
         <ul v-if="result.reasons.length" class="small">
@@ -175,4 +189,5 @@ async function eat() {
 .verdict.bad { background: var(--stop-bg); border-color: var(--stop-border); color: var(--stop-ink); }
 .verdict h2 { margin-bottom: 4px; }
 .saved { color: var(--accent); margin-top: 8px; }
+.add-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 </style>

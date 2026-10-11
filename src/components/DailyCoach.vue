@@ -89,9 +89,12 @@ async function savePicks() {
     </div>
   </section>
 
-  <section class="card">
-    <div class="row-head">
-      <h2>Alışkanlıklar</h2>
+  <!-- How the day is going and the chosen habits, in one card. -->
+  <section class="card review" :class="review?.tone">
+    <h2>Günün özeti</h2>
+    <ul v-if="review" class="review-list"><li v-for="l in review.lines" :key="l">{{ l }}</li></ul>
+    <div class="row-head habits-head">
+      <span class="label">Alışkanlıkların</span>
       <a v-if="!choosing" href="#" @click.prevent="startChoosing">{{ active.length ? 'Değiştir' : 'Seç' }}</a>
     </div>
     <template v-if="!choosing">
@@ -118,11 +121,6 @@ async function savePicks() {
         <button type="button" class="btn ghost small" @click="choosing = false">Vazgeç</button>
       </div>
     </template>
-  </section>
-
-  <section v-if="review" class="card review" :class="review.tone">
-    <h2>Günün özeti</h2>
-    <ul><li v-for="l in review.lines" :key="l">{{ l }}</li></ul>
   </section>
 </template>
 
@@ -157,4 +155,6 @@ async function savePicks() {
 .review.good { background: var(--accent-soft); }
 .review.warn { background: var(--warn-bg); }
 .review ul { padding-left: 1.1em; }
+.habits-head { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.review-list { margin: 6px 0 0; padding-left: 1.1em; }
 </style>
