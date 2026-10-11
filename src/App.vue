@@ -6,6 +6,7 @@ import MenuView from '@/views/MenuView.vue'
 import TrackView from '@/views/TrackView.vue'
 import SportView from '@/views/SportView.vue'
 import MeView from '@/views/MeView.vue'
+import OnboardingView from '@/views/OnboardingView.vue'
 
 type Tab = 'bugun' | 'menu' | 'spor' | 'takip' | 'ben'
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -43,6 +44,13 @@ onMounted(async () => {
     tab.value = store.hasProfile ? 'bugun' : 'ben'
   }
 })
+// Onboarding finished (profile saved): go to Bugün. (An import that brings a profile does the same.)
+watch(
+  () => store.hasProfile,
+  (has, had) => {
+    if (has && !had && store.loaded) tab.value = 'bugun'
+  },
+)
 watch(tab, (t) => {
   history.replaceState(null, '', `#${t}`)
   window.scrollTo(0, 0)
@@ -64,7 +72,10 @@ window.addEventListener('hashchange', () => {
 </script>
 
 <template>
-  <main v-if="store.loaded">
+  <main v-if="store.loaded && !store.hasProfile">
+    <OnboardingView />
+  </main>
+  <main v-else-if="store.loaded">
     <TodayView v-if="tab === 'bugun'" @go="go" />
     <MenuView v-else-if="tab === 'menu'" @go="go" />
     <SportView v-else-if="tab === 'spor'" @go="go" />
@@ -73,7 +84,7 @@ window.addEventListener('hashchange', () => {
   </main>
   <div v-else class="page muted">Yükleniyor…</div>
 
-  <nav class="tabbar" aria-label="Ana menü">
+  <nav v-if="store.hasProfile" class="tabbar" aria-label="Ana menü">
     <button
       v-for="t in TABS"
       :key="t.id"

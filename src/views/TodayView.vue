@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { getFood, itemTotals, mealTitle, mealTotals, mealWindow, slotPlan, sumTotals, type Slot } from '@/engine'
+import { addDays, getFood, itemTotals, mealTitle, mealTotals, mealWindow, slotPlan, sumTotals, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
@@ -26,11 +26,12 @@ const daysAgo = (iso: string) => Math.max(0, Math.round((Date.parse(`${store.tod
 const openMeal = ref<Slot | null>(null)
 
 const greeting = computed(() => {
+  if (!store.isViewToday) return store.viewDate === addDays(store.todayDate, -1) ? 'Dün' : 'Geçmiş gün'
   const h = new Date().getHours()
   return h < 11 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'
 })
 const dateLabel = computed(() =>
-  new Date(`${store.todayDate}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }),
+  new Date(`${store.viewDate}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }),
 )
 const target = computed(() => store.plan.energy?.target ?? 0)
 const remaining = computed(() => target.value - store.todayTotals.kcal)
@@ -73,6 +74,11 @@ const ACTIONS = [
         <div class="sub">{{ dateLabel }}</div>
         <h1>{{ greeting }}</h1>
       </div>
+      <div class="daynav">
+        <button type="button" class="nav" aria-label="Önceki gün" @click="store.shiftView(-1)">‹</button>
+        <button v-if="!store.isViewToday" type="button" class="btn small" @click="store.viewDate = store.todayDate">Bugün</button>
+        <button type="button" class="nav" aria-label="Sonraki gün" :disabled="store.isViewToday" @click="store.shiftView(1)">›</button>
+      </div>
     </header>
 
     <template v-if="!store.hasProfile">
@@ -113,10 +119,13 @@ const ACTIONS = [
 
       <section class="card">
         <div class="sec-head">
-          <h2>Bugünün öğünleri</h2>
+          <h2>{{ store.isViewToday ? 'Bugünün öğünleri' : 'O günün öğünleri' }}</h2>
           <a href="#menu" @click.prevent="emit('go', 'menu')">Değiştir</a>
         </div>
-        <p v-if="!meals.length" class="muted small">Menü hazırlanıyor…</p>
+        <p v-if="!meals.length" class="muted small">
+          {{ store.isViewToday ? 'Menü hazırlanıyor…' : 'Bu gün bu haftanın menüsünde değil. Yediklerini aşağıdan, "Öğün dışı" bölümüne ekleyebilirsin.' }}
+        </p>
+        <p v-if="!store.isViewToday" class="small past">Geçmiş bir günü dolduruyorsun: eklediklerin bu güne yazılır.</p>
         <div v-for="m in meals" :key="m.slot" class="meal" :class="{ done: eatenSlots.has(m.slot) }">
           <button type="button" class="meal-main" :aria-expanded="openMeal === m.slot" @click="openMeal = openMeal === m.slot ? null : m.slot">
             <div class="time num">{{ m.window.split('–')[0] }}</div>
@@ -175,12 +184,16 @@ const ACTIONS = [
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
     <SheetPanel v-if="sheet === 'backup'" title="Yedekleme" @close="sheet = null"><BackupPanel /></SheetPanel>
-    <MealAddPanel v-if="sheet === 'extra'" :date="store.todayDate" title="Öğün dışı ekle" @close="sheet = null" />
+    <MealAddPanel v-if="sheet === 'extra'" :date="store.viewDate" title="Öğün dışı ekle" @close="sheet = null" />
   </div>
 </template>
 
 <style scoped>
-.hello { margin: 4px 2px 14px; }
+.hello { margin: 4px 2px 14px; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.daynav { display: flex; align-items: center; gap: 6px; }
+.nav { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--surface); box-shadow: var(--shadow); font: inherit; font-size: 1.2rem; font-weight: 800; color: var(--ink); cursor: pointer; }
+.nav:disabled { opacity: 0.35; cursor: default; }
+.past { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 6px 10px; }
 .hello .sub { color: var(--ink-3); font-size: 0.85rem; font-weight: 500; text-transform: capitalize; }
 .hero { display: flex; gap: 16px; align-items: center; }
 .ring-wrap { position: relative; flex: none; }

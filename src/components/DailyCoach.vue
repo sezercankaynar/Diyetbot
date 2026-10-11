@@ -12,7 +12,7 @@ const review = computed(() => {
   const e = store.plan.energy
   const m = store.plan.macros
   if (!e || !m) return null
-  return dayReview(store.todayTotals, e.target, m.proteinG, store.todayLog.water, store.waterTarget)
+  return dayReview(store.todayTotals, e.target, m.proteinG, store.dayLog.water, store.waterTarget)
 })
 const active = computed(() => HABITS.filter((h) => store.activeHabits.includes(h.id)))
 
@@ -21,7 +21,7 @@ const now = ref(new Date())
 const timer = setInterval(() => (now.value = new Date()), 60_000)
 onBeforeUnmount(() => clearInterval(timer))
 const nudge = computed(() =>
-  waterNudge(store.waterReminder, now.value, store.todayLog.water, store.waterTarget, store.todayLog.lastWaterAt),
+  store.isViewToday ? waterNudge(store.waterReminder, now.value, store.todayLog.water, store.waterTarget, store.todayLog.lastWaterAt) : null,
 )
 const editing = ref(false)
 const draft = ref<WaterReminder>({ ...store.waterReminder })
@@ -54,17 +54,17 @@ async function savePicks() {
   <section class="card">
     <div class="row-head">
       <h2>Su</h2>
-      <span class="small muted num">{{ store.todayLog.water }} / {{ store.waterTarget }} bardak</span>
+      <span class="small muted num">{{ store.dayLog.water }} / {{ store.waterTarget }} bardak</span>
     </div>
     <div class="water">
-      <button type="button" class="round" aria-label="Bir bardak çıkar" @click="store.addWater(-1)">−</button>
-      <div class="glasses" :aria-label="`${store.todayLog.water} / ${store.waterTarget} bardak`">
-        <span v-for="i in store.waterTarget" :key="i" class="drop" :class="{ full: i <= store.todayLog.water }" />
+      <button type="button" class="round" aria-label="Bir bardak çıkar" @click="store.addWater(-1, store.viewDate)">−</button>
+      <div class="glasses" :aria-label="`${store.dayLog.water} / ${store.waterTarget} bardak`">
+        <span v-for="i in store.waterTarget" :key="i" class="drop" :class="{ full: i <= store.dayLog.water }" />
       </div>
-      <button type="button" class="round add" aria-label="Bir bardak ekle" @click="store.addWater(1)">+</button>
+      <button type="button" class="round add" aria-label="Bir bardak ekle" @click="store.addWater(1, store.viewDate)">+</button>
     </div>
     <p v-if="nudge" class="nudge small" role="status">💧 {{ nudge }}</p>
-    <div class="remind">
+    <div v-if="store.isViewToday" class="remind">
       <button type="button" class="link small" :aria-expanded="editing" @click="editing ? (editing = false) : openSettings()">
         🔔 Su hatırlatıcısı: <strong>{{ store.waterReminder.on ? `açık · ${intervalText(store.waterReminder.everyMin)}te bir, ${store.waterReminder.start}–${store.waterReminder.end}` : 'kapalı (açmak için dokun)' }}</strong>
       </button>
@@ -101,9 +101,9 @@ async function savePicks() {
       <div class="chips">
         <button
           v-for="h in active" :key="h.id" type="button" class="chip"
-          :aria-pressed="store.todayLog.habits.includes(h.id)" @click="store.toggleHabit(h.id)"
+          :aria-pressed="store.dayLog.habits.includes(h.id)" @click="store.toggleHabit(h.id, store.viewDate)"
         >
-          <span class="dot">{{ store.todayLog.habits.includes(h.id) ? '✓' : '' }}</span>{{ h.label }}
+          <span class="dot">{{ store.dayLog.habits.includes(h.id) ? '✓' : '' }}</span>{{ h.label }}
         </button>
       </div>
     </template>

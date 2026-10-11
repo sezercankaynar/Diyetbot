@@ -40,3 +40,30 @@ export function searchFoods(query: string, limit = 30, foods: Food[] = allFoods(
   }
   return scored.sort((a, b) => b.score - a.score).slice(0, limit).map((x) => x.f)
 }
+
+/**
+ * Ingredients matching a query, best first: a word starting with the query ("un" → "Buğday unu")
+ * before a match inside a word ("bütün").
+ */
+export function searchIngredients<T extends { name: string }>(query: string, list: T[], limit = 12): T[] {
+  const words = foldTr(query.trim()).split(/\s+/).filter(Boolean)
+  if (!words.length) return []
+  const scored: { x: T; score: number }[] = []
+  for (const x of list) {
+    const name = foldTr(x.name)
+    const parts = name.split(/[\s(),/]+/)
+    let score = 0
+    let ok = true
+    for (const w of words) {
+      const st = stems(w)
+      if (parts.some((p) => st.some((s) => p.startsWith(s)))) score += name.startsWith(w) ? 3 : 2
+      else if (st.some((s) => name.includes(s))) score += 1
+      else {
+        ok = false
+        break
+      }
+    }
+    if (ok) scored.push({ x, score: score - name.length / 500 })
+  }
+  return scored.sort((a, b) => b.score - a.score).slice(0, limit).map((s) => s.x)
+}

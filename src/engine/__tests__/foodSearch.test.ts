@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { searchFoods, stems } from '../foodSearch'
+import { searchFoods, searchIngredients, stems } from '../foodSearch'
+import { INGREDIENTS } from '../ingredients'
 
 describe('food search', () => {
   it('stems Turkish suffixes', () => {
@@ -24,5 +25,9 @@ describe('food search', () => {
     expect(searchFoods('popcorn').length).toBeGreaterThan(2)
     expect(searchFoods('cips')[0].group).toBe('ara')
     expect(searchFoods('çiğdem').length).toBeGreaterThan(0)
+  })
+  it('ingredients: word starts first ("un" → flour, not "bütün tavuk")', () => {
+    expect(searchIngredients('un', INGREDIENTS)[0].name).toMatch(/unu/)
+    expect(searchIngredients('tavuk göğüs', INGREDIENTS)[0].id).toBe('tavuk-gogus')
   })
 })

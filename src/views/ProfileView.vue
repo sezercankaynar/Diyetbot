@@ -4,10 +4,12 @@ import { getFood, PREF_GROUPS, PREF_KEYS, SLOT_ORDER, slotPlan, timingTips, type
 import { useAppStore } from '@/stores/app'
 import SegControl from '@/components/SegControl.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
+import SavedFoods from '@/components/SavedFoods.vue'
 import * as L from '@/content/labels'
 import { setTheme, theme, type Theme } from '@/theme'
 
 const store = useAppStore()
+const savedCount = computed(() => store.customFoods.filter((f) => !f.hidden).length || '')
 const THEMES: { value: Theme; label: string }[] = [
   { value: 'system', label: 'Sistem' },
   { value: 'light', label: '☀️ Açık' },
@@ -269,6 +271,11 @@ watch(
     <div class="btn-row">
       <button class="btn" type="button" :disabled="!valid(draft)" @click="finish">Planımı göster →</button>
     </div>
+
+    <details class="fold">
+      <summary>Kayıtlı yemeklerim ve ürünlerim <span class="hint">{{ savedCount }}</span></summary>
+      <div class="fold-body"><SavedFoods /></div>
+    </details>
 
     <details class="fold">
       <summary>Yedekleme</summary>

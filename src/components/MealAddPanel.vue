@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import {
-  dayTotals, foldTr, itemTotals, mealTitle, sumTotals, foodFromRecipe, getFood, INGREDIENTS, ingredientById, isSnackSlot, placeDish, portionText, recipeTotals,
-  searchFoods, stems, validateRecipe, type RecipeLine, type Slot,
-} from '@/engine'
+import { dayTotals, getFood, itemTotals, mealTitle, placeDish, portionText, searchFoods, sumTotals, type Food, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
+import RecipeBuilder from './RecipeBuilder.vue'
 
 // With a slot: put the dish into that menu meal. Without: log something eaten outside meals (today).
 const props = defineProps<{ date: string; slot?: Slot; title: string }>()
@@ -68,47 +66,13 @@ async function confirmPick() {
   emit('close')
 }
 
-// Not in the list: build the dish from ingredients and amounts; values are computed from the ingredient table.
+// Not in the list: build the dish from ingredients (RecipeBuilder); it's saved and picked.
 const manual = ref(false)
-const name = ref('')
-const servings = ref(1)
-const lines = ref<RecipeLine[]>([])
-const iq = ref('')
-const ingResults = computed(() => {
-  const words = foldTr(iq.value.trim()).split(/\s+/).filter(Boolean)
-  if (!words.length) return []
-  return INGREDIENTS.filter((i) => {
-    const n = foldTr(i.name)
-    return words.every((w) => stems(w).some((x) => n.includes(x)))
-  }).slice(0, 12)
-})
-function addIng(id: string) {
-  const ing = ingredientById(id)
-  lines.value.push({ ingredientId: id, grams: ing?.units?.[0]?.grams ?? 100 })
-  iq.value = ''
-}
-const totals = computed(() => recipeTotals(lines.value))
-const per = computed(() => {
-  const n = Math.max(1, servings.value || 1)
-  const t = totals.value
-  return { kcal: Math.round(t.kcal / n), protein: Math.round(t.protein / n), carb: Math.round(t.carb / n), fat: Math.round(t.fat / n) }
-})
-const foodSlot = (): Slot => (!props.slot || isSnackSlot(props.slot) ? 'snack' : props.slot)
-const recipeErrors = computed(() => validateRecipe({ name: name.value, lines: lines.value, servings: servings.value, slots: [foodSlot()], kind: 'hearty' }))
 function openManual() {
   manual.value = true
   picked.value = null
-  name.value = query.value.trim()
-  lines.value = []
-  servings.value = 1
 }
-async function saveManual() {
-  if (recipeErrors.value.length) return
-  // Saved for search: menus won't suggest it by themselves.
-  const food = foodFromRecipe(
-    { name: name.value, lines: lines.value, servings: servings.value, slots: [foodSlot()], kind: 'hearty', noMenu: true },
-    Date.now().toString(36),
-  )
+async function saveManual(food: Food) {
   await store.saveCustomFood(food)
   manual.value = false
   pick(food.id)
@@ -157,50 +121,7 @@ async function saveManual() {
       <button type="button" class="btn ghost wide" @click="openManual">＋ Yemek ekle (malzemelerden)</button>
     </template>
 
-    <section v-if="manual" class="card">
-      <h2>Yemek ekle</h2>
-      <p class="small muted">Malzemeleri ve miktarlarını seç; kalori ve makrolar malzeme tablosundan (USDA / TürKomp) hesaplanır. Yemek kaydedilir, sonraki aramalarda da çıkar.</p>
-      <label class="field"><span class="label">Yemeğin adı</span><input v-model="name" type="text" placeholder="Ör. Annemin tavuklu pilavı" /></label>
-      <label class="field"><span class="label">Bu miktar kaç porsiyon?</span>
-        <input v-model.number="servings" type="number" inputmode="numeric" min="1" max="30" /></label>
-      <div class="field">
-        <span class="label">Malzemeler</span>
-        <input v-model="iq" type="search" placeholder="Malzeme ara: pirinç, tavuk, tereyağı…" aria-label="Malzeme ara" />
-        <ul v-if="ingResults.length" class="results ing">
-          <li v-for="i in ingResults" :key="i.id">
-            <button type="button" class="ing-btn" @click="addIng(i.id)">
-              <span>{{ i.name }}</span><span class="small muted num">{{ i.kcal }} kcal/100 g</span>
-            </button>
-          </li>
-        </ul>
-      </div>
-      <div v-for="(l, idx) in lines" :key="idx" class="line">
-        <div class="line-top">
-          <span class="line-name">{{ ingredientById(l.ingredientId)?.name }}</span>
-          <button type="button" class="btn danger small" :aria-label="`${ingredientById(l.ingredientId)?.name} çıkar`" @click="lines.splice(idx, 1)">✕</button>
-        </div>
-        <div class="line-ctrl">
-          <input v-model.number="l.grams" type="number" inputmode="decimal" min="0" :aria-label="`${ingredientById(l.ingredientId)?.name} gram`" />
-          <span class="small muted">g</span>
-          <span class="small muted num">{{ Math.round(((ingredientById(l.ingredientId)?.kcal ?? 0) * (l.grams || 0)) / 100) }} kcal</span>
-        </div>
-        <div v-if="ingredientById(l.ingredientId)?.units?.length" class="units">
-          <button v-for="u in ingredientById(l.ingredientId)!.units" :key="u.label" type="button" class="unit" @click="l.grams = u.grams">{{ u.label }}</button>
-        </div>
-      </div>
-      <div v-if="lines.length" class="per">
-        <div class="label">1 porsiyon</div>
-        <div class="per-row num">
-          <strong>{{ per.kcal }} kcal</strong>
-          <span>P {{ per.protein }} g</span><span>K {{ per.carb }} g</span><span>Y {{ per.fat }} g</span>
-        </div>
-      </div>
-      <ul v-if="recipeErrors.length && (name || lines.length)" class="small warn"><li v-for="e in recipeErrors" :key="e">{{ e }}</li></ul>
-      <div class="row">
-        <button type="button" class="btn ghost small" @click="manual = false">Vazgeç</button>
-        <button type="button" class="btn" :disabled="recipeErrors.length > 0" @click="saveManual">Kaydet ve seç</button>
-      </div>
-    </section>
+    <RecipeBuilder v-if="manual" :initial-name="query.trim()" :slot="slot" save-label="Kaydet ve seç" @save="saveManual" @cancel="manual = false" />
   </SheetPanel>
 </template>
 

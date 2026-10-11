@@ -36,6 +36,7 @@ import {
   type WeekMenu,
   type WeighIn,
   DEFAULT_WATER_REMINDER,
+  addDays,
   backupDue,
   plateauAdvice,
   stepTarget,
@@ -138,9 +139,24 @@ export const useAppStore = defineStore('app', () => {
   const menuCtx = computed(() =>
     buildMenuContext(profile.value, plan.value, { liked: liked.value, disliked: disliked.value }),
   )
-  const todayMenu = computed(() => menu.value?.days.find((d) => d.date === todayDate.value) ?? null)
-  const todayDiary = computed(() => diary.value.filter((e) => e.date === todayDate.value))
-  const todayTotals = computed(() => diaryTotals(diary.value, todayDate.value))
+  /**
+   * The day shown on the Bugün screen: today, or an earlier day the user went back to (to log what they
+   * forgot). The "today*" views below follow it; reminders always use the real today.
+   */
+  const viewDate = ref(today())
+  const isViewToday = computed(() => viewDate.value === todayDate.value)
+  const todayMenu = computed(() => menu.value?.days.find((d) => d.date === viewDate.value) ?? null)
+  const todayDiary = computed(() => diary.value.filter((e) => e.date === viewDate.value))
+  const todayTotals = computed(() => diaryTotals(diary.value, viewDate.value))
+  const dayLog = computed<DailyLog>(
+    () => daily.value.find((l) => l.date === viewDate.value) ?? { date: viewDate.value, water: 0, habits: [] },
+  )
+  /** Go back (−1) or forward (+1) a day on Bugün; not into the future, at most 30 days back. */
+  function shiftView(delta: number) {
+    const next = addDays(viewDate.value, delta)
+    if (next > todayDate.value || next < addDays(todayDate.value, -30)) return
+    viewDate.value = next
+  }
   const menuOutdated = computed(() => !!menu.value && !!menuCtx.value && isMenuOutdated(menu.value, menuCtx.value))
   const sortedAdjustments = computed(() => [...adjustments.value].sort((a, b) => b.date.localeCompare(a.date)))
 
@@ -224,6 +240,8 @@ export const useAppStore = defineStore('app', () => {
 
   /** Builds this week's menu if there is none yet (or it's from an earlier week). */
   async function ensureMenu() {
+    // A new day (app left open overnight): Bugün shows the new today.
+    if (todayDate.value !== today() || viewDate.value > today()) viewDate.value = today()
     todayDate.value = today()
     const ctx = menuCtx.value
     if (!ctx || !hasProfile.value) return
@@ -283,7 +301,8 @@ export const useAppStore = defineStore('app', () => {
 
   async function logFoods(items: CheckItem[], menuSlot?: Slot) {
     for (const i of items) {
-      const e: DiaryEntry = { id: newId(), date: todayDate.value, foodId: i.foodId, factor: i.factor, menuSlot }
+      // Logged on the day shown on Bugün (today, or an earlier day being filled in).
+      const e: DiaryEntry = { id: newId(), date: viewDate.value, foodId: i.foodId, factor: i.factor, menuSlot }
       await repo.putDiary(e)
       diary.value = [...diary.value, e]
     }
@@ -326,7 +345,7 @@ export const useAppStore = defineStore('app', () => {
     if (!r) return null
     menu.value = r.menu
     await repo.saveMenu(menu.value)
-    if (eaten && date === todayDate.value) {
+    if (eaten && date === viewDate.value) {
       for (const e of todayDiary.value.filter((x) => x.menuSlot === slot)) await deleteDiary(e.id)
       await logFoods([{ foodId, factor }], slot)
     }
@@ -357,16 +376,20 @@ export const useAppStore = defineStore('app', () => {
     }
     return r
   }
-  async function addWater(delta: number) {
+  async function addWater(delta: number, date = todayDate.value) {
+    if (date !== todayDate.value) {
+      const cur = daily.value.find((l) => l.date === date)?.water ?? 0
+      return updateDay(date, { water: Math.max(0, cur + delta) })
+    }
     const before = todayLog.value.water
     await updateToday({ water: Math.max(0, before + delta), ...(delta > 0 ? { lastWaterAt: new Date().toISOString() } : {}) })
     // Reaching (or dropping back under) the target changes today's reminders.
     const t = waterTarget.value
     if (waterReminder.value.on && (before >= t) !== (todayLog.value.water >= t)) await rescheduleWater()
   }
-  function toggleHabit(id: string) {
-    const h = todayLog.value.habits
-    return updateToday({ habits: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] })
+  function toggleHabit(id: string, date = todayDate.value) {
+    const h = daily.value.find((l) => l.date === date)?.habits ?? []
+    return updateDay(date, { habits: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] })
   }
   const setSteps = (steps: number) => updateToday({ steps: Math.max(0, Math.round(steps)) })
   const toggleWorkout = () => updateToday({ workout: !todayLog.value.workout })
@@ -484,6 +507,7 @@ export const useAppStore = defineStore('app', () => {
     weighReminder, weighNotify, setWeighReminder, markBackup, lastBackupAt, firstUse, weekReview, plateau, backupReminder,
     liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
+    viewDate, isViewToday, dayLog, shiftView,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
     ensureMenu, regenerateMenu, setMenuMeal, toggleSpecialDay, rateDish, logFoods, deleteDiary, setDiaryAmount, toggleMenuEaten,
