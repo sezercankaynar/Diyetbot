@@ -26,15 +26,19 @@ export function searchFoods(query: string, limit = 30, foods: Food[] = allFoods(
     const hay = `${name} ${foldTr(f.brand ?? '')} ${foldTr(f.portion)} ${foldTr(f.keywords ?? '')}`
     let score = 0
     let ok = true
+    const nameWords = name.split(/[\s(),/+.-]+/)
     for (const w of words) {
       const hit = stems(w).find((s) => hay.includes(s))
       if (!hit) { ok = false; break }
       score += hit === w ? 2 : 1
       if (name.includes(hit)) score += 1
       if (name.startsWith(hit)) score += 1
+      // "peynir" → "Beyaz peynir" (the food itself) before "Peynirli gözleme" (a dish with it).
+      if (nameWords.includes(w)) score += 1.5
     }
     if (!ok) continue
     if (!f.brand) score += 1.5 // generic dishes before chain/packaged items
+    if (name.includes('+') && !query.includes('+')) score -= 1 // "peynir" → the cheese before a combo plate
     if (f.id.startsWith('ev-')) score += 2 // the user's own dishes first
     scored.push({ f, score: score - name.length / 200 })
   }

@@ -148,7 +148,7 @@ async function regenerate() {
             <MealPlate :item="a" compact />
             <button type="button" class="btn small" @click="choose(a)">Seç</button>
           </div>
-          <button type="button" class="link no" @click="dislike(item.foodId)">✕ {{ mealTitle(item) }} bir daha önerilmesin</button>
+          <button v-if="!item.own" type="button" class="link no" @click="dislike(item.foodId)">✕ {{ mealTitle(item) }} bir daha önerilmesin</button>
         </div>
       </section>
 

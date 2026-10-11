@@ -61,8 +61,8 @@ function pick(id: string) {
   factor.value = getFood(id)?.defaultFactor ?? 1
   eaten.value = isToday.value
   manual.value = false
-  // After the first dish, the next ones join the plate.
-  append.value = added.value.length > 0
+  // On a plate the user is building (or after the first dish here), the next ones join it.
+  append.value = added.value.length > 0 || !!current.value?.own
 }
 async function confirmPick() {
   if (!picked.value || !placed.value) return

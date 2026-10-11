@@ -23,6 +23,8 @@ export interface MenuItem {
   leftover?: boolean
   /** Name of the plate (e.g. "Etli taze fasulye" or "Kahvaltı: yumurta, peynir, zeytin"). */
   title?: string
+  /** Put together by the user (searched dishes), not a suggested plate: new dishes join it. */
+  own?: boolean
 }
 
 export const partsOf = (i: MenuItem): Part[] => [{ foodId: i.foodId, factor: i.factor }, ...(i.sides ?? [])]
@@ -420,8 +422,9 @@ export function placeDish(
         slot, foodId: current.foodId, factor: current.factor,
         sides: [...(current.sides ?? []), { foodId, factor }],
         title: `${mealTitle(current)}, ${plateName(getFood(foodId)?.name ?? '')}`,
+        own: true,
       }
-    : { slot, foodId, factor }
+    : { slot, foodId, factor, own: true }
   const total = (items: MenuItem[]) => sumTotals([mealTotals(item), ...items.map(mealTotals)])
   if (within(total(others), limit)) return { menu: setMeal(menu, date, item), factor, shrunk: false, over: false }
 
