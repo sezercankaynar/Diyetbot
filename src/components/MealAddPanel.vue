@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { dayTotals, getFood, mealTitle, placeDish, portionText, searchFoods, type Food, type Slot } from '@/engine'
+import { dayTotals, getFood, mealTitle, mealTotals, placeDish, portionText, searchFoods, type Food, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
@@ -29,9 +29,14 @@ const factor = ref(1)
 const PORTIONS = [0.5, 0.75, 1, 1.5, 2, 3]
 const isToday = computed(() => props.date === store.todayDate)
 const eaten = ref(false)
+// Replace the plate, or add the dish next to what's on it (so a meal can be built item by item).
+const append = ref(false)
+const added = ref<string[]>([])
 const placed = computed(() =>
   picked.value && store.menu && store.menuCtx
-    ? placeDish(store.menu, store.menuCtx, props.date, props.slot, picked.value, { factor: factor.value, locked: store.eatenSlotsOn(props.date) })
+    ? placeDish(store.menu, store.menuCtx, props.date, props.slot, picked.value, {
+        factor: factor.value, locked: store.eatenSlotsOn(props.date), append: append.value,
+      })
     : null,
 )
 // Day totals after adding: the menu day (meal mode) or what's eaten today (extra mode).
@@ -56,12 +61,16 @@ function pick(id: string) {
   factor.value = getFood(id)?.defaultFactor ?? 1
   eaten.value = isToday.value
   manual.value = false
+  // After the first dish, the next ones join the plate.
+  append.value = added.value.length > 0
 }
 async function confirmPick() {
-  if (!picked.value) return
-  if (placed.value) await store.addToMenu(props.date, props.slot, picked.value, factor.value, eaten.value)
-  else return
-  emit('close')
+  if (!picked.value || !placed.value) return
+  await store.addToMenu(props.date, props.slot, picked.value, factor.value, eaten.value, append.value)
+  added.value.push(getFood(picked.value)?.name ?? '')
+  picked.value = null
+  query.value = ''
+  nextTick(() => input.value?.focus())
 }
 
 // Not in the list: build the dish from ingredients (RecipeBuilder); it's saved and picked.
@@ -80,9 +89,16 @@ async function saveManual(food: Food) {
 <template>
   <SheetPanel :title="title" @close="emit('close')">
     <p class="small muted">
-      Menü dışında yemek istediğin bir şeyi ara ve seç. Kalorisi ve değerleri hazır gelir.
-      <template v-if="current"> Seçtiğin yemek bu öğündeki <strong>{{ mealTitle(current) }}</strong> tabağının yerine geçer.</template>
+      Yediğin ya da yemek istediğin şeyleri tek tek ara ve ekle; bir öğüne istediğin kadar yemek koyabilirsin. Kalorisi ve değerleri hazır gelir.
     </p>
+    <div v-if="current" class="now small">
+      <span class="label">Şu an bu öğünde</span>
+      <div>{{ mealTitle(current) }} · <span class="num">{{ mealTotals(current).kcal }} kcal</span></div>
+    </div>
+    <div v-if="added.length" class="done-row">
+      <span class="small ok" role="status">Eklendi ✓ Başka bir şey de ekleyebilirsin.</span>
+      <button type="button" class="btn small" @click="emit('close')">Bitti</button>
+    </div>
 
     <input ref="input" v-model="query" type="search" placeholder="Ör. tavuklu pilav, mercimek çorbası, lahmacun" aria-label="Yemek ara" @input="picked = null" />
 
@@ -91,6 +107,10 @@ async function saveManual(food: Food) {
       <div class="label" style="margin-top: 10px">Ne kadar?</div>
       <div class="chips">
         <button v-for="x in PORTIONS" :key="x" type="button" :aria-pressed="x === factor" @click="factor = x">{{ portionText(x) }}</button>
+      </div>
+      <div v-if="current" class="mode">
+        <button type="button" :aria-pressed="!append" @click="append = false">Tabağın yerine koy</button>
+        <button type="button" :aria-pressed="append" @click="append = true">Tabağa ekle</button>
       </div>
       <label v-if="isToday" class="check"><input v-model="eaten" type="checkbox" /><span>Bunu yedim (bugünün kaydına da ekle)</span></label>
       <p class="small muted">
@@ -103,7 +123,7 @@ async function saveManual(food: Food) {
       </p>
       <div class="row">
         <button type="button" class="btn ghost small" @click="picked = null">Geri</button>
-        <button type="button" class="btn" @click="confirmPick">{{ overBy.length ? 'Yine de ekle' : 'Menüye koy' }}</button>
+        <button type="button" class="btn" @click="confirmPick">{{ overBy.length ? 'Yine de ekle' : append ? 'Tabağa ekle' : 'Menüye koy' }}</button>
       </div>
     </section>
 
@@ -132,6 +152,12 @@ async function saveManual(food: Food) {
 .over { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 8px 10px; }
 .row { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
 .wide { width: 100%; margin-top: 6px; }
+.now { background: var(--surface); border-radius: 12px; padding: 8px 10px; margin: 8px 0; box-shadow: var(--shadow); }
+.done-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 0; }
+.ok { color: var(--accent); font-weight: 650; }
+.mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.mode button { border: 1px solid var(--line); border-radius: 12px; padding: 8px; font: inherit; font-size: 0.82rem; font-weight: 650; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.mode button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .warn { color: var(--stop-border); }
 .ing { box-shadow: none; background: var(--surface-2); }
 .ing-btn { display: flex; justify-content: space-between; gap: 8px; }

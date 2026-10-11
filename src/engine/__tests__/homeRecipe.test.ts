@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { foodFromRecipe, foodFromValues, recipeTotals, validateRecipe } from '../homeRecipe'
 import { INGREDIENTS, ingredientById } from '../ingredients'
 import { allFoods, getFood, setExtraFoods } from '../foods'
-import { buildMenuContext, dayTotals, generateWeekMenu, placeDish, swapItem } from '../menu'
+import { buildMenuContext, dayTotals, generateWeekMenu, mealTitle, partsOf, placeDish, swapItem } from '../menu'
 import { buildPlan } from '../plan'
 import { profile } from './helpers'
 
@@ -101,5 +101,20 @@ describe('home recipes', () => {
     // A meal the day didn't have is added in meal order.
     const added = swapItem(menu, day.date, 'snack', own.id, 0.5).days[2]
     expect(added.items.map((i) => i.slot)).toEqual(['breakfast', 'snack', 'dinner'])
+  })
+
+  it('builds a meal item by item: the second dish joins the plate instead of replacing it', () => {
+    const own = foodFromValues({ name: 'Ev mantısı', kcal: 400, protein: 18, carb: 50, fat: 14, slots: ['dinner'], kind: 'hearty' }, 'm')
+    const soup = foodFromValues({ name: 'Ev çorbası', kcal: 120, protein: 5, carb: 15, fat: 4, slots: ['dinner'], kind: 'light' }, 's')
+    setExtraFoods([own, soup])
+    const p = profile({ mealSlots: ['breakfast', 'dinner'] })
+    const ctx = buildMenuContext(p, buildPlan(p))!
+    const menu = generateWeekMenu(ctx, '2026-10-05')
+    const day = menu.days[2]
+    const first = placeDish(menu, ctx, day.date, 'dinner', own.id)!.menu
+    const second = placeDish(first, ctx, day.date, 'dinner', soup.id, { append: true })!.menu
+    const meal = second.days[2].items.find((i) => i.slot === 'dinner')!
+    expect(partsOf(meal).map((x) => x.foodId)).toEqual([own.id, soup.id])
+    expect(mealTitle(meal)).toBe('Ev mantısı, Ev çorbası')
   })
 })

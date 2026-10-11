@@ -341,15 +341,21 @@ export const useAppStore = defineStore('app', () => {
   const eatenSlotsOn = (date: string) => diary.value.filter((e) => e.date === date && e.menuSlot).map((e) => e.menuSlot as Slot)
 
   /** The user's chosen dish into one meal of a menu day; optionally also logged as eaten (today only). */
-  async function addToMenu(date: string, slot: Slot, foodId: string, factor = 1, eaten = false) {
+  async function addToMenu(date: string, slot: Slot, foodId: string, factor = 1, eaten = false, append = false) {
     if (!menu.value || !menuCtx.value) return null
-    const r = placeDish(menu.value, menuCtx.value, date, slot, foodId, { factor, locked: eatenSlotsOn(date) })
+    const r = placeDish(menu.value, menuCtx.value, date, slot, foodId, { factor, locked: eatenSlotsOn(date), append })
     if (!r) return null
     menu.value = r.menu
     await repo.saveMenu(menu.value)
     if (eaten && date === viewDate.value) {
-      for (const e of todayDiary.value.filter((x) => x.menuSlot === slot)) await deleteDiary(e.id)
-      await logFoods([{ foodId, factor }], slot)
+      const logged = todayDiary.value.filter((x) => x.menuSlot === slot)
+      if (append && logged.length) await logFoods([{ foodId, factor }], slot)
+      else {
+        // Replaced, or added to a plate not ticked yet: the whole meal as it now stands is what was eaten.
+        for (const e of logged) await deleteDiary(e.id)
+        const item = r.menu.days.find((d) => d.date === date)?.items.find((i) => i.slot === slot)
+        await logFoods(item ? partsOf(item) : [{ foodId, factor }], slot)
+      }
     }
     return r
   }

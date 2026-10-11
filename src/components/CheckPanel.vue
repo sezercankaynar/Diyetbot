@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { evaluateMeal, getFood, searchFoods, type CheckItem, type Food } from '@/engine'
+import { evaluateMeal, getFood, searchFoods, type CheckItem, type Food, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
 import PackagedPanel from './PackagedPanel.vue'
 import RecipeBuilder from './RecipeBuilder.vue'
 
-defineProps<{ title?: string }>()
+// With a slot, what's saved is logged as that meal (what was eaten instead of / on top of the menu plate).
+const props = defineProps<{ title?: string; slot?: Slot }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
@@ -74,7 +75,7 @@ function useAlternative(foodId: string, factor: number) {
   items.value = [{ foodId, factor }]
 }
 async function eat() {
-  await store.logFoods(items.value)
+  await store.logFoods(items.value, props.slot)
   saved.value = true
   items.value = []
 }
@@ -87,8 +88,9 @@ async function eat() {
     </template>
     <template v-else>
       <p class="small muted">
-        Yemeğini ara ve tabağa ekle (birden fazla olabilir, porsiyonu − / + ile değiştir). Uygulama yiyip yiyemeyeceğini söyler;
-        yediysen "Yedim, kaydet" de.
+        <template v-if="slot">Bu öğünde yediklerini tek tek ara ve tabağa ekle (porsiyonu − / + ile değiştir), sonra "Yedim, kaydet" de. Menüdeki tabak yerine bunlar sayılır.</template>
+        <template v-else>Yemeğini ara ve tabağa ekle (birden fazla olabilir, porsiyonu − / + ile değiştir). Uygulama yiyip yiyemeyeceğini söyler;
+        yediysen "Yedim, kaydet" de.</template>
       </p>
       <input
         v-model="query"
@@ -116,7 +118,7 @@ async function eat() {
       </div>
       <RecipeBuilder v-if="building" :initial-name="query.trim()" save-label="Kaydet ve tabağa ekle" @save="saveBuilt" @cancel="building = false" />
 
-      <p v-if="saved" class="small saved" role="status">Kaydedildi ✓ {{ store.isViewToday ? 'Bugünkü' : 'O günkü' }} listene eklendi.</p>
+      <p v-if="saved" class="small saved" role="status">Kaydedildi ✓ {{ slot ? 'Bu öğüne eklendi; başka bir şey de ekleyebilirsin.' : `${store.isViewToday ? 'Bugünkü' : 'O günkü'} listene eklendi.` }}</p>
 
       <section v-if="items.length" class="card" style="margin-top: 12px">
         <h2>Tabağın</h2>

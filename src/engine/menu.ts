@@ -406,15 +406,24 @@ export interface Placement {
  */
 export function placeDish(
   menu: WeekMenu, ctx: MenuContext, date: string, slot: Slot, foodId: string,
-  opts: { factor?: number; locked?: Slot[] } = {},
+  opts: { factor?: number; locked?: Slot[]; append?: boolean } = {},
 ): Placement | null {
   const day = menu.days.find((d) => d.date === date)
   if (!day) return null
   const factor = opts.factor ?? 1
   const limit = dayLimit(ctx)
   const others = day.items.filter((i) => i.slot !== slot)
-  const total = (items: MenuItem[]) => sumTotals([itemTotals(foodId, factor), ...items.map(mealTotals)])
-  if (within(total(others), limit)) return { menu: swapItem(menu, date, slot, foodId, factor), factor, shrunk: false, over: false }
+  const current = day.items.find((i) => i.slot === slot)
+  // Either the dish replaces the meal, or (append) it joins what's already on the plate.
+  const item: MenuItem = opts.append && current
+    ? {
+        slot, foodId: current.foodId, factor: current.factor,
+        sides: [...(current.sides ?? []), { foodId, factor }],
+        title: `${mealTitle(current)}, ${plateName(getFood(foodId)?.name ?? '')}`,
+      }
+    : { slot, foodId, factor }
+  const total = (items: MenuItem[]) => sumTotals([mealTotals(item), ...items.map(mealTotals)])
+  if (within(total(others), limit)) return { menu: setMeal(menu, date, item), factor, shrunk: false, over: false }
 
   const locked = others.filter((i) => opts.locked?.includes(i.slot))
   const free = others.filter((i) => !opts.locked?.includes(i.slot))
@@ -424,7 +433,7 @@ export function placeDish(
   const shrunk = fitted.some((i, k) => JSON.stringify(partsOf(i)) !== JSON.stringify(partsOf(free[k])))
   const over = !within(sumTotals(fitted.map(mealTotals)), room)
   const next = { ...menu, days: menu.days.map((d) => (d.date === date ? { ...d, items: [...locked, ...fitted] } : d)) }
-  return { menu: swapItem(next, date, slot, foodId, factor), factor, shrunk, over }
+  return { menu: setMeal(next, date, item), factor, shrunk, over }
 }
 
 /** Shrinks portions on days that went over the budget (e.g. after a saved dish was edited). */

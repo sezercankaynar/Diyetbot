@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { addDays, getFood, itemTotals, mealTitle, mealTotals, mealWindow, slotPlan, sumTotals, type Slot } from '@/engine'
+import { addDays, getFood, itemTotals, mealTitle, mealTotals, mealWindow, partsOf, plateName, slotPlan, sumTotals, type MenuItem, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
@@ -46,7 +46,7 @@ const meals = computed(() => {
         ...sp,
         item,
         food: item ? getFood(item.foodId) : undefined,
-        title: item ? mealTitle(item) : '',
+        title: !item ? '' : eatenSlots.value.has(sp.slot) ? eatenTitle(sp.slot, item) : mealTitle(item),
         // Once eaten, show what was actually logged (amounts may have been corrected).
         totals: !item ? undefined : eatenSlots.value.has(sp.slot)
           ? sumTotals(store.todayDiary.filter((e) => e.menuSlot === sp.slot).map((e) => itemTotals(e.foodId, e.factor)))
@@ -57,6 +57,14 @@ const meals = computed(() => {
     .filter((m) => m.item && m.food)
 })
 const eatenSlots = computed(() => new Set(store.todayDiary.filter((e) => e.menuSlot).map((e) => e.menuSlot)))
+// Once ticked, the title follows what was logged when it's not the menu plate.
+function eatenTitle(slot: Slot, item: MenuItem) {
+  const ids = store.todayDiary.filter((e) => e.menuSlot === slot).map((e) => e.foodId)
+  const plate = partsOf(item).map((x) => x.foodId)
+  const same = ids.length === plate.length && ids.every((id) => plate.includes(id))
+  return same ? mealTitle(item) : ids.map((id) => plateName(getFood(id)?.name ?? '')).join(', ')
+}
+const slotSheet = ref<{ slot: Slot; label: string } | null>(null)
 const extras = computed(() => store.todayDiary.filter((e) => !e.menuSlot))
 
 const ACTIONS = [
@@ -143,10 +151,14 @@ const ACTIONS = [
             @click="store.toggleMenuEaten(m.slot)"
           >✓</button>
           <div v-if="openMeal === m.slot" class="meal-more small muted">
-            <EatenParts v-if="eatenSlots.has(m.slot)" :slot="m.slot" />
+            <template v-if="eatenSlots.has(m.slot)">
+              <EatenParts :slot="m.slot" />
+              <button type="button" class="btn ghost small" @click="slotSheet = { slot: m.slot, label: m.label }">＋ Bu öğüne başka bir şey ekle</button>
+            </template>
             <template v-else>
               <MealPlate :item="m.item!" />
               <button type="button" class="btn ghost small" @click="store.toggleMenuEaten(m.slot)">Yedim, miktarları düzelteceğim</button>
+              <button type="button" class="btn ghost small" @click="slotSheet = { slot: m.slot, label: m.label }">Bunu yemedim, başka şeyler yedim</button>
             </template>
             <div>Önerilen saat: <span class="num">{{ m.window }}</span></div>
           </div>
@@ -180,6 +192,7 @@ const ACTIONS = [
     </template>
 
     <CheckPanel v-if="sheet === 'check'" @close="sheet = null" />
+    <CheckPanel v-if="slotSheet" :slot="slotSheet.slot" :title="`${slotSheet.label}: ne yedin?`" @close="slotSheet = null" />
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
     <SheetPanel v-if="sheet === 'backup'" title="Yedekleme" @close="sheet = null"><BackupPanel /></SheetPanel>
