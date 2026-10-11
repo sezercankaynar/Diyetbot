@@ -19,6 +19,12 @@ const timeTips = computed(() => timingTips(slotPlan(draft.value), draft.value.me
 // ── Which meals (öğünler) ──
 const MEAL_LABEL: Record<Slot, string> = { breakfast: 'Kahvaltı', lunch: 'Öğle', snack: 'Ara öğün', dinner: 'Akşam', night: 'Gece ara öğün' }
 const activeSlots = computed<Slot[]>(() => slotPlan(draft.value).map((s) => s.slot))
+const slotLabels = computed(() => Object.fromEntries(slotPlan(draft.value).map((s) => [s.slot, s.label])) as Record<Slot, string>)
+/** Ramazan on: usual sahur/iftar times to start from (the user sets their city's exact times). */
+function toggleRamadan(on: boolean) {
+  draft.value.ramadan = on
+  if (on) draft.value.mealTimes = { ...draft.value.mealTimes, breakfast: '04:00', dinner: '18:30', nightSnack: '21:30' }
+}
 function toggleMeal(s: Slot) {
   const cur = activeSlots.value
   const next = cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]
@@ -178,9 +184,17 @@ watch(
     </details>
 
     <details class="fold">
-      <summary>Öğün düzeni</summary>
+      <summary>Öğün düzeni<span v-if="draft.ramadan" class="hint">Ramazan</span></summary>
       <div class="fold-body">
-      <div class="field" style="margin-top: 0">
+      <label class="check" style="margin-top: 0">
+        <input :checked="draft.ramadan" type="checkbox" @change="toggleRamadan(($event.target as HTMLInputElement).checked)" />
+        <span>Ramazan / oruç düzeni: sahur, iftar ve iftardan sonra hafif bir ara öğün</span>
+      </label>
+      <p v-if="draft.ramadan" class="small muted">
+        İftar çorba ve hurmayla açılır, ana öğün iftardır. Sahurda protein ve lifli yiyecekler gün boyu tok tutar.
+        Saatleri aşağıdan kendi şehrinin sahur ve iftar vaktine göre ayarla. Ramazan bitince bu kutuyu kapat.
+      </p>
+      <div v-if="!draft.ramadan" class="field">
         <span class="label">Hangi öğünleri yiyorsun?</span>
         <div class="meal-chips">
           <button
@@ -191,7 +205,7 @@ watch(
         <p class="small muted">En az 2 öğün seç. Menü sadece seçtiğin öğünleri hazırlar.</p>
       </div>
       <template v-for="sl in STYLE_SLOTS" :key="sl">
-        <div v-if="activeSlots.includes(sl)" class="field">
+        <div v-if="!draft.ramadan && activeSlots.includes(sl)" class="field">
           <span class="label">{{ MEAL_LABEL[sl] }} nasıl olsun?</span>
           <SegControl v-model="draft.mealStyle[sl]" :options="L.MEAL_STYLE" :label="MEAL_LABEL[sl]" />
         </div>
@@ -204,7 +218,7 @@ watch(
       <div class="field">
         <span class="label">Öğün saatleri (başlangıç)</span>
         <div class="times">
-          <label v-for="sl in activeSlots" :key="sl"><span class="small muted">{{ MEAL_LABEL[sl] }}</span>
+          <label v-for="sl in activeSlots" :key="sl"><span class="small muted">{{ slotLabels[sl] }}</span>
             <input v-model="draft.mealTimes[TIME_KEY[sl]]" type="time" /></label>
         </div>
         <ul v-if="timeTips.length" class="small tips"><li v-for="t in timeTips" :key="t">{{ t }}</li></ul>

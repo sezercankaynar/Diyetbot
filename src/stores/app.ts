@@ -41,6 +41,7 @@ import {
 } from '@/engine'
 import { parseBackup, repo, type Backup } from '@/db'
 import { scheduleWaterNotifications, type ScheduleResult } from '@/native/waterNotifications'
+import { readSteps, type StepsResult } from '@/native/steps'
 
 export const today = (): string => {
   const d = new Date()
@@ -68,6 +69,8 @@ export const useAppStore = defineStore('app', () => {
   const waterReminder = ref<WaterReminder>({ ...DEFAULT_WATER_REMINDER })
   /** Result of the last notification scheduling ('denied' → notifications are off for the app). */
   const waterNotify = ref<ScheduleResult | null>(null)
+  /** Steps come from Health Connect (set after the first successful sync). */
+  const stepsAuto = ref(false)
   const todayLog = computed<DailyLog>(
     () => daily.value.find((l) => l.date === todayDate.value) ?? { date: todayDate.value, water: 0, habits: [] },
   )
@@ -144,16 +147,19 @@ export const useAppStore = defineStore('app', () => {
     daily.value = await repo.listDaily()
     activeHabits.value = settings?.habits ?? []
     waterReminder.value = { ...DEFAULT_WATER_REMINDER, ...settings?.water }
+    stepsAuto.value = !!settings?.stepsAuto
     syncExtraFoods()
     menu.value = (await repo.loadMenu()) ?? null
     loaded.value = true
     await ensureMenu()
     if (waterReminder.value.on) void rescheduleWater()
+    if (stepsAuto.value) void syncSteps(false)
   }
 
   const saveSettings = () =>
     repo.saveSettings({
       diet: dietChoice.value, liked: liked.value, disliked: disliked.value, habits: activeHabits.value, water: waterReminder.value,
+      stepsAuto: stepsAuto.value,
     })
 
   /** (Re)schedules the next week of water reminders; today's are dropped once the target is reached. */
@@ -188,7 +194,23 @@ export const useAppStore = defineStore('app', () => {
     if (!ctx) return
     const week = mondayOf(todayDate.value)
     const seed = menu.value?.weekStart === week ? menu.value.seed + 1 : 1
-    menu.value = generateWeekMenu(ctx, week, seed, menu.value)
+    menu.value = generateWeekMenu(ctx, week, seed, menu.value, menu.value?.weekStart === week ? menu.value.special : [])
+    await repo.saveMenu(menu.value)
+  }
+
+  /**
+   * Marks/unmarks a special day (invitation, wedding): from today on the week is rebuilt around it;
+   * days already past stay as they were.
+   */
+  async function toggleSpecialDay(date: string) {
+    const ctx = menuCtx.value
+    if (!ctx || !menu.value) return
+    const set = new Set(menu.value.special ?? [])
+    if (set.has(date)) set.delete(date)
+    else set.add(date)
+    const fresh = generateWeekMenu(ctx, menu.value.weekStart, menu.value.seed, null, [...set])
+    const old = menu.value
+    menu.value = { ...fresh, days: fresh.days.map((d, i) => (d.date < todayDate.value ? old.days[i] : d)) }
     await repo.saveMenu(menu.value)
   }
 
@@ -268,9 +290,28 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function updateToday(patch: Partial<Omit<DailyLog, 'date'>>) {
-    const next: DailyLog = { ...todayLog.value, ...patch }
+    return updateDay(todayDate.value, patch)
+  }
+  async function updateDay(date: string, patch: Partial<Omit<DailyLog, 'date'>>) {
+    const cur = daily.value.find((l) => l.date === date) ?? { date, water: 0, habits: [] }
+    const next: DailyLog = { ...cur, ...patch }
     await repo.putDaily(next)
     daily.value = [...daily.value.filter((l) => l.date !== next.date), next]
+  }
+
+  /** Steps of the last week from Health Connect; once allowed, it syncs by itself when the app opens. */
+  async function syncSteps(ask = true): Promise<StepsResult> {
+    const r = await readSteps(7, ask)
+    if (r.ok) {
+      for (const [date, n] of Object.entries(r.days)) {
+        if (daily.value.find((l) => l.date === date)?.steps !== n) await updateDay(date, { steps: n })
+      }
+      if (!stepsAuto.value) {
+        stepsAuto.value = true
+        await saveSettings()
+      }
+    }
+    return r
   }
   async function addWater(delta: number) {
     const before = todayLog.value.water
@@ -395,11 +436,11 @@ export const useAppStore = defineStore('app', () => {
   return {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
-    waterReminder, waterNotify, setWaterReminder, rescheduleWater,
+    waterReminder, waterNotify, setWaterReminder, rescheduleWater, stepsAuto, syncSteps,
     liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
-    ensureMenu, regenerateMenu, setMenuMeal, rateDish, logFoods, deleteDiary, setDiaryAmount, toggleMenuEaten,
+    ensureMenu, regenerateMenu, setMenuMeal, toggleSpecialDay, rateDish, logFoods, deleteDiary, setDiaryAmount, toggleMenuEaten,
   }
 })

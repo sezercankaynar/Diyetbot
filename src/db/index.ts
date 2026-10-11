@@ -11,6 +11,8 @@ export interface Settings {
   habits?: string[]
   /** Water reminder settings. */
   water?: WaterReminder
+  /** Steps are read from Health Connect. */
+  stepsAuto?: boolean
 }
 
 interface DiyetDB extends DBSchema {

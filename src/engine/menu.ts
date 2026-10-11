@@ -43,6 +43,8 @@ export interface WeekMenu {
   kcal?: number
   /** Signature of the preferences the menu was built with (see menuSignature). */
   sig?: string
+  /** Special days (invitation, wedding …): that evening is free, the rest of the week is a bit lighter. */
+  special?: string[]
   days: MenuDay[]
 }
 
@@ -61,6 +63,10 @@ export interface MenuContext {
   mealSlots?: Slot[]
   /** Pot dishes (sulu yemek, baklagil) cooked at dinner come back the next day. */
   batchCooking?: boolean
+  /** Ramazan: sahur + iftar (+ a light snack after iftar). */
+  ramadan?: boolean
+  /** Month (1–12) the menu is for: out-of-season produce is left out. Set by the generator. */
+  month?: number
   dislikedFoods: string[]
   likedFoods: string[]
   cookingTime: Level3
@@ -87,8 +93,16 @@ export const SLOT_ORDER: Slot[] = ['breakfast', 'lunch', 'snack', 'dinner', 'nig
 
 /** Which meals the day has, and what share of the kcal target each gets. */
 export function slotPlan(
-  ctx: Pick<MenuContext, 'mealsPerDay' | 'canSkipBreakfast' | 'hungerTime'> & { mealStyle?: MealStyles; mealSlots?: Slot[] },
+  ctx: Pick<MenuContext, 'mealsPerDay' | 'canSkipBreakfast' | 'hungerTime'> & { mealStyle?: MealStyles; mealSlots?: Slot[]; ramadan?: boolean },
 ): SlotPlan[] {
+  if (ctx.ramadan) {
+    // Fasting day: sahur before dawn, iftar at sunset (the main meal), a light snack later in the evening.
+    return [
+      { slot: 'breakfast', label: 'Sahur', share: 0.35, style: 'normal' },
+      { slot: 'dinner', label: 'İftar', share: 0.5, style: 'hearty' },
+      { slot: 'night', label: 'İftar sonrası', share: 0.15, style: 'normal' },
+    ]
+  }
   const styles = ctx.mealStyle ?? DEFAULT_STYLES
   const styleOf = (s: Slot): MealStyle => (isSnackSlot(s) ? 'normal' : styles[s as keyof MealStyles])
   let slots: Slot[]
@@ -130,6 +144,8 @@ export function rng(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
+
+export const monthOf = (date: string): number => Number(date.slice(5, 7))
 
 export function mondayOf(date: string): string {
   const d = new Date(`${date}T00:00:00Z`)
@@ -258,14 +274,18 @@ function mainProtein(foodId: string): string[] {
  * The week's menu: dietitian-style plates (see planner.ts). Vegan and keto profiles use the single-dish
  * generator below: the plates are built around yoghurt, cheese, bread and vegetable dishes.
  */
-export function generateWeekMenu(ctx: MenuContext, weekStart: string, seed = 1, previous?: WeekMenu | null): WeekMenu {
+export function generateWeekMenu(
+  ctx: MenuContext, weekStart: string, seed = 1, previous?: WeekMenu | null, special: string[] = [],
+): WeekMenu {
   if (ctx.animalFoods === 'vegan' || ctx.diet === 'keto') return legacyWeekMenu(ctx, weekStart, seed)
   const rand = rng(dayIndex(weekStart) * 7919 + seed)
   // Main dishes of the previous (or replaced) menu come up less, so weeks don't repeat.
   const recent = (previous?.days ?? []).flatMap((d) => d.items.filter((i) => i.slot === 'lunch' || i.slot === 'dinner').map((i) => i.foodId))
-  const week = planWeek(ctx, allFoods(), rand, recent)
-  const days = week.map((items, d) => ({ date: addDays(weekStart, d), items }))
-  return { weekStart, seed, kcal: ctx.kcal, sig: menuSignature(ctx), days }
+  const dates = Array.from({ length: 7 }, (_, d) => addDays(weekStart, d))
+  const specialDays = new Set(dates.map((x, d) => (special.includes(x) ? d : -1)).filter((d) => d >= 0))
+  const week = planWeek({ ...ctx, month: monthOf(addDays(weekStart, 3)) }, allFoods(), rand, recent, specialDays)
+  const days = week.map((items, d) => ({ date: dates[d], items }))
+  return { weekStart, seed, kcal: ctx.kcal, sig: menuSignature(ctx), ...(specialDays.size ? { special: [...special] } : {}), days }
 }
 
 function legacyWeekMenu(ctx: MenuContext, weekStart: string, seed = 1): WeekMenu {
@@ -315,7 +335,7 @@ export function menuSignature(ctx: MenuContext): string {
   const st = ctx.mealStyle ?? DEFAULT_STYLES
   return [
     MENU_VERSION, ctx.diet, ctx.animalFoods, [...ctx.dislikes].sort().join('+'), [...(ctx.likes ?? [])].sort().join('+'), ctx.cookingTime,
-    slotPlan(ctx).map((s) => s.slot).join('+'), ctx.batchCooking ? 'pot2' : '', ctx.hungerTime, st.breakfast, st.lunch, st.dinner,
+    slotPlan(ctx).map((s) => s.slot).join('+'), ctx.batchCooking ? 'pot2' : '', ctx.ramadan ? 'ramazan' : '', ctx.hungerTime, st.breakfast, st.lunch, st.dinner,
   ].join('|')
 }
 
@@ -337,7 +357,7 @@ export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 
     return (fitting.length ? fitting : scoreSlot(slot, target, ctx).filter(ok)).slice(0, n).map((x) => ({ slot, foodId: x.foodId, factor: x.factor }))
   }
   const rand = rng(dayIndex(day.date) * 31 + slot.length)
-  return alternativePlates(ctx, day.items, slot, n, rand)
+  return alternativePlates({ ...ctx, month: monthOf(day.date) }, day.items, slot, n, rand)
 }
 
 /** Puts a whole meal into a day (replacing that meal, or adding it if the day lacks it). */
@@ -580,6 +600,7 @@ export function buildMenuContext(
     mealStyle: p.mealStyle ?? DEFAULT_STYLES,
     mealSlots: p.mealSlots,
     batchCooking: !!p.batchCooking,
+    ramadan: !!p.ramadan,
     likes: p.likes ?? [],
   }
 }

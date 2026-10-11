@@ -54,6 +54,7 @@ document.addEventListener('visibilitychange', () => {
     store.ensureMenu()
     // Keeps a week of water reminders ahead.
     if (store.waterReminder.on) store.rescheduleWater()
+    if (store.stepsAuto) store.syncSteps(false)
   }
 })
 window.addEventListener('hashchange', () => {

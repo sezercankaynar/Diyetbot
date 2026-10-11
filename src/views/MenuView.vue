@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type MenuItem, type Slot } from '@/engine'
+import { EVENT_KCAL, alternativesFor, dayTotals, getFood, mealWindow, slotPlan, WEEKDAY_SHORT_TR, WEEKDAY_TR, type MenuItem, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import MealPlate from '@/components/MealPlate.vue'
@@ -32,6 +32,14 @@ const windows = computed(() =>
 const openSlot = ref<Slot | null>(null)
 const addSlot = ref<Slot | null>(null)
 const shopping = ref(false)
+const isSpecial = computed(() => !!day.value && !!store.menu?.special?.includes(day.value.date))
+async function toggleSpecial() {
+  if (!day.value) return
+  const msg = isSpecial.value
+    ? 'Özel gün işareti kaldırılsın mı? Menü bugünden itibaren yeniden hazırlanır.'
+    : 'Bu gün özel gün olarak işaretlensin mi? Menü bugünden itibaren buna göre yeniden hazırlanır (bu günlerdeki değişikliklerin gider).'
+  if (confirm(msg)) await store.toggleSpecialDay(day.value.date)
+}
 const alternatives = computed(() =>
   store.menuCtx && day.value && openSlot.value ? alternativesFor(store.menuCtx, day.value, openSlot.value) : [],
 )
@@ -109,13 +117,23 @@ async function regenerate() {
         />
       </section>
 
+      <div class="special">
+        <button type="button" class="btn ghost small" @click="toggleSpecial">
+          {{ isSpecial ? '✕ Özel gün işaretini kaldır' : '🎉 Bu gün özel gün (davet, düğün…)' }}
+        </button>
+        <p v-if="isSpecial" class="small muted">
+          Akşam yemeği serbest (yaklaşık {{ EVENT_KCAL }} kcal sayıldı). O günün diğer öğünleri ve haftanın kalan günleri biraz
+          hafifletildi; önemli olan haftalık ortalama. Davette sebze ve salatayla başla, tatlıyı paylaş.
+        </p>
+      </div>
+
       <section v-for="item in day.items" :key="item.slot" class="card meal">
         <div class="meal-top">
           <span class="label">{{ labels[item.slot] }}</span>
           <span class="time num">{{ windows[item.slot] }}</span>
         </div>
         <MealPlate :item="item" />
-        <div class="acts">
+        <div v-if="item.foodId !== 'ozel-davet'" class="acts">
           <button type="button" class="act" :aria-expanded="openSlot === item.slot" @click="openSlot = openSlot === item.slot ? null : item.slot">
             ↻ {{ openSlot === item.slot ? 'Kapat' : 'Değiştir' }}
           </button>
@@ -171,6 +189,7 @@ async function regenerate() {
 .alt { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
 .alt + .alt { border-top: 1px solid var(--line); }
 .alt :deep(.plate) { flex: 1; min-width: 0; }
+.special { margin: 0 0 12px; }
 .outdated {
   background: var(--info-bg); color: var(--info-ink); border-radius: 14px; padding: 12px;
   margin-bottom: 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between;

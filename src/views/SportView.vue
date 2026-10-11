@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { lastDays, stepTarget, weekSchedule, WEEKDAY_SHORT_TR, WEEKDAY_TR, type DayType } from '@/engine'
 import { CARDIO_TYPES, COOLDOWN, EXERCISE_GUIDES, TRAINING_EVIDENCE, WARMUP, type ExerciseSlot } from '@/content/exercises'
 import { useAppStore } from '@/stores/app'
+import { stepsSupported } from '@/native/steps'
 import CalloutBox from '@/components/CalloutBox.vue'
 import { fmt } from '@/content/labels'
 
@@ -39,6 +40,24 @@ const avgSteps = computed(() => {
   const logged = week.value.filter((w) => w.steps > 0)
   return logged.length ? Math.round(logged.reduce((a, w) => a + w.steps, 0) / logged.length) : 0
 })
+// Health Connect (Android): steps are read automatically once allowed.
+const syncing = ref(false)
+const hcMsg = ref('')
+const hcWarn = ref(false)
+async function sync() {
+  syncing.value = true
+  const r = await store.syncSteps(true)
+  syncing.value = false
+  hcWarn.value = !r.ok
+  if (r.ok) {
+    stepsInput.value = store.todayLog.steps ?? null
+    hcMsg.value = 'Son 7 günün adımları alındı. Uygulama açıldıkça kendiliğinden güncellenir.'
+  } else if (r.reason === 'unavailable') {
+    hcMsg.value = "Telefonda Health Connect yok. Play Store'dan \"Health Connect\" uygulamasını kur (Android 14 ve sonrasında hazır gelir); adım sayan uygulamanın (ör. Google Fit, Samsung Health) Health Connect'e yazmasına da izin ver."
+  } else if (r.reason === 'denied') {
+    hcMsg.value = 'Adım okuma izni verilmedi. İstersen tekrar dene ya da Health Connect ayarlarından izin ver.'
+  } else hcMsg.value = 'Adımlar okunamadı. Adımları aşağıdan elle girebilirsin.'
+}
 const restText = (slot?: string) => {
   const g = guide(slot)
   if (!g) return ''
@@ -123,6 +142,12 @@ const restText = (slot?: string) => {
         <div class="steps-head">
           <h2>Adımlar</h2>
           <span class="small muted num">hedef {{ fmt(target) }}/gün</span>
+        </div>
+        <div v-if="stepsSupported()" class="hc">
+          <button type="button" class="btn ghost small" :disabled="syncing" @click="sync">
+            {{ store.stepsAuto ? '↻ Adımları güncelle' : '📲 Adımları telefondan al (Health Connect)' }}
+          </button>
+          <p v-if="hcMsg" class="small" :class="{ warn: hcWarn }">{{ hcMsg }}</p>
         </div>
         <form class="steps-form" @submit.prevent="saveSteps">
           <input v-model.number="stepsInput" type="number" inputmode="numeric" min="0" placeholder="Bugünkü adım sayın" aria-label="Bugünkü adım" />
@@ -209,6 +234,8 @@ const restText = (slot?: string) => {
 .cues { display: grid; gap: 4px; margin: 6px 0; }
 .done-btn { width: 100%; margin-top: 12px; }
 .steps-head { display: flex; justify-content: space-between; align-items: baseline; }
+.hc { margin: 8px 0 4px; }
+.warn { color: var(--stop-border); }
 .steps-form { display: flex; gap: 8px; margin: 8px 0 12px; }
 .bars { width: 100%; height: 100px; display: block; }
 .bars rect { fill: color-mix(in srgb, var(--accent) 40%, var(--surface-2)); }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alternativesFor, buildMenuContext, menuOutdated, removeDish, dayTotals, generateWeekMenu, mealTitle, mealTotals, plateName, mondayOf, partsOf, setMeal, slotPlan, type MenuItem, type WeekMenu } from '../menu'
+import { alternativesFor, buildMenuContext, menuOutdated, removeDish, dayTotals, sumTotals, generateWeekMenu, mealTitle, mealTotals, plateName, mondayOf, partsOf, setMeal, slotPlan, type MenuItem, type WeekMenu } from '../menu'
 import { LIGHT_MAINS, MAINS, SOUPS, partShort } from '../plateParts'
 import type { Slot } from '../foods'
 import { getFood } from '../foods'
@@ -131,6 +131,12 @@ describe('dietitian-style week (TÜBER frequencies)', () => {
     }
     expect(carried).toBeGreaterThanOrEqual(2)
     expect(generateWeekMenu(ctxFor(), WEEK).days.flatMap((d) => d.items).some((i) => i.leftover)).toBe(false)
+  })
+  it('seasonal: no strawberries, okra or çoban salata in winter; no leek or spinach dishes in summer', () => {
+    const winter = allParts(generateWeekMenu(ctxFor({ mealSlots: ['breakfast', 'lunch', 'snack', 'dinner'] }), '2027-01-11'))
+    for (const id of ['pc-cilek', 'pc-karpuz', 'pc-uzum', 'yl-etli-bamya-tabak', 'yl-etli-taze-fasulye', 'pc-coban']) expect(winter.map((x) => x.foodId), id).not.toContain(id)
+    const summer = allParts(generateWeekMenu(ctxFor({ mealSlots: ['breakfast', 'lunch', 'snack', 'dinner'] }), '2027-07-12'))
+    for (const id of ['yl-zy-pirasa-tabak', 'yl-kiymali-ispanak-tabak', 'pc-portakal', 'pc-mandalina']) expect(summer.map((x) => x.foodId), id).not.toContain(id)
   })
   it('plate titles match what is on the plate', () => {
     for (const over of [{}, { mealSlots: ['breakfast', 'lunch', 'snack', 'dinner', 'night'] as Slot[] }, { mealStyle: { breakfast: 'normal' as const, lunch: 'light' as const, dinner: 'normal' as const } }]) {
@@ -341,4 +347,40 @@ describe('daily targets', () => {
       expect(avg(cb)).toBeLessThan(1.2)
     })
   }
+})
+
+describe('Ramazan', () => {
+  it('sahur, iftar (soup + date, the main meal) and a light snack after iftar', () => {
+    const ctx = ctxFor({ ramadan: true })
+    expect(slotPlan(ctx).map((s) => s.label)).toEqual(['Sahur', 'İftar', 'İftar sonrası'])
+    const m = generateWeekMenu(ctx, WEEK)
+    for (const d of m.days) {
+      expect(d.items.map((i) => i.slot)).toEqual(['breakfast', 'dinner', 'night'])
+      const iftar = d.items.find((i) => i.slot === 'dinner')!
+      const ids = partsOf(iftar).map((x) => x.foodId)
+      expect(ids.some((id) => SOUPS.includes(id))).toBe(true)
+      expect(ids).toContain('pc-hurma')
+      expect(mealTotals(iftar).kcal).toBeGreaterThan(mealTotals(d.items[2]).kcal)
+      expect(dayTotals(d).kcal).toBeLessThanOrEqual(ctx.kcal)
+    }
+    expect(menuOutdated(m, { ...ctx, ramadan: false })).toBe(true)
+  })
+})
+
+describe('special day', () => {
+  it('the evening is free, the day and the rest of the week are lighter, weekly total stays on target', () => {
+    const ctx = ctxFor()
+    const m = generateWeekMenu(ctx, WEEK, 1, null, ['2026-10-09'])
+    expect(m.special).toEqual(['2026-10-09'])
+    const day = m.days[4]
+    const dinner = mainOf(day, 'dinner')
+    expect(dinner.foodId).toBe('ozel-davet')
+    const others = day.items.filter((i) => i.slot !== 'dinner')
+    expect(others.length).toBe(2)
+    expect(sumTotals(others.map(mealTotals)).kcal).toBeLessThanOrEqual(ctx.kcal - 1000)
+    const normal = m.days.filter((_, i) => i !== 4).map((d) => dayTotals(d).kcal)
+    for (const k of normal) expect(k).toBeLessThan(ctx.kcal)
+    const week = m.days.reduce((a, d) => a + dayTotals(d).kcal, 0)
+    expect(week).toBeLessThanOrEqual(ctx.kcal * 7)
+  })
 })

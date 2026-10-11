@@ -69,6 +69,8 @@ export interface Profile {
   mealSlots?: Slot[]
   /** Cooks sulu yemek for two days: a pot dish from dinner comes back the next day. */
   batchCooking?: boolean
+  /** Fasting in Ramazan: sahur, iftar and a light snack after iftar. */
+  ramadan?: boolean
   /** Which meals are big and which are light (öğün düzeni). */
   mealStyle: MealStyles
   mealTimes: MealTimes

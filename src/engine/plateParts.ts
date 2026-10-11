@@ -64,7 +64,16 @@ const PART_DEFS: PartDef[] = [
   { id: 'portakal', name: 'Portakal', unit: 'orta boy', grams: 180, short: 'portakal', role: 'fruit', group: 'ara', lines: [['portakal', 180]], levels: [1, 2] },
   { id: 'muz', name: 'Muz', unit: 'küçük boy', grams: 100, short: 'muz', role: 'fruit', group: 'ara', lines: [['muz', 100]], levels: [1, 1.5] },
   { id: 'cilek', name: 'Çilek', unit: 'kase', grams: 150, short: 'çilek', role: 'fruit', group: 'ara', lines: [['cilek', 150]], levels: [1, 2] },
+  { id: 'mandalina', name: 'Mandalina', unit: 'adet', grams: 80, short: 'mandalina', role: 'fruit', group: 'ara', lines: [['mandalina', 80]], levels: [1, 2] },
+  { id: 'armut', name: 'Armut', unit: 'orta boy', grams: 160, short: 'armut', role: 'fruit', group: 'ara', lines: [['armut', 160]], levels: [1, 2] },
+  { id: 'karpuz', name: 'Karpuz', unit: 'dilim', grams: 250, short: 'karpuz', role: 'fruit', group: 'ara', lines: [['karpuz', 250]], levels: [1, 2] },
+  { id: 'kavun', name: 'Kavun', unit: 'dilim', grams: 200, short: 'kavun', role: 'fruit', group: 'ara', lines: [['kavun', 200]], levels: [1, 2] },
+  { id: 'seftali', name: 'Şeftali', unit: 'orta boy', grams: 150, short: 'şeftali', role: 'fruit', group: 'ara', lines: [['seftali', 150]], levels: [1, 2] },
+  { id: 'kivi', name: 'Kivi', unit: 'adet', grams: 75, short: 'kivi', role: 'fruit', group: 'ara', lines: [['kivi', 75]], levels: [1, 2] },
+  { id: 'ayva', name: 'Ayva', unit: 'yarım', grams: 130, short: 'ayva', role: 'fruit', group: 'ara', lines: [['ayva', 130]], levels: [1, 2] },
+  { id: 'nar', name: 'Nar', unit: 'kase (tanesi)', grams: 100, short: 'nar', role: 'fruit', group: 'ara', lines: [['nar', 100]], levels: [1, 1.5] },
   { id: 'uzum', name: 'Üzüm', unit: 'küçük salkım', grams: 100, short: 'üzüm', role: 'fruit', group: 'ara', lines: [['uzum', 100]], levels: [1, 1.5] },
+  { id: 'hurma', name: 'Hurma', unit: 'adet', grams: 8, short: 'hurma', role: 'dried', group: 'ara', lines: [['hurma', 8]], levels: [1, 2, 3] },
   { id: 'kayisi', name: 'Kuru kayısı', unit: 'adet', grams: 8, short: 'kuru kayısı', role: 'dried', group: 'ara', lines: [['kuru-kayisi', 8]], levels: [2, 3, 4] },
   { id: 'incir', name: 'Kuru incir', unit: 'adet', grams: 18, short: 'kuru incir', role: 'dried', group: 'ara', lines: [['kuru-incir', 18]], levels: [1, 2] },
 ]
@@ -96,7 +105,15 @@ function partFood(d: PartDef): Food {
   }
 }
 
-export const PART_FOODS: Food[] = PART_DEFS.map(partFood)
+/** Placeholder for a special day's meal (wedding, invitation): an estimate, not a plan. */
+export const EVENT_KCAL = 1000
+export const EVENT_FOOD: Food = {
+  id: 'ozel-davet', name: 'Davet / düğün yemeği (serbest)', portion: '1 öğün (tahmini)', slots: [], group: 'ana', prep: 1, tags: [],
+  protein: 40, carb: 100, fat: 47, kcal: EVENT_KCAL, estimated: true,
+  source: 'Tahmini: bir davet sofrasının ortalama enerjisi; o öğünde rahat ol, gerisi haftaya yayılır.',
+}
+
+export const PART_FOODS: Food[] = [...PART_DEFS.map(partFood), EVENT_FOOD]
 const DEF_BY_ID = new Map(PART_DEFS.map((d) => [`pc-${d.id}`, d]))
 
 export const isPart = (foodId: string): boolean => DEF_BY_ID.has(foodId)
@@ -234,4 +251,30 @@ export const NIGHT_SNACKS: Template[] = [
 ]
 
 /** Fruit rotation for snack fruit parts, so the week isn't seven apples. */
-export const FRUITS = ['pc-elma', 'pc-portakal', 'pc-muz', 'pc-cilek', 'pc-uzum']
+export const FRUITS = [
+  'pc-elma', 'pc-portakal', 'pc-mandalina', 'pc-armut', 'pc-muz', 'pc-cilek', 'pc-uzum', 'pc-karpuz', 'pc-kavun', 'pc-seftali',
+  'pc-kivi', 'pc-ayva', 'pc-nar',
+]
+
+// ---------------------------------------------------------------------------------------------
+// Seasons in Turkey (months 1–12). Out-of-season produce is left out of menus: it costs more and
+// tastes of less. Frozen-friendly vegetables (bezelye) and storage fruit (elma, muz) are all year.
+
+const ALL_YEAR = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const R = (from: number, to: number) => ALL_YEAR.filter((m) => (from <= to ? m >= from && m <= to : m >= from || m <= to))
+
+const SEASON: Record<string, number[]> = {
+  'pc-portakal': R(11, 4), 'pc-mandalina': R(10, 2), 'pc-armut': R(8, 2), 'pc-cilek': R(4, 6), 'pc-uzum': R(7, 10),
+  'pc-karpuz': R(6, 9), 'pc-kavun': R(6, 9), 'pc-seftali': R(6, 9), 'pc-kivi': R(11, 4), 'pc-ayva': R(10, 1), 'pc-nar': R(9, 12),
+  'pc-coban': R(5, 10),
+  // vegetable dishes
+  'yl-etli-taze-fasulye': R(6, 9), 'yl-zy-taze-fasulye-tabak': R(6, 9), 'yl-etli-bamya-tabak': R(7, 9), 'yl-etli-turlu-tabak': R(6, 9),
+  'yl-kiymali-kabak-tabak': R(5, 9), 'yl-zy-kabak-tabak': R(5, 9), 'yl-kabak-dolmasi': R(5, 9), 'yl-etli-biber-dolmasi-tabak': R(6, 9),
+  'yl-imam-bayildi': R(7, 9), 'yl-kiymali-ispanak-tabak': R(10, 4), 'yl-zy-ispanak': R(10, 4), 'yl-yumurtali-ispanak-tabak': R(10, 4),
+  'yl-kiymali-pirasa-tabak': R(10, 3), 'yl-zy-pirasa-tabak': R(10, 3), 'yl-kiymali-karnabahar-tabak': R(11, 3),
+  'yl-zy-karnabahar-tabak': R(11, 3), 'yl-lahana-dolmasi': R(11, 3), 'yl-zy-enginar': R(3, 5), 'yl-brokoli-corbasi': R(10, 4),
+  'yl-firin-hamsi': R(11, 3),
+}
+
+/** True when the food is in season in that month (or has no season). */
+export const inSeason = (foodId: string, month: number): boolean => !SEASON[foodId] || SEASON[foodId].includes(month)

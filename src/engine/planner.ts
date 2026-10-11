@@ -11,7 +11,7 @@ import { getFood, isSnackSlot, type Food, type Slot } from './foods'
 import { fitsAnimal, fitsDislikes } from './foodRules'
 import { likeMatches } from './foodKeys'
 import {
-  BREAKFASTS, FRUITS, LEGUME_SOUPS, LIGHT_MAINS, MAINS, NIGHT_SNACKS, SNACKS, SOUPS, isPart, partLevels, partRole, partShort,
+  BREAKFASTS, EVENT_FOOD, EVENT_KCAL, FRUITS, LEGUME_SOUPS, LIGHT_MAINS, MAINS, NIGHT_SNACKS, SNACKS, SOUPS, inSeason, isPart, partLevels, partRole, partShort,
   type CarbSide, type MainDef, type MainKind, type Template,
 } from './plateParts'
 import { fitDay, itemTotals, mealTotals, slotPlan, sumTotals, type MenuContext, type MenuItem, type Part, type SlotPlan, type Totals } from './menu'
@@ -25,7 +25,7 @@ const DEFAULT_STYLES = { breakfast: 'normal', lunch: 'normal', dinner: 'normal' 
 
 function allowed(ctx: MenuContext, id: string): boolean {
   const f = getFood(id)
-  return !!f && !f.hidden && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes) && !ctx.dislikedFoods.includes(id)
+  return !!f && !f.hidden && (!ctx.month || inSeason(id, ctx.month)) && fitsAnimal(f, ctx.animalFoods) && fitsDislikes(f, ctx.dislikes) && !ctx.dislikedFoods.includes(id)
 }
 const lowCarb = (ctx: MenuContext) => ctx.diet === 'keto' || ctx.diet === 'lowcarb'
 
@@ -174,11 +174,13 @@ function mainPlate(
   const isFish = main.kind === 'balik'
   // A soup is offered (not forced) on one main meal a day; tuning adds it only when the day's
   // kcal and macros call for it.
-  if (opts.soup) {
+  if (opts.soup || ctx.ramadan) {
     const soups = SOUPS.filter((id) => allowed(ctx, id) && !(main.kind === 'baklagil' && LEGUME_SOUPS.includes(id)))
       .filter((id) => !lowCarb(ctx) || getFood(id)!.carb <= 12)
     // The main stays first (it names the plate); the soup is listed right after it.
-    if (soups.length) parts.push({ ...part(pickLeastUsed(soups, opts.used, rand), 0, [0, 1]), cost: 0.005 })
+    // Iftar opens with soup (and a date); elsewhere soup is optional.
+    if (soups.length) parts.push(ctx.ramadan ? part(pickLeastUsed(soups, opts.used, rand), 1, [1]) : { ...part(pickLeastUsed(soups, opts.used, rand), 0, [0, 1]), cost: 0.005 })
+    if (ctx.ramadan && allowed(ctx, 'pc-hurma')) parts.push(part('pc-hurma', 1))
   }
   if (!(ctx.diet === 'keto')) {
     if (main.carb === 'pilav') {
@@ -380,9 +382,15 @@ export function sharesOf(ctx: MenuContext): Map<Slot, number> {
 // The week
 
 /** `recent`: main dishes of the previous week – used less, so weeks don't repeat. */
-export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: string[] = []): MenuItem[][] {
+export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: string[] = [], special: Set<number> = new Set()): MenuItem[][] {
   const plan = slotPlan({ ...ctx, mealStyle: ctx.mealStyle ?? DEFAULT_STYLES })
   const shares = sharesOf(ctx)
+  // Special days: the evening meal (last main meal) is an invitation; the day's other meals get what's
+  // left, and what the invitation goes over its usual share is spread (≤ 150 kcal/day) over the other days.
+  const eventSlot = [...plan].reverse().find((s) => s.slot === 'dinner' || s.slot === 'lunch')?.slot
+  const over = eventSlot ? Math.max(0, EVENT_KCAL - (shares.get(eventSlot) ?? 0) * ctx.kcal) : 0
+  const normalDays = 7 - special.size
+  const lighter = special.size && normalDays ? Math.min(150, Math.round((over * special.size) / normalDays)) : 0
   const styleOf = (sp: SlotPlan) => sp.style
 
   const mainSlots: MainSlot[] = []
@@ -410,6 +418,9 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
   }
 
   for (let d = 0; d < 7; d++) {
+    const isEvent = special.has(d) && !!eventSlot
+    const dayCtx: MenuContext = isEvent ? { ...ctx, kcal: Math.max(600, ctx.kcal - EVENT_KCAL) } : { ...ctx, kcal: ctx.kcal - lighter }
+    const dayShares = isEvent ? new Map([...shares].filter(([s]) => s !== eventSlot).map(([s, v]) => [s, v / (1 - (shares.get(eventSlot!) ?? 0))])) : shares
     const plates: Plate[] = []
     let lastSnack: string | undefined
     // Soup is offered on one main meal a day: the hearty one, else lunch, else dinner.
@@ -417,6 +428,7 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
     const soupSlot = (mainSps.find((x) => x.style === 'hearty') ?? mainSps[0])?.slot
     const lastMainSlot = mainSps.at(-1)?.slot
     for (const sp of plan) {
+      if (isEvent && sp.slot === eventSlot) continue
       if (sp.slot === 'breakfast') {
         const t = pickTemplate(ctx, BREAKFASTS, usedTemplates, rand)
         if (t) plates.push(templatePlate(ctx, sp, t, nextFruit()))
@@ -454,11 +466,16 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
         if (ctx.batchCooking && !fromPot && sp.slot === lastMainSlot && (main.kind === 'sebze' || main.kind === 'baklagil')) carry = { main, day: d }
       }
     }
-    const tuned = tunePlates(plates, ctx, shares)
-    const items = tuned.map(toItem).filter((x): x is MenuItem => !!x)
+    const tuned = tunePlates(plates, dayCtx, dayShares)
+    let items = tuned.map(toItem).filter((x): x is MenuItem => !!x)
     // Never over the kcal target: if the plates' smallest sensible amounts still are, trim further.
-    const kcalOnly = { kcal: ctx.kcal, protein: Infinity, carb: Infinity, fat: Infinity }
-    week.push(sumTotals(items.map(mealTotals)).kcal > ctx.kcal ? fitDay(items, kcalOnly) : items)
+    const kcalOnly = { kcal: dayCtx.kcal, protein: Infinity, carb: Infinity, fat: Infinity }
+    if (sumTotals(items.map(mealTotals)).kcal > dayCtx.kcal) items = fitDay(items, kcalOnly)
+    if (isEvent) {
+      items = [...items, { slot: eventSlot!, foodId: EVENT_FOOD.id, factor: 1, title: '🎉 Özel gün: davet / düğün' }]
+      items.sort((a, b) => plan.findIndex((p) => p.slot === a.slot) - plan.findIndex((p) => p.slot === b.slot))
+    }
+    week.push(items)
   }
   return week
 }
