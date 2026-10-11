@@ -5,6 +5,7 @@ import { today, useAppStore } from '@/stores/app'
 import WeightChart from '@/components/WeightChart.vue'
 import StatBox from '@/components/StatBox.vue'
 import CoachSection from '@/components/CoachSection.vue'
+import WeekReview from '@/components/WeekReview.vue'
 import { fmt } from '@/content/labels'
 
 const store = useAppStore()
@@ -34,6 +35,22 @@ async function remove(d: string) {
 }
 
 const a = computed(() => store.analysis)
+
+const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+const weighEdit = ref(false)
+const weighDraft = ref({ ...store.weighReminder, days: [...store.weighReminder.days] })
+function openWeigh() {
+  weighDraft.value = { ...store.weighReminder, days: [...store.weighReminder.days] }
+  weighEdit.value = !weighEdit.value
+}
+function toggleDay(d: number) {
+  const ds = weighDraft.value.days
+  weighDraft.value.days = ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d].sort()
+}
+async function saveWeigh(on: boolean) {
+  await store.setWeighReminder({ ...weighDraft.value, on })
+  weighEdit.value = false
+}
 const cooldown = computed(() => adjustmentCooldown(store.sortedAdjustments[0]?.date, today()))
 const recentLogs = computed(() => [...store.sortedLogs].reverse())
 const showAll = ref(false)
@@ -66,7 +83,29 @@ async function apply(o: AdjustmentOption) {
         </div>
       </form>
       <p class="small muted">Her sabah, tuvaletten sonra, aynı koşullarda tartılın. Son kayıt profil kilonuzu günceller.</p>
+      <button type="button" class="link small" :aria-expanded="weighEdit" @click="openWeigh">
+        🔔 Tartılma hatırlatıcısı: <strong>{{ store.weighReminder.on ? `${store.weighReminder.days.map((d) => DAYS[d - 1]).join(', ')} · ${store.weighReminder.time}` : 'kapalı (açmak için dokun)' }}</strong>
+      </button>
+      <p v-if="store.weighReminder.on && store.weighNotify === 'denied'" class="small warn">Telefon bildirimlere izin vermiyor; Ayarlar → Uygulamalar → Diyetbot → Bildirimler.</p>
+      <div v-if="weighEdit" class="remind-form">
+        <p class="small muted">Haftada 2–3 sabah tartılmak yeterli; düzenli tartılmak kilo vermeyi ve korumayı kolaylaştırır.</p>
+        <div class="chips">
+          <button v-for="(d, i) in DAYS" :key="d" type="button" :aria-pressed="weighDraft.days.includes(i + 1)" @click="toggleDay(i + 1)">{{ d }}</button>
+        </div>
+        <label class="field"><span class="label">Saat</span><input v-model="weighDraft.time" type="time" /></label>
+        <div class="btn-row">
+          <button v-if="store.weighReminder.on" type="button" class="btn ghost small" @click="saveWeigh(false)">Kapat</button>
+          <button type="button" class="btn small" :disabled="!weighDraft.days.length" @click="saveWeigh(true)">Kaydet ve aç</button>
+        </div>
+      </div>
     </section>
+
+    <section v-if="store.plateau" class="card plateau">
+      <h2>Kilo {{ store.plateau.weeks }} haftadır yerinde mi? Bu normal olabilir</h2>
+      <ul class="small"><li v-for="pt in store.plateau.points" :key="pt">{{ pt }}</li></ul>
+    </section>
+
+    <WeekReview />
 
     <section class="card">
       <h2>Trend</h2>
@@ -158,4 +197,12 @@ async function apply(o: AdjustmentOption) {
 }
 .actions { white-space: nowrap; }
 .actions .btn + .btn { margin-left: 4px; }
+.link { background: none; border: 0; padding: 0; margin-top: 8px; font: inherit; color: var(--ink-2); text-align: left; cursor: pointer; }
+.remind-form { margin-top: 8px; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.chips button { border: 0; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 0.82rem; font-weight: 650; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.chips button[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); }
+.warn { color: var(--stop-border); }
+.plateau { border-left: 4px solid var(--warn-border); }
+.plateau ul { padding-left: 1.1em; display: grid; gap: 6px; }
 </style>

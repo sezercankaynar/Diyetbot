@@ -9,6 +9,9 @@ import EatenParts from '@/components/EatenParts.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
 import MealAddPanel from '@/components/MealAddPanel.vue'
+import WeekReview from '@/components/WeekReview.vue'
+import SheetPanel from '@/components/SheetPanel.vue'
+import BackupPanel from '@/components/BackupPanel.vue'
 import CravingPanel from '@/components/CravingPanel.vue'
 import DailyCoach from '@/components/DailyCoach.vue'
 import RingProgress from '@/components/RingProgress.vue'
@@ -17,7 +20,9 @@ import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
-const sheet = ref<null | 'check' | 'out' | 'craving' | 'extra'>(null)
+const sheet = ref<null | 'check' | 'out' | 'craving' | 'extra' | 'backup'>(null)
+const isMonday = computed(() => new Date(`${store.todayDate}T12:00:00`).getDay() === 1)
+const daysAgo = (iso: string) => Math.max(0, Math.round((Date.parse(`${store.todayDate}T12:00:00`) - Date.parse(iso)) / 86_400_000))
 const openMeal = ref<Slot | null>(null)
 
 const greeting = computed(() => {
@@ -152,12 +157,24 @@ const ACTIONS = [
         </div>
       </section>
 
+      <WeekReview v-if="isMonday" />
+
+      <section v-if="store.backupReminder" class="card backup">
+        <h2>💾 Yedek alma zamanı</h2>
+        <p class="small">
+          Verilerin sadece bu telefonda duruyor{{ store.lastBackupAt ? `; son yedek ${daysAgo(store.lastBackupAt)} gün önce` : ' ve hiç yedek alınmadı' }}.
+          Telefon kaybolur ya da uygulama silinirse hepsi gider. Yedeği Drive'a ya da kendine e-postayla gönder.
+        </p>
+        <button type="button" class="btn small" @click="sheet = 'backup'">Yedek al</button>
+      </section>
+
       <DailyCoach />
     </template>
 
     <CheckPanel v-if="sheet === 'check'" @close="sheet = null" />
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
+    <SheetPanel v-if="sheet === 'backup'" title="Yedekleme" @close="sheet = null"><BackupPanel /></SheetPanel>
     <MealAddPanel v-if="sheet === 'extra'" :date="store.todayDate" title="Öğün dışı ekle" @close="sheet = null" />
   </div>
 </template>
@@ -198,4 +215,5 @@ const ACTIONS = [
 .extra + .extra { border-top: 1px solid var(--line); }
 .extra :deep(.food-row) { flex: 1; }
 @media (max-width: 360px) { .hero { flex-direction: column; } }
+.backup { border-left: 4px solid var(--info-border); }
 </style>

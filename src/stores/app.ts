@@ -36,12 +36,17 @@ import {
   type WeekMenu,
   type WeighIn,
   DEFAULT_WATER_REMINDER,
+  backupDue,
+  plateauAdvice,
+  stepTarget,
+  weekSummary,
   upcomingReminders,
   type WaterReminder,
 } from '@/engine'
 import { parseBackup, repo, type Backup } from '@/db'
 import { scheduleWaterNotifications, type ScheduleResult } from '@/native/waterNotifications'
 import { readSteps, type StepsResult } from '@/native/steps'
+import { scheduleWeighNotifications } from '@/native/weighNotifications'
 
 export const today = (): string => {
   const d = new Date()
@@ -71,10 +76,26 @@ export const useAppStore = defineStore('app', () => {
   const waterNotify = ref<ScheduleResult | null>(null)
   /** Steps come from Health Connect (set after the first successful sync). */
   const stepsAuto = ref(false)
+  const weighReminder = ref<{ on: boolean; days: number[]; time: string }>({ on: false, days: [1, 4], time: '08:00' })
+  const weighNotify = ref<ScheduleResult | null>(null)
+  const firstUse = ref<string | undefined>()
+  const lastBackupAt = ref<string | undefined>()
   const todayLog = computed<DailyLog>(
     () => daily.value.find((l) => l.date === todayDate.value) ?? { date: todayDate.value, water: 0, habits: [] },
   )
   const waterTarget = computed(() => waterGlassesTarget(plan.value.macros?.waterMl ?? 2000))
+  const kcalTarget = computed(() => plan.value.energy?.target ?? 0)
+  /** The 7 days before today, reviewed. */
+  const weekReview = computed(() =>
+    weekSummary({
+      today: todayDate.value, diary: diary.value, daily: daily.value, logs: weighLogs.value, kcalTarget: kcalTarget.value,
+      proteinTarget: plan.value.macros?.proteinG ?? 0, waterTarget: waterTarget.value, stepTarget: stepTarget(profile.value.goal),
+    }),
+  )
+  const plateau = computed(() =>
+    plateauAdvice(profile.value, weighLogs.value, diary.value, daily.value, kcalTarget.value, stepTarget(profile.value.goal), todayDate.value),
+  )
+  const backupReminder = computed(() => hasProfile.value && backupDue(lastBackupAt.value, firstUse.value, todayDate.value))
   /** Last-7-days numbers a dietitian would look at in a follow-up. */
   const coachContext = computed<CoachContext | null>(() => {
     const e = plan.value.energy
@@ -148,6 +169,13 @@ export const useAppStore = defineStore('app', () => {
     activeHabits.value = settings?.habits ?? []
     waterReminder.value = { ...DEFAULT_WATER_REMINDER, ...settings?.water }
     stepsAuto.value = !!settings?.stepsAuto
+    if (settings?.weigh) weighReminder.value = settings.weigh
+    lastBackupAt.value = settings?.lastBackupAt
+    firstUse.value = settings?.firstUse
+    if (!firstUse.value && p) {
+      firstUse.value = today()
+      await saveSettings()
+    }
     syncExtraFoods()
     menu.value = (await repo.loadMenu()) ?? null
     loaded.value = true
@@ -159,7 +187,7 @@ export const useAppStore = defineStore('app', () => {
   const saveSettings = () =>
     repo.saveSettings({
       diet: dietChoice.value, liked: liked.value, disliked: disliked.value, habits: activeHabits.value, water: waterReminder.value,
-      stepsAuto: stepsAuto.value,
+      stepsAuto: stepsAuto.value, weigh: weighReminder.value, firstUse: firstUse.value, lastBackupAt: lastBackupAt.value,
     })
 
   /** (Re)schedules the next week of water reminders; today's are dropped once the target is reached. */
@@ -170,6 +198,22 @@ export const useAppStore = defineStore('app', () => {
     } catch {
       waterNotify.value = null
     }
+  }
+
+  async function setWeighReminder(r: { on: boolean; days: number[]; time: string }) {
+    weighReminder.value = r
+    await saveSettings()
+    try {
+      weighNotify.value = await scheduleWeighNotifications(r.on ? r.days : [], r.time)
+    } catch {
+      weighNotify.value = null
+    }
+  }
+
+  /** Called after a JSON backup was saved or shared. */
+  async function markBackup() {
+    lastBackupAt.value = new Date().toISOString()
+    await saveSettings()
   }
 
   async function setWaterReminder(r: WaterReminder) {
@@ -437,6 +481,7 @@ export const useAppStore = defineStore('app', () => {
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
     waterReminder, waterNotify, setWaterReminder, rescheduleWater, stepsAuto, syncSteps,
+    weighReminder, weighNotify, setWeighReminder, markBackup, lastBackupAt, firstUse, weekReview, plateau, backupReminder,
     liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,

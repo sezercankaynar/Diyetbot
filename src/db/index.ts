@@ -13,6 +13,11 @@ export interface Settings {
   water?: WaterReminder
   /** Steps are read from Health Connect. */
   stepsAuto?: boolean
+  /** Weigh-in reminder: weekdays (1 = Monday … 7 = Sunday) and time. */
+  weigh?: { on: boolean; days: number[]; time: string }
+  /** First day the app was used and the last JSON backup (for the backup reminder). */
+  firstUse?: string
+  lastBackupAt?: string
 }
 
 interface DiyetDB extends DBSchema {

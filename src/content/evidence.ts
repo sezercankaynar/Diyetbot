@@ -17,6 +17,14 @@ export const STUDIES: Study[] = [
     rule: 'Haftalık menü bu sıklıklarla kurulur: balık 2, kuru baklagil 2–3, ağırlıklı sulu sebze yemekleri; her ana öğünde pilav ya da tam buğday ekmeği, yoğurt/cacık/ayran ve salata. Ara öğünler meyve + kuruyemiş ya da süt-yoğurttur.',
   },
   {
+    id: 'self-monitoring',
+    title: 'Kendini izleme: kayıt tutma ve düzenli tartılma',
+    citation: 'Burke LE ve ark. J Am Diet Assoc 2011;111(1):92–102 · Zheng Y ve ark. Obesity 2015;23(2):256–265',
+    summary:
+      'Sistematik derlemelerde yediklerini düzenli kaydedenler ve düzenli tartılanlar daha çok kilo verdi ve verdiği kiloyu daha iyi korudu; kayıt ne kadar tutarlıysa sonuç o kadar iyiydi.',
+    rule: 'Haftalık özet kayıt tutarlılığını öne çıkarır; tartılma hatırlatıcısı haftada 2–3 sabah tartılmayı önerir; kilo durunca önce kayıtlar kontrol edilir.',
+  },
+  {
     id: 'dietfits',
     title: 'DIETFITS',
     citation: 'Gardner CD ve ark. JAMA 2018;319(7):667–679',

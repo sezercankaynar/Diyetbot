@@ -21,6 +21,7 @@ async function doExport() {
       const { Share } = await import('@capacitor/share')
       const { uri } = await Filesystem.writeFile({ path: name, data: json, directory: Directory.Cache, encoding: Encoding.UTF8 })
       await Share.share({ title: 'Diyetbot yedeği', files: [uri] })
+      await store.markBackup()
       msg.value = 'Yedek hazır; kaydedeceğiniz yeri seçin.'
       return
     }
@@ -30,6 +31,7 @@ async function doExport() {
     a.download = name
     a.click()
     URL.revokeObjectURL(url)
+    await store.markBackup()
     msg.value = 'Yedek indirildi.'
   } catch (x) {
     // Closing the share sheet without choosing a target is not an error.
