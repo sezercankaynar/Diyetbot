@@ -40,8 +40,8 @@ describe('macros per diet', () => {
     // 27% of 2110 = 63.3 g < 64 g minimum
     expect(computeMacros(p, KCAL, 'dash')).toMatchObject({ proteinG: 128, fatG: 64, carbG: 256 })
   })
-  it('High-protein: 28% fat', () => {
-    expect(computeMacros(p, KCAL, 'hp')).toMatchObject({ proteinG: 128, fatG: 66, carbG: 252 })
+  it('High-protein: 32% fat (like Mediterranean)', () => {
+    expect(computeMacros(p, KCAL, 'hp')).toMatchObject({ proteinG: 128, fatG: 75, carbG: 231 })
   })
   it('Keto: 30 g carbs, fat is the remainder', () => {
     expect(computeMacros(p, KCAL, 'keto')).toMatchObject({ proteinG: 128, carbG: 30, fatG: 164 })

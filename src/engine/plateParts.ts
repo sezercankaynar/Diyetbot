@@ -57,6 +57,9 @@ const PART_DEFS: PartDef[] = [
   { id: 'kasar', name: 'Kaşar peyniri', unit: 'ince dilim', grams: 15, short: 'kaşar', role: 'cheese', group: 'kahvalti', lines: [['kasar', 15]], levels: [0, 1, 2] },
   { id: 'zeytin', name: 'Zeytin', unit: 'adet', grams: 4, short: 'zeytin', role: 'olive', group: 'kahvalti', lines: [['zeytin-siyah', 4]], levels: [0, 4, 6, 8] },
   // nuts and fruit
+  { id: 'nohut', name: 'Haşlanmış nohut', unit: 'yemek kaşığı', grams: 15, short: 'nohut', role: 'dairy', group: 'yan', lines: [['nohut-haslanmis', 15]], levels: [0, 3, 4, 6] },
+  { id: 'tahin', name: 'Tahin', unit: 'yemek kaşığı', grams: 15, short: 'tahin', role: 'nuts', group: 'kahvalti', lines: [['tahin', 15]], levels: [1, 1.5] },
+  { id: 'pekmez', name: 'Pekmez', unit: 'tatlı kaşığı', grams: 10, short: 'pekmez', role: 'dried', group: 'kahvalti', lines: [['pekmez', 10]], levels: [1] },
   { id: 'ceviz', name: 'Ceviz içi', unit: 'tam ceviz', grams: 5, short: 'ceviz', role: 'nuts', group: 'ara', lines: [['ceviz', 5]], levels: [0, 2, 3, 4] },
   { id: 'badem', name: 'Çiğ badem', unit: 'adet', grams: 1.2, short: 'badem', role: 'nuts', group: 'ara', lines: [['badem', 1.2]], levels: [0, 6, 10, 15] },
   { id: 'findik', name: 'Fındık', unit: 'adet', grams: 1.4, short: 'fındık', role: 'nuts', group: 'ara', lines: [['findik', 1.4]], levels: [0, 6, 10, 15] },
@@ -121,7 +124,7 @@ export const partRole = (foodId: string): PartRole | undefined => DEF_BY_ID.get(
 
 /** Dishes used inside breakfast plates, by their short title name. */
 const DISH_SHORT: Record<string, string> = {
-  'yl-menemen-yalniz': 'menemen', 'yl-kasarli-omlet': 'kaşarlı omlet', 'yl-sebzeli-omlet': 'sebzeli omlet', 'yl-sade-omlet': 'omlet',
+  'yl-menemen-yalniz': 'menemen', 'yl-kasarli-omlet': 'kaşarlı omlet', 'tofu-menemen': 'tofu menemen', 'yl-sebzeli-omlet': 'sebzeli omlet', 'yl-sade-omlet': 'omlet',
 }
 /** Short name of a plate part for titles; undefined = not named in titles. */
 export const partShort = (foodId: string): string | undefined => DEF_BY_ID.get(foodId)?.short ?? DISH_SHORT[foodId]
@@ -186,6 +189,10 @@ export const MAINS: MainDef[] = [
   M('izgara-cipura', 'balik', 'ekmek', true), M('firin-hamsi', 'balik', 'ekmek', true),
   // vejetaryen ana yemek (yumurtalı)
   M('yumurtali-ispanak-tabak', 'vejetaryen', 'ekmek', true), M('menemen-yalniz', 'vejetaryen', 'ekmek', true),
+  // bitkisel protein (tofu; dishes from the curated list, sides are in the name)
+  { id: 'tofu-wok', kind: 'vejetaryen', carb: 'kendi' }, { id: 'tofu-brokoli', kind: 'vejetaryen', carb: 'pilav', quick: true },
+  { id: 'tofu-ispanak', kind: 'vejetaryen', carb: 'ekmek', quick: true }, { id: 'tofu-mantar', kind: 'vejetaryen', carb: 'pilav', quick: true },
+  M('zy-nohut-tabak', 'baklagil', 'pilav'),
 ]
 
 export const SOUPS = [
@@ -226,6 +233,10 @@ export const BREAKFASTS: Template[] = [
   { id: 'b-lor', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('lor', 3), P('yumurta', 1), P('sogus', 1), P('zeytin', 6), P('ekmek', 2), P('ceviz', 2)] },
   { id: 'b-yulaf', title: 'Kahvaltı', maxPerWeek: 1, parts: [P('yulaf', 5), P('sut', 1), P('muz', 1), P('ceviz', 2), P('yumurta', 0)] },
   { id: 'b-yogurt-kase', title: 'Kahvaltı', maxPerWeek: 1, parts: [P('yogurt', 1), P('yulaf', 3), P('cilek', 1), P('ceviz', 2), P('yumurta', 0)] },
+  // Plant-only breakfasts (vegans; also a change for everyone else).
+  { id: 'b-tahin', title: 'Kahvaltı', maxPerWeek: 2, parts: [P('tahin', 1), P('pekmez', 1), P('ekmek', 2), P('ceviz', 2), P('sogus', 1), P('zeytin', 6)] },
+  { id: 'b-yulaf-vegan', title: 'Kahvaltı', maxPerWeek: 2, parts: [P('yulaf', 5), P('muz', 1), P('badem', 10), P('ceviz', 2)] },
+  { id: 'b-tofu', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 2, parts: [P('tofu-menemen', 1), P('sogus', 1), P('zeytin', 6)] },
   { id: 'b-kasar', title: 'Kahvaltı', lowCarb: true, maxPerWeek: 1, parts: [P('yumurta', 2), P('kasar', 1), P('sogus', 1), P('zeytin', 4), P('ekmek', 2), P('ceviz', 2)] },
 ]
 

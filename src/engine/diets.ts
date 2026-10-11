@@ -1,13 +1,16 @@
 import type { DietId, DietScore, IfScore, Profile } from './types'
 
 export const DIET_NAMES: Record<DietId, string> = {
-  med: 'Akdeniz',
+  med: 'Akdeniz tipi (Türk ev yemekleri)',
   hp: 'Yüksek proteinli esnek',
   dash: 'DASH',
   lowcarb: 'Ilımlı düşük karbonhidrat',
   plant: 'Bitki temelli',
   keto: 'Ketojenik',
 }
+
+/** Styles the app offers (and recommends from): Akdeniz tipi, DASH (for blood pressure), low-carb, plant-based. */
+export const OFFERED_DIETS: DietId[] = ['med', 'dash', 'lowcarb', 'plant']
 
 /** Order also acts as the tie-breaker when scores are equal. */
 export const DIET_ORDER: DietId[] = ['med', 'hp', 'dash', 'lowcarb', 'plant', 'keto']

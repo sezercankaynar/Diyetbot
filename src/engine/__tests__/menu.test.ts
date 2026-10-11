@@ -109,7 +109,7 @@ describe('dietitian-style week (TÜBER frequencies)', () => {
     const m = generateWeekMenu(ctxFor({ mealSlots: ['breakfast', 'lunch', 'snack', 'dinner'] }), WEEK)
     for (const d of m.days) {
       const b = partsOf(mainOf(d, 'breakfast')).map((x) => x.foodId)
-      expect(b.some((id) => ['pc-yumurta', 'yl-menemen-yalniz', 'yl-kasarli-omlet', 'yl-sebzeli-omlet', 'pc-yulaf', 'pc-lor', 'pc-yogurt'].includes(id))).toBe(true)
+      expect(b.some((id) => ['pc-yumurta', 'yl-menemen-yalniz', 'yl-kasarli-omlet', 'yl-sebzeli-omlet', 'pc-yulaf', 'pc-lor', 'pc-yogurt', 'pc-tahin', 'tofu-menemen'].includes(id))).toBe(true)
       const s = partsOf(mainOf(d, 'snack')).map((x) => x.foodId)
       expect(s.every((id) => id.startsWith('pc-'))).toBe(true)
       expect(s).not.toEqual(['pc-lor', 'pc-sogus'])

@@ -194,8 +194,12 @@ export interface DailyLog {
 
 export const GLASS_ML = 250
 
+/** About a fifth of the day's water comes from food (EFSA 2010); the rest is what to drink. */
+export const DRINK_SHARE = 0.8
+
+/** Glasses to drink a day, from the total water need (food + drinks). */
 export function waterGlassesTarget(waterMl: number): number {
-  return Math.max(6, Math.round(waterMl / GLASS_ML))
+  return Math.max(6, Math.round((waterMl * DRINK_SHARE) / GLASS_ML))
 }
 
 /** Share of chosen habits ticked over the given days (undefined if none chosen). */

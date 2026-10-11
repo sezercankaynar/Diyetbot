@@ -73,7 +73,10 @@ export function kindQuota(ctx: MenuContext, n: number, available: Set<MainKind>)
   const lean = ctx.diet === 'med' || ctx.diet === 'dash' || ctx.diet === 'plant'
   put('tavuk', (n >= 10 ? 3 : n >= 5 ? 2 : 1) + (highProtein && n >= 7 ? 1 : 0))
   put('kirmizi', (lean ? (n >= 10 ? 1 : 0) : n >= 10 ? 2 : 1) + (highProtein && n >= 10 && !lean ? 1 : 0))
-  put('vejetaryen', !available.has('tavuk') ? Math.min(2, Math.floor(n / 4)) : 0)
+  // Plant eaters: protein comes from legumes and tofu/eggs, so they get more of those meals.
+  const plantOnly = !available.has('tavuk') && !available.has('balik')
+  if (plantOnly && ctx.diet !== 'keto') put('baklagil', Math.round(n * 0.35))
+  put('vejetaryen', !available.has('tavuk') ? (plantOnly ? Math.round(n * 0.3) : Math.min(2, Math.floor(n / 4))) : 0)
   const used = [...q.values()].reduce((a, b) => a + b, 0)
   const rest = Math.max(0, n - used)
   if (available.has('sebze')) q.set('sebze', (q.get('sebze') ?? 0) + rest)
@@ -202,6 +205,8 @@ function mainPlate(
     const r = rand()
     const d = r < 0.5 ? dairy[0] : r < 0.8 ? (dairy[1] ?? dairy[0]) : (dairy[2] ?? dairy[0])
     if (d) parts.push(part(d, 1))
+    // No dairy (vegan, or dairy disliked): a few spoons of chickpeas bring the protein a yoghurt would.
+    else if (main.kind === 'sebze' && allowed(ctx, 'pc-nohut')) parts.push(part('pc-nohut', 4))
   }
   const salads = isFish ? ['pc-roka', 'pc-salata'] : ['pc-salata', 'pc-coban']
   const salad = salads.find((id, i) => allowed(ctx, id) && (i > 0 || rand() < 0.6)) ?? salads.find((id) => allowed(ctx, id))
@@ -286,7 +291,7 @@ export function dayLoss(plates: Plate[], ctx: MenuContext, shares: Map<Slot, num
   const c = rel(t.carb, ctx.carbG)
   loss += (c > 0 ? 25 : 10) * c * c
   const f = rel(t.fat, ctx.fatG)
-  loss += (f > 0 ? 40 : 10) * f * f
+  loss += (f > 0 ? 70 : 10) * f * f
   // Each meal keeps roughly its share (light lunch stays light, hearty dinner stays hearty).
   plates.forEach((pl, i) => {
     const share = shares.get(pl.slot) ?? 0

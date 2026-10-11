@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import ScoreBar from '@/components/ScoreBar.vue'
 import { fmt } from '@/content/labels'
-import type { DietId } from '@/engine'
+import { DRINK_SHARE, waterGlassesTarget, type DietId } from '@/engine'
 
 const store = useAppStore()
 const emit = defineEmits<{ go: [tab: string] }>()
@@ -33,7 +33,7 @@ function choose(id: DietId) {
           <div class="tile c"><strong class="num">{{ plan.macros.carbG }} g</strong><span>Karbonhidrat</span></div>
           <div class="tile f"><strong class="num">{{ plan.macros.fatG }} g</strong><span>Yağ</span></div>
         </div>
-        <div class="small muted num">Lif {{ plan.macros.fiberG }} g · Su {{ fmt(plan.macros.waterMl / 1000, 1) }} L</div>
+        <div class="small muted num">Lif {{ plan.macros.fiberG }} g · Su: içecek olarak ≈{{ fmt((plan.macros.waterMl * DRINK_SHARE) / 1000, 1) }} L ({{ waterGlassesTarget(plan.macros.waterMl) }} bardak); yemeklerden gelen suyla toplam {{ fmt(plan.macros.waterMl / 1000, 1) }} L</div>
       </section>
 
       <CalloutBox v-for="c in plan.safety.warnings" :key="c.code" :callout="c" />

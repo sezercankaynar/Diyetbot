@@ -1,7 +1,7 @@
 import { computeEnergy, round5 } from './energy'
 import { computeMacros } from './macros'
 import { evaluateSafety } from './safety'
-import { scoreDiets, scoreIntermittentFasting } from './diets'
+import { OFFERED_DIETS, scoreDiets, scoreIntermittentFasting } from './diets'
 import { mealGuide } from './meals'
 import { generateTraining } from './training'
 import type { Callout, DietId, Plan, Profile } from './types'
@@ -58,8 +58,14 @@ export function buildPlan(p: Profile, opts: PlanOptions = {}): Plan {
   }
 
   const diets = scoreDiets(p, safety.excludedDiets)
-  const chosen =
-    (opts.diet && diets.find((d) => d.id === opts.diet && !d.excluded)) || diets[0]
+  // Offered styles: high-protein now has the same targets as Mediterranean (protein 1.6 g/kg, fat 32 %),
+  // and keto can't be built from Turkish home cooking; both stay valid only if the user picked them before.
+  const offered = diets.filter((d) => !d.excluded && OFFERED_DIETS.includes(d.id))
+  let chosen =
+    (opts.diet && diets.find((d) => d.id === opts.diet && !d.excluded)) || offered[0] || diets[0]
+  // Mediterranean carries the high-protein reasons too (same protein target now).
+  const hp = diets.find((d) => d.id === 'hp')
+  if (chosen.id === 'med' && hp?.reasons.length) chosen = { ...chosen, reasons: [...chosen.reasons, ...hp.reasons] }
   const macros = computeMacros(p, energy.target, chosen.id)
 
   const ifScore = scoreIntermittentFasting(p)

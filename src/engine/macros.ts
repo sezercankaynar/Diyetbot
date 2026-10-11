@@ -28,8 +28,10 @@ export function proteinPerKg(goal: Goal, plant: boolean): number {
 
 export const FAT_MIN_PER_KG = 0.8
 
+// Turkish home cooking (zeytinyağlı, yoğurt, peynir, yumurta) lands around a third of energy from fat,
+// inside the 20–35 % range most guidelines accept; a 28 % target left every menu day "over".
 const FAT_PCT: Partial<Record<DietId, number>> = { med: 0.32, dash: 0.27 }
-const DEFAULT_FAT_PCT = 0.28
+const DEFAULT_FAT_PCT = 0.32
 export const KETO_CARBS_G = 30
 export const LOWCARB_MAX_CARBS_G = 130
 

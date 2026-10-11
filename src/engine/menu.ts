@@ -271,13 +271,13 @@ function mainProtein(foodId: string): string[] {
 }
 
 /**
- * The week's menu: dietitian-style plates (see planner.ts). Vegan and keto profiles use the single-dish
- * generator below: the plates are built around yoghurt, cheese, bread and vegetable dishes.
+ * The week's menu: dietitian-style plates (see planner.ts). Keto (no longer offered, kept for anyone who
+ * chose it before) uses the single-dish generator below.
  */
 export function generateWeekMenu(
   ctx: MenuContext, weekStart: string, seed = 1, previous?: WeekMenu | null, special: string[] = [],
 ): WeekMenu {
-  if (ctx.animalFoods === 'vegan' || ctx.diet === 'keto') return legacyWeekMenu(ctx, weekStart, seed)
+  if (ctx.diet === 'keto') return legacyWeekMenu(ctx, weekStart, seed)
   const rand = rng(dayIndex(weekStart) * 7919 + seed)
   // Main dishes of the previous (or replaced) menu come up less, so weeks don't repeat.
   const recent = (previous?.days ?? []).flatMap((d) => d.items.filter((i) => i.slot === 'lunch' || i.slot === 'dinner').map((i) => i.foodId))
@@ -346,7 +346,7 @@ export function menuOutdated(menu: WeekMenu, ctx: MenuContext): boolean {
 
 /** Alternative plates for one meal, each tuned so the day stays on its targets. */
 export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 4): MenuItem[] {
-  if (ctx.animalFoods === 'vegan' || ctx.diet === 'keto') {
+  if (ctx.diet === 'keto') {
     const sp = slotPlan(ctx).find((s) => s.slot === slot)
     const target = ctx.kcal * (sp?.share ?? 0.3)
     const current = day.items.find((i) => i.slot === slot)?.foodId

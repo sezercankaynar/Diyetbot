@@ -60,7 +60,8 @@ describe('habits, water and day review', () => {
     expect(habitRate(logs, ['protein', 'adim'], ['2026-10-08', '2026-10-09'])).toBeCloseTo(0.75)
     expect(habitRate(logs, [], ['2026-10-08'])).toBeUndefined()
     expect(waterRate(logs, 8, ['2026-10-08', '2026-10-09'])).toBeCloseTo(0.75)
-    expect(waterGlassesTarget(2800)).toBe(11)
+    // 2.8 L total water, ~20 % from food → 2.24 L to drink ≈ 9 glasses
+    expect(waterGlassesTarget(2800)).toBe(9)
     expect(waterGlassesTarget(1000)).toBe(6)
   })
   it('day review', () => {

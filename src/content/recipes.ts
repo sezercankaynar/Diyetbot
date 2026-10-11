@@ -180,7 +180,7 @@ const BY_ID: [RegExp, keyof typeof M][] = [
   [/^yl-(etli-(taze|bezelye|bamya|turlu))/, 'etliSebze'],
   [/^yl-kiymali-/, 'kiymaliSebze'],
   [/^yl-(zy-|imam-bayildi)/, 'zeytinyagli'],
-  [/(tavuk-sote|et-sote)/, 'sote'],
+  [/(tavuk-sote|et-sote|tofu)/, 'sote'],
   [/(izgara-kofte|kasap-kofte)/, 'kofte'],
   [/(izgara|pirzola|tavuk-sis|biftek)/, 'izgara'],
   [/(firin|izmir-kofte|kofte-patates|somon|hamsi)/, 'firin'],

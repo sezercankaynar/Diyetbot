@@ -9,7 +9,12 @@ describe('buildPlan', () => {
     const plan = buildPlan(profile())
     expect(plan.safety.stop).toBe(false)
     expect(plan.energy?.target).toBe(2110)
-    expect(plan.recommendedDiet?.id).toBe('hp')
+    // High-protein scores highest, but the offered style with the same targets is Mediterranean.
+    expect(plan.recommendedDiet?.id).toBe('med')
+    expect(plan.recommendedDiet?.reasons.join(' ')).toMatch(/antrenman/)
+    // keto/hp are never recommended, but an earlier explicit choice still works
+    expect(buildPlan(profile({ carbAttachment: 'low', trainingDays: 2 })).recommendedDiet?.id).not.toBe('keto')
+    expect(buildPlan(profile(), { diet: 'keto' }).recommendedDiet?.id).toBe('keto')
     expect(plan.macros?.kcal).toBe(2110)
     expect(plan.meals?.proteinPerMealG).toBe(Math.round(128 / 3))
     expect(plan.training?.days).toHaveLength(3)

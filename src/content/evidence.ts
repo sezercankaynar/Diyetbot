@@ -105,6 +105,14 @@ export const STUDIES: Study[] = [
     rule: 'Öğün saatleri kişiye göre ayarlanır; son öğünün çok geç olması ve 7 saati aşan açlık aralıkları için uyarı verilir.',
   },
   {
+    id: 'water',
+    title: 'Su ihtiyacı (EFSA)',
+    citation: 'EFSA Panel on Dietetic Products, Nutrition and Allergies. EFSA Journal 2010;8(3):1459',
+    summary:
+      'Yetişkinler için yeterli toplam su alımı kadında günde 2,0 L, erkekte 2,5 L kabul edilir; bunun yaklaşık %20–30\'u yiyeceklerden (çorba, sebze, meyve, yoğurt) gelir.',
+    rule: 'Günlük toplam su kilo başına 35 ml hesaplanır; bunun %80\'i içecek olarak bardağa çevrilir (80 kg için ≈ 9 bardak).',
+  },
+  {
     id: 'msj',
     title: 'Mifflin-St Jeor doğruluğu',
     citation: 'Frankenfield D ve ark. J Am Diet Assoc 2005;105:775–789',
