@@ -90,17 +90,20 @@ export function shoppingList(days: MenuDay[]): ShoppingList {
   }
 }
 
-/** Plain text (for sharing to WhatsApp, notes …). */
-export function shoppingText(list: ShoppingList, title: string): string {
+/** Plain text (for sharing to WhatsApp, notes …), without what's already at home (`have`). */
+export function shoppingText(list: ShoppingList, title: string, have: ReadonlySet<string> = new Set()): string {
   const lines = [title, '']
   for (const g of list.groups) {
+    const items = g.items.filter((i) => !have.has(i.id))
+    if (!items.length) continue
     lines.push(`${g.category}:`)
-    for (const i of g.items) lines.push(`- ${i.name}: ${i.amount}`)
+    for (const i of items) lines.push(`- ${i.name}: ${i.amount}`)
     lines.push('')
   }
-  if (list.ready.length) {
+  const ready = list.ready.filter((r) => !have.has(r.id))
+  if (ready.length) {
     lines.push('Hazır:')
-    for (const r of list.ready) lines.push(`- ${r.name} × ${num(r.count)}`)
+    for (const r of ready) lines.push(`- ${r.name} × ${num(r.count)}`)
   }
-  return lines.join('\n').trim()
+  return lines.length > 2 ? lines.join('\n').trim() : `${title}\n\nHer şey evde var 👍`
 }

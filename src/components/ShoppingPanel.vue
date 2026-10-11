@@ -35,7 +35,8 @@ function toggle(id: string) {
 
 const msg = ref('')
 async function share() {
-  const text = shoppingText(list.value, `Alışveriş listesi (${range.value === 'week' ? 'tüm hafta' : 'bugünden hafta sonuna'})`)
+  // What's ticked (already at home) stays out of the shared list.
+  const text = shoppingText(list.value, `Alışveriş listesi (${range.value === 'week' ? 'tüm hafta' : 'bugünden hafta sonuna'})`, new Set(ticked.value))
   try {
     if (Capacitor.isNativePlatform()) {
       const { Share } = await import('@capacitor/share')
@@ -59,8 +60,8 @@ async function share() {
       <button type="button" :aria-pressed="range === 'week'" @click="range = 'week'">Tüm hafta</button>
     </div>
     <p class="small muted">
-      Menüdeki yemeklerin malzemeleri, çiğ ve kuru hâliyle (pişmiş pilav yerine kuru bulgur gibi). Miktarlar senin porsiyonlarına göre;
-      evdekiler için işaretleyebilirsin.
+      Menüdeki yemeklerin malzemeleri, çiğ ve kuru hâliyle (pişmiş pilav yerine kuru bulgur gibi). Miktarlar senin porsiyonlarına göre.
+      Evde olanları işaretle; paylaştığın listede sadece alınacaklar olur.
     </p>
     <p v-if="msg" class="ok small">{{ msg }}</p>
     <section v-for="g in list.groups" :key="g.category" class="card grp">
@@ -73,10 +74,13 @@ async function share() {
     </section>
     <section v-if="list.ready.length" class="card grp">
       <h2>Hazır ürünler</h2>
-      <div v-for="r in list.ready" :key="r.id" class="item"><span class="nm">{{ r.name }}</span><span class="amt num">× {{ String(r.count).replace('.', ',') }}</span></div>
+      <label v-for="r in list.ready" :key="r.id" class="item" :class="{ done: ticked.includes(r.id) }">
+        <input type="checkbox" :checked="ticked.includes(r.id)" @change="toggle(r.id)" />
+        <span class="nm">{{ r.name }}</span><span class="amt num">× {{ String(r.count).replace('.', ',') }}</span>
+      </label>
     </section>
     <p v-if="!list.groups.length" class="muted">Bu aralıkta menü yok.</p>
-    <button type="button" class="btn wide" @click="share">Listeyi paylaş</button>
+    <button type="button" class="btn wide" @click="share">Listeyi paylaş{{ ticked.length ? ' (işaretliler hariç)' : '' }}</button>
   </SheetPanel>
 </template>
 

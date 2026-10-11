@@ -26,4 +26,16 @@ describe('shopping list', () => {
     expect(two).toBeLessThan(week)
     expect(shoppingText(shoppingList(m.days), 'Alışveriş')).toMatch(/^Alışveriş\n\nSebze:/)
   })
+  it('the shared text leaves out what is already at home', () => {
+    const l = shoppingList(m.days)
+    const all = l.groups.flatMap((g) => g.items)
+    const have = new Set(all.slice(0, 3).map((i) => i.id))
+    const text = shoppingText(l, 'Alışveriş', have)
+    for (const i of all.slice(0, 3)) expect(text).not.toContain(`- ${i.name}:`)
+    expect(text).toContain(`- ${all[3].name}:`)
+    // a group with everything ticked disappears; all ticked → nothing to buy
+    const veg = l.groups.find((g) => g.category === 'Sebze')!
+    expect(shoppingText(l, 'A', new Set(veg.items.map((i) => i.id)))).not.toMatch(/Sebze:/)
+    expect(shoppingText(l, 'A', new Set([...all.map((i) => i.id), ...l.ready.map((r) => r.id)]))).toMatch(/Her şey evde var/)
+  })
 })
