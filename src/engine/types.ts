@@ -67,6 +67,8 @@ export interface Profile {
   likes?: string[]
   /** Meals the user eats; overrides mealsPerDay-based defaults when set. */
   mealSlots?: Slot[]
+  /** Cooks sulu yemek for two days: a pot dish from dinner comes back the next day. */
+  batchCooking?: boolean
   /** Which meals are big and which are light (öğün düzeni). */
   mealStyle: MealStyles
   mealTimes: MealTimes

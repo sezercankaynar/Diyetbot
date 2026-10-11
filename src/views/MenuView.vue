@@ -6,6 +6,7 @@ import CalloutBox from '@/components/CalloutBox.vue'
 import MealPlate from '@/components/MealPlate.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import MealAddPanel from '@/components/MealAddPanel.vue'
+import ShoppingPanel from '@/components/ShoppingPanel.vue'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
@@ -30,6 +31,7 @@ const windows = computed(() =>
 )
 const openSlot = ref<Slot | null>(null)
 const addSlot = ref<Slot | null>(null)
+const shopping = ref(false)
 const alternatives = computed(() =>
   store.menuCtx && day.value && openSlot.value ? alternativesFor(store.menuCtx, day.value, openSlot.value) : [],
 )
@@ -135,6 +137,7 @@ async function regenerate() {
         Liste diyetisyen listesi gibi hazırlanır: balık haftada 2, kuru baklagil 2–3 kez, çoğu gün sulu sebze yemeği; her ana öğünde pilav ya da ekmek, yoğurt ve salata. Miktarlar günü kalori hedefinin hemen altına oturtacak şekilde ayarlanır; “Değiştir” seçenekleri de buna uyar. Beğendiğin yemekler sonraki menülerde daha sık çıkar. Değerler yaklaşık porsiyonlara göredir.
       </p>
       <div class="btn-row">
+        <button type="button" class="btn" @click="shopping = true">🛒 Alışveriş listesi</button>
         <button type="button" class="btn ghost" @click="regenerate">Haftayı yeniden oluştur</button>
       </div>
     </template>
@@ -142,6 +145,7 @@ async function regenerate() {
       v-if="addSlot && day" :date="day.date" :slot="addSlot" :title="`${labels[addSlot]}: yemek ekle`"
       @close="addSlot = null"
     />
+    <ShoppingPanel v-if="shopping" @close="shopping = false" />
   </div>
 </template>
 

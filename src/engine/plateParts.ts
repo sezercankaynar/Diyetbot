@@ -91,6 +91,7 @@ function partFood(d: PartDef): Food {
     fat: r1(t.fat),
     unit: d.unit,
     ...(d.grams ? { unitGrams: d.grams } : {}),
+    recipe: { lines, servings: 1 },
     source: 'Değerler malzemelerden hesaplandı (USDA FDC / TürKomp)',
   }
 }
@@ -107,6 +108,19 @@ const DISH_SHORT: Record<string, string> = {
 }
 /** Short name of a plate part for titles; undefined = not named in titles. */
 export const partShort = (foodId: string): string | undefined => DEF_BY_ID.get(foodId)?.short ?? DISH_SHORT[foodId]
+const EATEN_STEPS = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3]
+
+/**
+ * The next amount up or down when correcting what was actually eaten: household steps for plate parts
+ * (1 → 2 dilim), quarter portions for dishes. 0 means "didn't eat it".
+ */
+export function nextEatenAmount(foodId: string, factor: number, dir: 1 | -1): number {
+  const def = DEF_BY_ID.get(foodId)
+  const steps = def ? [...new Set([0, ...def.levels, ...(def.unit === 'dilim' || def.unit === 'adet' ? [1, 2, 3, 4, 5, 6] : [])])].sort((a, b) => a - b) : EATEN_STEPS
+  if (dir > 0) return steps.find((x) => x > factor + 1e-9) ?? factor
+  return [...steps].reverse().find((x) => x < factor - 1e-9) ?? 0
+}
+
 /** Allowed amounts of a plate part (main dishes use MAIN_LEVELS). */
 export function partLevels(foodId: string): number[] {
   const def = DEF_BY_ID.get(foodId)

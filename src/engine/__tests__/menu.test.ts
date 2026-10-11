@@ -115,6 +115,23 @@ describe('dietitian-style week (TÜBER frequencies)', () => {
       expect(s).not.toEqual(['pc-lor', 'pc-sogus'])
     }
   })
+  it('same pot, two days: with batch cooking a dinner pot dish comes back the next day', () => {
+    const m = generateWeekMenu(ctxFor({ batchCooking: true }), WEEK)
+    let carried = 0
+    for (let d = 1; d < 7; d++) {
+      for (const i of m.days[d].items.filter((x) => x.leftover)) {
+        carried++
+        expect(mainOf(m.days[d - 1], 'dinner').foodId).toBe(i.foodId)
+        expect(['sebze', 'baklagil']).toContain(kindOf(i.foodId))
+        expect(mealTitle(i)).toMatch(/dünkü tencereden/)
+      }
+      // never twice on the same day
+      const mains = m.days[d].items.filter((x) => x.slot === 'lunch' || x.slot === 'dinner').map((x) => x.foodId)
+      expect(new Set(mains).size).toBe(mains.length)
+    }
+    expect(carried).toBeGreaterThanOrEqual(2)
+    expect(generateWeekMenu(ctxFor(), WEEK).days.flatMap((d) => d.items).some((i) => i.leftover)).toBe(false)
+  })
   it('plate titles match what is on the plate', () => {
     for (const over of [{}, { mealSlots: ['breakfast', 'lunch', 'snack', 'dinner', 'night'] as Slot[] }, { mealStyle: { breakfast: 'normal' as const, lunch: 'light' as const, dinner: 'normal' as const } }]) {
       for (const seed of [1, 2]) {

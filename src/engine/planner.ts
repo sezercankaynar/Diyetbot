@@ -138,6 +138,7 @@ type PlateKind = 'main' | 'light' | 'template'
 interface Plate {
   slot: Slot
   kind: PlateKind
+  leftover?: boolean
   title?: string
   parts: PlatePart[]
 }
@@ -350,7 +351,10 @@ function toItem(p: Plate): MenuItem | null {
   const parts: Part[] = p.parts.filter((x) => x.amount > 0).map((x) => ({ foodId: x.foodId, factor: x.amount }))
   if (!parts.length) return null
   const [main, ...sides] = parts
-  return { slot: p.slot, foodId: main.foodId, factor: main.factor, ...(sides.length ? { sides } : {}), title: plateTitle(p.slot, p.kind, parts) }
+  return {
+    slot: p.slot, foodId: main.foodId, factor: main.factor, ...(sides.length ? { sides } : {}),
+    title: plateTitle(p.slot, p.kind, parts), ...(p.leftover ? { leftover: true } : {}),
+  }
 }
 
 /** A menu item back into a tunable plate. */
@@ -395,6 +399,7 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
   const usedLight = new Set<string>()
   const usedSoups = new Map<string, number>()
   let lastSoupPlateDay = -9
+  let carry: { main: MainDef; day: number } | null = null
   const week: MenuItem[][] = []
   let fruitIdx = Math.floor(rand() * FRUITS.length)
   const nextFruit = () => {
@@ -410,6 +415,7 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
     // Soup is offered on one main meal a day: the hearty one, else lunch, else dinner.
     const mainSps = plan.filter((x) => (x.slot === 'lunch' || x.slot === 'dinner') && x.style !== 'light')
     const soupSlot = (mainSps.find((x) => x.style === 'hearty') ?? mainSps[0])?.slot
+    const lastMainSlot = mainSps.at(-1)?.slot
     for (const sp of plan) {
       if (sp.slot === 'breakfast') {
         const t = pickTemplate(ctx, BREAKFASTS, usedTemplates, rand)
@@ -434,10 +440,18 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
         const idx = mainSlots.findIndex((m) => m.day === d && m.slot === sp.slot)
         const kind = kinds[idx]
         const todays = new Set(plates.map((p) => p.parts[0]?.foodId))
-        const main = chooseMain(ctx, byKind.get(kind) ?? mains, usedMains, todays, rand) ?? chooseMain(ctx, mains, usedMains, todays, rand)
+        // Same pot, next day: yesterday's dinner pot dish fills today's first main meal (not a fish day).
+        const fromPot: MainDef | null = carry && carry.day === d - 1 && kind !== 'balik' && !todays.has(carry.main.id) ? carry.main : null
+        if (carry && carry.day < d) carry = null
+        const main: MainDef | null =
+          fromPot ?? chooseMain(ctx, byKind.get(kind) ?? mains, usedMains, todays, rand) ?? chooseMain(ctx, mains, usedMains, todays, rand)
         if (!main) continue
-        usedMains.set(main.id, (usedMains.get(main.id) ?? 0) + 1)
-        plates.push(mainPlate(ctx, sp, main, rand, { fruit: nextFruit(), used: usedSoups, soup: sp.slot === soupSlot }))
+        if (fromPot) carry = null
+        else usedMains.set(main.id, (usedMains.get(main.id) ?? 0) + 1)
+        const plate = mainPlate(ctx, sp, main, rand, { fruit: nextFruit(), used: usedSoups, soup: sp.slot === soupSlot })
+        if (fromPot) plate.leftover = true
+        plates.push(plate)
+        if (ctx.batchCooking && !fromPot && sp.slot === lastMainSlot && (main.kind === 'sebze' || main.kind === 'baklagil')) carry = { main, day: d }
       }
     }
     const tuned = tunePlates(plates, ctx, shares)

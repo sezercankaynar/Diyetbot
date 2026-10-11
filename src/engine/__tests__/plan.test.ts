@@ -11,7 +11,7 @@ describe('buildPlan', () => {
     expect(plan.energy?.target).toBe(2110)
     expect(plan.recommendedDiet?.id).toBe('hp')
     expect(plan.macros?.kcal).toBe(2110)
-    expect(plan.meals?.proteinPerMealG).toBe(Math.round(160 / 3))
+    expect(plan.meals?.proteinPerMealG).toBe(Math.round(128 / 3))
     expect(plan.training?.days).toHaveLength(3)
   })
 

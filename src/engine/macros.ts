@@ -10,9 +10,11 @@ export function referenceWeight(weightKg: number, heightCm: number): number {
   return weightKg
 }
 
+// 1.6 g/kg is where the benefit for lean mass plateaus (Morton 2018); it's also what a Turkish
+// home-cooked plan can actually reach without protein shakes. Recomposition keeps a little more.
 const PROTEIN_PER_KG: Record<Goal, number> = {
-  lose: 2.0,
-  recomp: 2.0,
+  lose: 1.6,
+  recomp: 1.8,
   gain: 1.8,
   maintain: 1.6,
 }

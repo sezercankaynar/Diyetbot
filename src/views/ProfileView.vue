@@ -197,6 +197,10 @@ watch(
         </div>
       </template>
       <p class="small muted">Aynı günlük kaloride öğün dağılımı kilo kaybını değiştirmez; en iyi düzen sürdürebildiğin düzendir.</p>
+      <label class="check">
+        <input v-model="draft.batchCooking" type="checkbox" />
+        <span>Sulu yemeği iki gün yerim: akşam pişen tencere yemeği ertesi gün de menüde olsun</span>
+      </label>
       <div class="field">
         <span class="label">Öğün saatleri (başlangıç)</span>
         <div class="times">

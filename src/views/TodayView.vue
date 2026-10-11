@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { getFood, mealTitle, mealTotals, mealWindow, slotPlan, type Slot } from '@/engine'
+import { getFood, itemTotals, mealTitle, mealTotals, mealWindow, slotPlan, sumTotals, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
 import MealPlate from '@/components/MealPlate.vue'
+import EatenParts from '@/components/EatenParts.vue'
 import CheckPanel from '@/components/CheckPanel.vue'
 import EatOutPanel from '@/components/EatOutPanel.vue'
 import MealAddPanel from '@/components/MealAddPanel.vue'
@@ -41,7 +42,10 @@ const meals = computed(() => {
         item,
         food: item ? getFood(item.foodId) : undefined,
         title: item ? mealTitle(item) : '',
-        totals: item ? mealTotals(item) : undefined,
+        // Once eaten, show what was actually logged (amounts may have been corrected).
+        totals: !item ? undefined : eatenSlots.value.has(sp.slot)
+          ? sumTotals(store.todayDiary.filter((e) => e.menuSlot === sp.slot).map((e) => itemTotals(e.foodId, e.factor)))
+          : mealTotals(item),
         window: mealWindow(sp, store.profile.mealTimes),
       }
     })
@@ -126,7 +130,11 @@ const ACTIONS = [
             @click="store.toggleMenuEaten(m.slot)"
           >✓</button>
           <div v-if="openMeal === m.slot" class="meal-more small muted">
-            <MealPlate :item="m.item!" />
+            <EatenParts v-if="eatenSlots.has(m.slot)" :slot="m.slot" />
+            <template v-else>
+              <MealPlate :item="m.item!" />
+              <button type="button" class="btn ghost small" @click="store.toggleMenuEaten(m.slot)">Yedim, miktarları düzelteceğim</button>
+            </template>
             <div>Önerilen saat: <span class="num">{{ m.window }}</span></div>
           </div>
         </div>

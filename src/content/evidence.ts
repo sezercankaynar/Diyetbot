@@ -46,7 +46,7 @@ export const STUDIES: Study[] = [
     citation: 'Morton RW ve ark. Br J Sports Med 2018;52:376–384',
     summary:
       '49 RKÇ ve 1.863 katılımcıyı içeren meta-analizde direnç antrenmanına eklenen protein, yağsız kütle ve güç artışını büyüttü. Fayda yaklaşık 1,6 g/kg/gün civarında plato yaptı (güven aralığının üst sınırı ~2,2 g/kg).',
-    rule: 'Protein 1,6–2,0 g/kg; kalori açığında üst sınır (2,0) kas korumak için.',
+    rule: 'Protein kilo verirken 1,6 g/kg (faydanın plato yaptığı nokta; ev yemekleriyle de ulaşılabilir), vücut şekillendirmede 1,8 g/kg.',
   },
   {
     id: 'tre',

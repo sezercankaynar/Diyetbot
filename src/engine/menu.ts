@@ -19,6 +19,8 @@ export interface MenuItem {
   /** Portion multiplier of the food's standard portion. */
   factor: number
   sides?: Part[]
+  /** The main dish is what was cooked the day before (same pot). */
+  leftover?: boolean
   /** Name of the plate (e.g. "Etli taze fasulye" or "Kahvaltı: yumurta, peynir, zeytin"). */
   title?: string
 }
@@ -29,7 +31,7 @@ export function mealTotals(i: MenuItem): Totals {
 }
 /** A dish name inside a plate: "(yalnız tabak)" / "(1 kase)" notes are only needed in search lists. */
 export const plateName = (name: string): string => name.replace(/ \((yalnız( tabak)?|1 kase)\)/, '')
-export const mealTitle = (i: MenuItem): string => plateName(i.title ?? getFood(i.foodId)?.name ?? '')
+export const mealTitle = (i: MenuItem): string => plateName(i.title ?? getFood(i.foodId)?.name ?? '') + (i.leftover ? ' (dünkü tencereden)' : '')
 export interface MenuDay {
   date: string
   items: MenuItem[]
@@ -57,6 +59,8 @@ export interface MenuContext {
   likes?: readonly string[]
   /** Meals the user eats (when set explicitly). */
   mealSlots?: Slot[]
+  /** Pot dishes (sulu yemek, baklagil) cooked at dinner come back the next day. */
+  batchCooking?: boolean
   dislikedFoods: string[]
   likedFoods: string[]
   cookingTime: Level3
@@ -311,7 +315,7 @@ export function menuSignature(ctx: MenuContext): string {
   const st = ctx.mealStyle ?? DEFAULT_STYLES
   return [
     MENU_VERSION, ctx.diet, ctx.animalFoods, [...ctx.dislikes].sort().join('+'), [...(ctx.likes ?? [])].sort().join('+'), ctx.cookingTime,
-    slotPlan(ctx).map((s) => s.slot).join('+'), ctx.hungerTime, st.breakfast, st.lunch, st.dinner,
+    slotPlan(ctx).map((s) => s.slot).join('+'), ctx.batchCooking ? 'pot2' : '', ctx.hungerTime, st.breakfast, st.lunch, st.dinner,
   ].join('|')
 }
 
@@ -575,6 +579,7 @@ export function buildMenuContext(
     hungerTime: p.hungerTime,
     mealStyle: p.mealStyle ?? DEFAULT_STYLES,
     mealSlots: p.mealSlots,
+    batchCooking: !!p.batchCooking,
     likes: p.likes ?? [],
   }
 }

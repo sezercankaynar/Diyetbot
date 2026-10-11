@@ -298,6 +298,16 @@ export const useAppStore = defineStore('app', () => {
     checkIns.value = checkIns.value.filter((x) => x.id !== id)
   }
 
+  /** Corrects the amount of a logged food (0 removes it). */
+  async function setDiaryAmount(id: string, factor: number) {
+    if (factor <= 0) return deleteDiary(id)
+    const e = diary.value.find((x) => x.id === id)
+    if (!e) return
+    const next = { ...e, factor }
+    await repo.putDiary(next)
+    diary.value = diary.value.map((x) => (x.id === id ? next : x))
+  }
+
   async function deleteDiary(id: string) {
     await repo.deleteDiary(id)
     diary.value = diary.value.filter((e) => e.id !== id)
@@ -390,6 +400,6 @@ export const useAppStore = defineStore('app', () => {
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
     load, saveProfile, upsertWeighIn, deleteWeighIn, setDiet,
     applyAdjustment, deleteAdjustment, exportBackup, importBackup,
-    ensureMenu, regenerateMenu, setMenuMeal, rateDish, logFoods, deleteDiary, toggleMenuEaten,
+    ensureMenu, regenerateMenu, setMenuMeal, rateDish, logFoods, deleteDiary, setDiaryAmount, toggleMenuEaten,
   }
 })
