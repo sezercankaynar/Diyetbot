@@ -276,9 +276,10 @@ export function plateTotals(p: Plate): Totals {
 }
 
 /** How far a day is from its targets (lower is better). Going over the kcal target is not allowed. */
-export function dayLoss(plates: Plate[], ctx: MenuContext, shares: Map<Slot, number>): number {
+/** `base`: what the day already has outside these plates (e.g. meals already eaten). */
+export function dayLoss(plates: Plate[], ctx: MenuContext, shares: Map<Slot, number>, base?: Totals): number {
   const meals = plates.map(plateTotals)
-  const t = sumTotals(meals)
+  const t = sumTotals(base ? [...meals, base] : meals)
   const K = ctx.kcal
   let loss = 0
   if (t.kcal > K) loss += 100 + (t.kcal - K) / 10
@@ -309,9 +310,9 @@ export function dayLoss(plates: Plate[], ctx: MenuContext, shares: Map<Slot, num
 }
 
 /** Coordinate descent over the allowed amounts of the given plates' parts (others stay as they are). */
-export function tunePlates(plates: Plate[], ctx: MenuContext, shares: Map<Slot, number>, free: Set<Slot> | null = null): Plate[] {
+export function tunePlates(plates: Plate[], ctx: MenuContext, shares: Map<Slot, number>, free: Set<Slot> | null = null, base?: Totals): Plate[] {
   const cur = plates.map((p) => ({ ...p, parts: p.parts.map((x) => ({ ...x })) }))
-  let best = dayLoss(cur, ctx, shares)
+  let best = dayLoss(cur, ctx, shares, base)
   for (let pass = 0; pass < 12; pass++) {
     let improved = false
     for (const pl of cur) {
@@ -321,7 +322,7 @@ export function tunePlates(plates: Plate[], ctx: MenuContext, shares: Map<Slot, 
         for (const lv of x.levels) {
           if (lv === bestLv) continue
           x.amount = lv
-          const l = dayLoss(cur, ctx, shares)
+          const l = dayLoss(cur, ctx, shares, base)
           if (l < best - 1e-9) {
             best = l
             bestLv = lv
@@ -514,12 +515,15 @@ function chooseMain(ctx: MenuContext, pool: MainDef[], used: Map<string, number>
 // ---------------------------------------------------------------------------------------------
 // Alternatives for one meal of a day
 
-export function alternativePlates(ctx: MenuContext, day: MenuItem[], slot: Slot, n: number, rand: Rand): MenuItem[] {
+export function alternativePlates(
+  ctx: MenuContext, day: MenuItem[], slot: Slot, n: number, rand: Rand,
+  opts: { share?: number; avoid?: string[]; base?: Totals } = {},
+): MenuItem[] {
   const sp = slotPlan(ctx).find((s) => s.slot === slot) ?? { slot, label: '', share: 0.3, style: 'normal' as const }
-  const shares = sharesOf(ctx)
+  const shares = opts.share !== undefined ? new Map([[slot, opts.share]]) : sharesOf(ctx)
   const others = day.filter((i) => i.slot !== slot).map(toPlate)
   const current = day.find((i) => i.slot === slot)
-  const inDay = new Set(day.map((i) => i.foodId))
+  const inDay = new Set([...day.map((i) => i.foodId), ...(opts.avoid ?? [])])
   const candidates: Plate[] = []
   if (slot === 'breakfast' || isSnackSlot(slot)) {
     const list = slot === 'breakfast' ? BREAKFASTS : slot === 'night' ? NIGHT_SNACKS : SNACKS
@@ -547,13 +551,28 @@ export function alternativePlates(ctx: MenuContext, day: MenuItem[], slot: Slot,
     }
   }
   const scored = candidates.map((c) => {
-    const tuned = tunePlates([...others, c], ctx, shares, new Set([slot]))
+    const tuned = tunePlates([...others, c], ctx, shares, new Set([slot]), opts.base)
     const plate = tuned[tuned.length - 1]
-    return { item: toItem(plate), loss: dayLoss(tuned, ctx, shares) }
+    return { item: toItem(plate), loss: dayLoss(tuned, ctx, shares, opts.base) }
   })
   return scored
     .filter((x): x is { item: MenuItem; loss: number } => !!x.item && x.item.title !== current?.title)
     .sort((a, b) => a.loss - b.loss)
     .slice(0, n)
     .map((x) => x.item)
+}
+
+/**
+ * Plates for a meal still to come, sized to a budget (this meal's part of what's left of the day after
+ * what was really eaten). The rest of the day counts as already there, so the plate is judged against
+ * the day's targets, like any menu day: it fills the day without overshooting.
+ */
+export function platesForBudget(ctx: MenuContext, slot: Slot, budget: Totals, n: number, rand: Rand, avoid: string[] = []): MenuItem[] {
+  const base: Totals = {
+    kcal: ctx.kcal - budget.kcal,
+    protein: ctx.proteinG - budget.protein,
+    carb: (ctx.carbG ?? 0) - budget.carb,
+    fat: (ctx.fatG ?? 0) - budget.fat,
+  }
+  return alternativePlates(ctx, [], slot, n, rand, { share: budget.kcal / ctx.kcal, avoid, base })
 }

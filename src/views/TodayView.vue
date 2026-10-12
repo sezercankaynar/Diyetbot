@@ -13,6 +13,7 @@ import SheetPanel from '@/components/SheetPanel.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
 import CravingPanel from '@/components/CravingPanel.vue'
 import DailyCoach from '@/components/DailyCoach.vue'
+import RestSuggest from '@/components/RestSuggest.vue'
 import RingProgress from '@/components/RingProgress.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import { fmt } from '@/content/labels'
@@ -164,6 +165,8 @@ const ACTIONS = [
           </div>
         </div>
       </section>
+
+      <RestSuggest />
 
       <section class="card">
         <div class="sec-head">

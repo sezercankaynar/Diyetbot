@@ -2,7 +2,7 @@ import { dayIndex } from './tracking'
 import { allFoods, getFood, isSnackSlot, type Food, type FoodTag, type Slot } from './foods'
 import { fitsAnimal, fitsDiet, fitsDislikes } from './foodRules'
 import { likeMatches } from './foodKeys'
-import { alternativePlates, planWeek } from './planner'
+import { alternativePlates, planWeek, platesForBudget } from './planner'
 import { isPart, partLevels } from './plateParts'
 import type { AnimalFoods, DietId, HungerTime, Level3, MealsPerDay, MealStyle, MealStyles, Plan, Profile } from './types'
 
@@ -360,6 +360,44 @@ export function alternativesFor(ctx: MenuContext, day: MenuDay, slot: Slot, n = 
   }
   const rand = rng(dayIndex(day.date) * 31 + slot.length)
   return alternativePlates({ ...ctx, month: monthOf(day.date) }, day.items, slot, n, rand)
+}
+
+export interface RestSuggestion {
+  slot: Slot
+  /** This meal's part of what's left of the day. */
+  budget: Totals
+  options: MenuItem[]
+}
+
+/**
+ * What's left of the day after what was really eaten (`eaten`: everything logged, meals and extras),
+ * split over the meals not eaten yet by their usual shares, with plates that fit each part.
+ * Empty when nothing meaningful is left (≤ 100 kcal) or for keto (single-dish menus).
+ */
+export function suggestForRest(ctx: MenuContext, date: string, eaten: Totals, open: Slot[], avoid: string[] = [], n = 3): RestSuggestion[] {
+  const left: Totals = {
+    kcal: ctx.kcal - eaten.kcal,
+    protein: ctx.proteinG - eaten.protein,
+    carb: (ctx.carbG ?? 0) - eaten.carb,
+    fat: (ctx.fatG ?? 0) - eaten.fat,
+  }
+  if (ctx.diet === 'keto' || !open.length || left.kcal <= 100) return []
+  const plan = slotPlan(ctx).filter((s) => open.includes(s.slot))
+  const sum = plan.reduce((a, s) => a + s.share, 0) || 1
+  const c = { ...ctx, month: monthOf(date) }
+  return plan.map((sp) => {
+    const k = sp.share / sum
+    const budget: Totals = {
+      kcal: Math.round(left.kcal * k),
+      protein: Math.round(Math.max(0, left.protein) * k),
+      carb: Math.round(Math.max(0, left.carb) * k),
+      fat: Math.round(Math.max(0, left.fat) * k),
+    }
+    // Tuned with the real (unclipped) leftovers: a macro already over stays over for the plate too.
+    const raw: Totals = { kcal: left.kcal * k, protein: left.protein * k, carb: left.carb * k, fat: left.fat * k }
+    const rand = rng(dayIndex(date) * 17 + sp.slot.length)
+    return { slot: sp.slot, budget, options: platesForBudget(c, sp.slot, raw, n, rand, avoid) }
+  })
 }
 
 /** Puts a whole meal into a day (replacing that meal, or adding it if the day lacks it). */
