@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { evaluateMeal, getFood, searchFoods, type CheckItem, type Food, type Slot } from '@/engine'
+import { evaluateMeal, getFood, itemTotals, plateName, searchFoods, sumTotals, type CheckItem, type Food, type SavedMeal, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
@@ -29,14 +29,36 @@ const results = computed(() => {
   return searchFoods(query.value, 30)
 })
 
-function add(foodId: string) {
+function add(foodId: string, factor?: number) {
   const existing = items.value.find((i) => i.foodId === foodId)
-  const usual = getFood(foodId)?.defaultFactor ?? 1
+  const usual = factor ?? getFood(foodId)?.defaultFactor ?? 1
   if (existing) existing.factor += usual
   else items.value.push({ foodId, factor: usual })
   query.value = ''
   saved.value = false
 }
+// Empty search: saved meals (this meal's first) and the foods the user logs most, one tap each.
+const savedList = computed(() =>
+  [...store.savedMeals].sort((a, b) => Number(b.slot === props.slot) - Number(a.slot === props.slot)),
+)
+const mealKcal = (m: SavedMeal) => sumTotals(m.items.map((x) => itemTotals(x.foodId, x.factor))).kcal
+function addMeal(m: SavedMeal) {
+  for (const x of m.items) if (getFood(x.foodId)) add(x.foodId, x.factor)
+}
+const quick = computed(() => store.frequent.filter((x) => !items.value.some((i) => i.foodId === x.foodId)))
+const shortName = (id: string) => plateName(getFood(id)?.name ?? '')
+const mealSaved = ref(false)
+async function saveAsMeal() {
+  const def = props.slot ? DEFAULT_NAMES[props.slot] : 'Öğünüm'
+  const name = prompt('Bu tabağa bir ad ver (sonra tek dokunuşla eklersin):', def)
+  if (name === null) return
+  await store.saveMeal(name, items.value, props.slot)
+  mealSaved.value = true
+}
+const DEFAULT_NAMES: Record<Slot, string> = {
+  breakfast: 'Benim kahvaltım', lunch: 'Benim öğle yemeğim', dinner: 'Benim akşam yemeğim', snack: 'Ara öğünüm', night: 'Gece atıştırmam',
+}
+
 const STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 5, 6]
 function step(i: CheckItem, dir: 1 | -1) {
   const idx = STEPS.findIndex((x) => x >= i.factor)
@@ -78,6 +100,7 @@ async function eat() {
   await store.logFoods(items.value, props.slot)
   saved.value = true
   items.value = []
+  mealSaved.value = false
 }
 </script>
 
@@ -100,6 +123,22 @@ async function eat() {
         aria-label="Yemek ara"
         autocomplete="off"
       />
+      <template v-if="!query.trim()">
+        <div v-if="savedList.length" class="quick">
+          <div class="label">Kayıtlı öğünlerin</div>
+          <div class="chips">
+            <button v-for="m in savedList" :key="m.id" type="button" class="chip meal" @click="addMeal(m)">
+              ⭐ {{ m.name }} <span class="num">· {{ mealKcal(m) }} kcal</span>
+            </button>
+          </div>
+        </div>
+        <div v-if="quick.length" class="quick">
+          <div class="label">Sık yediklerin</div>
+          <div class="chips">
+            <button v-for="x in quick" :key="x.foodId" type="button" class="chip" @click="add(x.foodId, x.factor)">＋ {{ shortName(x.foodId) }}</button>
+          </div>
+        </div>
+      </template>
       <ul v-if="results.length" class="results">
         <li v-for="f in results" :key="f.id">
           <button type="button" @click="add(f.id)">
@@ -121,7 +160,11 @@ async function eat() {
       <p v-if="saved" class="small saved" role="status">Kaydedildi ✓ {{ slot ? 'Bu öğüne eklendi; başka bir şey de ekleyebilirsin.' : `${store.isViewToday ? 'Bugünkü' : 'O günkü'} listene eklendi.` }}</p>
 
       <section v-if="items.length" class="card" style="margin-top: 12px">
-        <h2>Tabağın</h2>
+        <div class="plate-head">
+          <h2>Tabağın</h2>
+          <button v-if="!mealSaved" type="button" class="link" @click="saveAsMeal">⭐ Öğün olarak kaydet</button>
+          <span v-else class="small saved">Kaydedildi ⭐</span>
+        </div>
         <div v-for="(i, idx) in items" :key="i.foodId" class="item">
           <FoodRow :food-id="i.foodId" :factor="i.factor" compact />
           <div class="item-actions">
@@ -191,5 +234,11 @@ async function eat() {
 .verdict.bad { background: var(--stop-bg); border-color: var(--stop-border); color: var(--stop-ink); }
 .verdict h2 { margin-bottom: 4px; }
 .saved { color: var(--accent); margin-top: 8px; }
+.quick { margin-top: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 0.82rem; font-weight: 650; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; }
+.chip.meal { background: var(--accent-soft); color: var(--accent); }
+.plate-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.link { background: none; border: 0; padding: 0; font: inherit; font-size: 0.85rem; font-weight: 700; color: var(--accent); cursor: pointer; }
 .add-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 </style>

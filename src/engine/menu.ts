@@ -71,6 +71,8 @@ export interface MenuContext {
   month?: number
   dislikedFoods: string[]
   likedFoods: string[]
+  /** Breakfasts/snacks the user eats regularly or saved (usual.ts): offered on some days. */
+  ownMeals?: { slot: Slot; title: string; parts: Part[] }[]
   cookingTime: Level3
   mealsPerDay: MealsPerDay
   canSkipBreakfast: boolean
@@ -631,6 +633,7 @@ export function portionText(factor: number): string {
 /** Builds the menu context from the profile and its plan; null on a safety stop. */
 export function buildMenuContext(
   p: Profile, plan: Plan, feedback: { liked: string[]; disliked: string[] } = { liked: [], disliked: [] },
+  habits: { ownMeals?: MenuContext['ownMeals']; usualMains?: string[] } = {},
 ): MenuContext | null {
   if (plan.safety.stop || !plan.energy || !plan.macros || !plan.recommendedDiet) return null
   return {
@@ -642,7 +645,9 @@ export function buildMenuContext(
     animalFoods: p.animalFoods,
     dislikes: p.dislikes,
     dislikedFoods: feedback.disliked,
-    likedFoods: feedback.liked,
+    // Dishes the user keeps eating count like liked ones.
+    likedFoods: [...new Set([...feedback.liked, ...(habits.usualMains ?? [])])],
+    ...(habits.ownMeals?.length ? { ownMeals: habits.ownMeals } : {}),
     cookingTime: p.cookingTime,
     mealsPerDay: p.mealsPerDay,
     canSkipBreakfast: p.canSkipBreakfast,

@@ -3,6 +3,12 @@ import { computed, ref } from 'vue'
 import {
   analyzeWeek,
   buildMenuContext,
+  frequentFoods,
+  usualMains,
+  usualMeals,
+  type SavedMeal,
+  type Part,
+  type Slot as SlotT,
   buildPlan,
   defaultProfile,
   diaryTotals,
@@ -138,8 +144,13 @@ export const useAppStore = defineStore('app', () => {
   )
   /** The style the app recommends (without the user's own choice). */
   const recommendedId = computed(() => buildPlan(profile.value, { kcalOffset: kcalOffset.value }).recommendedDiet?.id ?? null)
+  /** Meals the user saved; foods they log most; their usual breakfasts/snacks and main dishes. */
+  const savedMeals = ref<SavedMeal[]>([])
+  const frequent = computed(() => frequentFoods(diary.value, todayDate.value))
+  const ownMeals = computed(() => usualMeals(diary.value, savedMeals.value, todayDate.value))
+  const usualMainIds = computed(() => usualMains(diary.value, todayDate.value))
   const menuCtx = computed(() =>
-    buildMenuContext(profile.value, plan.value, { liked: liked.value, disliked: disliked.value }),
+    buildMenuContext(profile.value, plan.value, { liked: liked.value, disliked: disliked.value }, { ownMeals: ownMeals.value, usualMains: usualMainIds.value }),
   )
   /**
    * The day shown on the Bugün screen: today, or an earlier day the user went back to (to log what they
@@ -190,6 +201,7 @@ export const useAppStore = defineStore('app', () => {
     if (settings?.weigh) weighReminder.value = settings.weigh
     lastBackupAt.value = settings?.lastBackupAt
     firstUse.value = settings?.firstUse
+    savedMeals.value = settings?.savedMeals ?? []
     if (!firstUse.value && p) {
       firstUse.value = today()
       await saveSettings()
@@ -206,7 +218,19 @@ export const useAppStore = defineStore('app', () => {
     repo.saveSettings({
       diet: dietChoice.value, liked: liked.value, disliked: disliked.value, habits: activeHabits.value, water: waterReminder.value,
       stepsAuto: stepsAuto.value, weigh: weighReminder.value, firstUse: firstUse.value, lastBackupAt: lastBackupAt.value,
+      savedMeals: savedMeals.value,
     })
+
+  async function saveMeal(name: string, items: Part[], slot?: SlotT) {
+    const m: SavedMeal = { id: newId(), name: name.trim() || 'Öğünüm', items: items.map((x) => ({ foodId: x.foodId, factor: x.factor })), ...(slot ? { slot } : {}) }
+    savedMeals.value = [...savedMeals.value, m]
+    await saveSettings()
+    return m
+  }
+  async function deleteSavedMeal(id: string) {
+    savedMeals.value = savedMeals.value.filter((m) => m.id !== id)
+    await saveSettings()
+  }
 
   /** (Re)schedules the next week of water reminders; today's are dropped once the target is reached. */
   async function rescheduleWater() {
@@ -509,6 +533,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
+    savedMeals, saveMeal, deleteSavedMeal, frequent, ownMeals,
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
     waterReminder, waterNotify, setWaterReminder, rescheduleWater, stepsAuto, syncSteps,

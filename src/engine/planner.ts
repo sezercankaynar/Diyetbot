@@ -239,15 +239,31 @@ function lightPlate(
   return { slot: sp.slot, kind: 'light', title, parts }
 }
 
+/** The user's usual breakfasts/snacks as templates (each at most 3 times a week). */
+function ownTemplates(ctx: MenuContext, slot: Slot): Template[] {
+  return (ctx.ownMeals ?? [])
+    .filter((m) => m.slot === slot)
+    .map((m, i) => ({
+      id: `own-${slot}-${i}`, title: m.title, own: true, maxPerWeek: 3,
+      lowCarb: sumTotals(m.parts.map((x) => itemTotals(x.foodId, x.factor))).carb <= 25,
+      parts: m.parts.map((x) => ({ id: x.foodId, amount: x.factor })),
+    }))
+}
+
+const OWN_LEVELS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
 function templatePlate(ctx: MenuContext, sp: SlotPlan, t: Template, fruit: string): Plate {
   const parts: PlatePart[] = []
   for (const tp of t.parts) {
     let id = tp.id
-    if (partRole(id) === 'fruit' && t.id !== 'b-yulaf') id = fruit
+    if (partRole(id) === 'fruit' && t.id !== 'b-yulaf' && !t.own) id = fruit
     if (!allowed(ctx, id)) continue
     // Parts the template starts with stay in (≥ 1 unit); optional ones (amount 0) may be added.
-    // Optional extras stay small (an egg next to oats, a few walnuts).
-    const levels = !isPart(id) ? [1, 1.5] : tp.amount === 0 ? partLevels(id).slice(0, 2) : undefined
+    // Optional extras stay small (an egg next to oats, a few walnuts). The user's own dishes keep
+    // roughly the amount they eat.
+    const levels = !isPart(id)
+      ? t.own ? [...new Set([...OWN_LEVELS, tp.amount])].sort((a, b) => a - b) : [1, 1.5]
+      : tp.amount === 0 ? partLevels(id).slice(0, 2) : undefined
     parts.push(part(id, tp.amount, levels, sp.slot === 'breakfast' ? MAX_BREAD_BREAKFAST : MAX_BREAD))
   }
   return { slot: sp.slot, kind: 'template', title: t.title, parts }
@@ -340,11 +356,15 @@ export function tunePlates(plates: Plate[], ctx: MenuContext, shares: Map<Slot, 
 const cap = (x: string) => x.charAt(0).toLocaleUpperCase('tr') + x.slice(1)
 
 /** A plate's title from what is actually on it, so the name always matches the content. */
+/** Short name in a plate title; the user's own dishes (no short name) by their name without notes. */
+const shortOf = (id: string): string | undefined =>
+  partShort(id) ?? (getFood(id)?.name.replace(/\s*\(.*?\)/g, '').toLocaleLowerCase('tr') || undefined)
+
 export function plateTitle(slot: Slot, kind: PlateKind, parts: Part[]): string {
-  const names = parts.map((x) => partShort(x.foodId)).filter((x): x is string => !!x)
+  const names = parts.map((x) => shortOf(x.foodId)).filter((x): x is string => !!x)
   if (kind === 'template') {
     // Bread and söğüş come with every Turkish breakfast; the title names what makes this one different.
-    if (slot === 'breakfast') return `Kahvaltı: ${parts.filter((x) => !['bread', 'veg'].includes(partRole(x.foodId) ?? '')).map((x) => partShort(x.foodId)).filter(Boolean).join(', ')}`
+    if (slot === 'breakfast') return `Kahvaltı: ${parts.filter((x) => !['bread', 'veg'].includes(partRole(x.foodId) ?? '')).map((x) => shortOf(x.foodId)).filter(Boolean).join(', ')}`
     return cap(names.join(' + '))
   }
   const first = getFood(parts[0].foodId)?.name ?? ''
@@ -435,12 +455,15 @@ export function planWeek(ctx: MenuContext, all: Food[], rand: Rand, recent: stri
     const lastMainSlot = mainSps.at(-1)?.slot
     for (const sp of plan) {
       if (isEvent && sp.slot === eventSlot) continue
+      // The user's usual breakfast/snack comes back every other day (each at most 3 times a week).
+      const own = d % 2 === 0 ? ownTemplates(ctx, sp.slot) : []
       if (sp.slot === 'breakfast') {
-        const t = pickTemplate(ctx, BREAKFASTS, usedTemplates, rand)
+        const t = (own.length ? pickTemplate(ctx, own, usedTemplates, rand) : null) ?? pickTemplate(ctx, BREAKFASTS, usedTemplates, rand)
         if (t) plates.push(templatePlate(ctx, sp, t, nextFruit()))
       } else if (isSnackSlot(sp.slot)) {
         const list = sp.slot === 'night' ? NIGHT_SNACKS : SNACKS
-        const t = pickTemplate(ctx, list, usedTemplates, rand, lastSnack) ?? pickTemplate(ctx, list, new Map(), rand)
+        const t = (own.length ? pickTemplate(ctx, own, usedTemplates, rand, lastSnack) : null) ??
+          pickTemplate(ctx, list, usedTemplates, rand, lastSnack) ?? pickTemplate(ctx, list, new Map(), rand)
         if (t) {
           lastSnack = t.id
           plates.push(templatePlate(ctx, sp, t, nextFruit()))
@@ -525,12 +548,15 @@ export function alternativePlates(
   const current = day.find((i) => i.slot === slot)
   const inDay = new Set([...day.map((i) => i.foodId), ...(opts.avoid ?? [])])
   const candidates: Plate[] = []
+  const own = new Set<Plate>()
   if (slot === 'breakfast' || isSnackSlot(slot)) {
-    const list = slot === 'breakfast' ? BREAKFASTS : slot === 'night' ? NIGHT_SNACKS : SNACKS
+    const list = [...ownTemplates(ctx, slot), ...(slot === 'breakfast' ? BREAKFASTS : slot === 'night' ? NIGHT_SNACKS : SNACKS)]
     for (const t of list) {
       if (lowCarb(ctx) && !t.lowCarb) continue
       if (!allowed(ctx, t.parts[0].id) || current?.title === t.title) continue
-      candidates.push(templatePlate(ctx, sp, t, FRUITS[candidates.length % FRUITS.length]))
+      const pl = templatePlate(ctx, sp, t, FRUITS[candidates.length % FRUITS.length])
+      if (t.own) own.add(pl)
+      candidates.push(pl)
     }
   } else if (sp.style === 'light') {
     for (let k = 0; k < 8; k++) candidates.push(lightPlate(ctx, sp, rand, new Set([...inDay])))
@@ -553,13 +579,16 @@ export function alternativePlates(
   const scored = candidates.map((c) => {
     const tuned = tunePlates([...others, c], ctx, shares, new Set([slot]), opts.base)
     const plate = tuned[tuned.length - 1]
-    return { item: toItem(plate), loss: dayLoss(tuned, ctx, shares, opts.base) }
+    return { item: toItem(plate), loss: dayLoss(tuned, ctx, shares, opts.base), own: own.has(c) }
   })
-  return scored
-    .filter((x): x is { item: MenuItem; loss: number } => !!x.item && x.item.title !== current?.title)
+  const ok = scored
+    .filter((x): x is { item: MenuItem; loss: number; own: boolean } => !!x.item && x.item.title !== current?.title)
     .sort((a, b) => a.loss - b.loss)
-    .slice(0, n)
-    .map((x) => x.item)
+  const top = ok.slice(0, n)
+  // The user's own meal is always among the options (it's what they actually eat).
+  const bestOwn = ok.find((x) => x.own)
+  if (bestOwn && !top.includes(bestOwn)) top.splice(Math.max(0, n - 1), 1, bestOwn)
+  return top.map((x) => x.item)
 }
 
 /**

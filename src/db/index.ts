@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Adjustment, CheckIn, DailyLog, DiaryEntry, DietId, Food, Profile, WaterReminder, WeekMenu, WeighIn } from '@/engine'
+import type { Adjustment, CheckIn, DailyLog, DiaryEntry, DietId, Food, Profile, SavedMeal, WaterReminder, WeekMenu, WeighIn } from '@/engine'
 
 export interface Settings {
   /** User-chosen diet; null → use the top-scored one. */
@@ -18,6 +18,8 @@ export interface Settings {
   /** First day the app was used and the last JSON backup (for the backup reminder). */
   firstUse?: string
   lastBackupAt?: string
+  /** Meals the user saved to add again with one tap. */
+  savedMeals?: SavedMeal[]
 }
 
 interface DiyetDB extends DBSchema {

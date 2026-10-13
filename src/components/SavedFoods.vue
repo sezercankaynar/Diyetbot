@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Food } from '@/engine'
+import { getFood, itemTotals, plateName, sumTotals, type Food, type SavedMeal } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import RecipeBuilder from './RecipeBuilder.vue'
@@ -17,6 +17,13 @@ async function save(f: Food) {
   msg.value = `"${f.name}" güncellendi.`
   editing.value = null
 }
+const mealKcal = (m: SavedMeal) => sumTotals(m.items.map((x) => itemTotals(x.foodId, x.factor))).kcal
+const mealText = (m: SavedMeal) => m.items.map((x) => plateName(getFood(x.foodId)?.name ?? '?')).join(', ')
+async function removeMeal(m: SavedMeal) {
+  if (!confirm(`"${m.name}" kayıtlı öğünlerinden silinsin mi?`)) return
+  await store.deleteSavedMeal(m.id)
+  msg.value = `"${m.name}" silindi.`
+}
 async function remove(f: Food) {
   if (!confirm(`"${f.name}" silinsin mi? Aramada çıkmaz, menüde varsa yerine başka yemek gelir; geçmiş kayıtların korunur.`)) return
   await store.deleteCustomFood(f.id)
@@ -27,7 +34,17 @@ async function remove(f: Food) {
 <template>
   <div>
     <p v-if="msg" class="ok small">{{ msg }}</p>
-    <p v-if="!own.length && !packaged.length" class="small muted">
+    <template v-if="store.savedMeals.length">
+      <div class="label grp">Kayıtlı öğünlerim</div>
+      <div v-for="m in store.savedMeals" :key="m.id" class="row">
+        <div class="txt">
+          <div class="nm">⭐ {{ m.name }}</div>
+          <div class="small muted">{{ mealText(m) }} · <span class="num">{{ mealKcal(m) }} kcal</span></div>
+        </div>
+        <button type="button" class="btn ghost small del" :aria-label="`${m.name} sil`" @click="removeMeal(m)">Sil</button>
+      </div>
+    </template>
+    <p v-if="!own.length && !packaged.length && !store.savedMeals.length" class="small muted">
       Henüz kayıtlı bir şey yok. Aramada bulamadığın bir yemeği "Yemek ekle" ile ya da paketli ürünü barkodla eklediğinde burada görünür.
     </p>
     <template v-for="[title, list] in ([['Kendi yemeklerim', own], ['Paketli ürünlerim', packaged]] as const)" :key="title">

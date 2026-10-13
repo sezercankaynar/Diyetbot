@@ -221,6 +221,8 @@ export interface Template {
   lowCarb?: boolean
   /** At most this many times a week. */
   maxPerWeek?: number
+  /** The user's own meal (usual.ts): amounts as they eat them, fruit kept as is. */
+  own?: boolean
 }
 
 const P = (id: string, amount: number): TemplatePart => ({ id: id.startsWith('yl-') ? id : `pc-${id}`, amount })

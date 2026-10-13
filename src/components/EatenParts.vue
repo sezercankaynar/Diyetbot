@@ -8,6 +8,19 @@ const props = defineProps<{ slot: Slot }>()
 const store = useAppStore()
 const entries = computed(() => store.todayDiary.filter((e) => e.menuSlot === props.slot))
 const total = computed(() => sumTotals(entries.value.map((e) => itemTotals(e.foodId, e.factor))))
+
+// Save what was eaten here as a meal to add again with one tap (and that menus may offer).
+const NAMES: Record<Slot, string> = {
+  breakfast: 'Benim kahvaltım', lunch: 'Benim öğle yemeğim', dinner: 'Benim akşam yemeğim', snack: 'Ara öğünüm', night: 'Gece atıştırmam',
+}
+const isSaved = computed(() => {
+  const key = entries.value.map((e) => e.foodId).sort().join('+')
+  return store.savedMeals.some((m) => m.items.map((x) => x.foodId).sort().join('+') === key)
+})
+async function save() {
+  const name = prompt('Bu öğüne bir ad ver (sonra tek dokunuşla eklersin):', NAMES[props.slot])
+  if (name !== null) await store.saveMeal(name, entries.value, props.slot)
+}
 </script>
 
 <template>
@@ -17,6 +30,8 @@ const total = computed(() => sumTotals(entries.value.map((e) => itemTotals(e.foo
       <span class="num small">{{ total.kcal }} kcal · P {{ total.protein }} · K {{ total.carb }} · Y {{ total.fat }}</span>
     </div>
     <p class="small muted">Farklı miktarda yediysen − / + ile düzelt; hiç yemediğini ✕ ile çıkar.</p>
+    <button v-if="entries.length && !isSaved" type="button" class="save" @click="save">⭐ Bu öğünü kaydet (sonra tek dokunuşla ekle)</button>
+    <p v-else-if="isSaved" class="small saved">⭐ Kayıtlı öğünlerinde</p>
     <div v-for="e in entries" :key="e.id" class="row">
       <div class="txt">
         <div class="nm">{{ plateName(getFood(e.foodId)?.name ?? '') }}</div>
@@ -32,6 +47,8 @@ const total = computed(() => sumTotals(entries.value.map((e) => itemTotals(e.foo
 </template>
 
 <style scoped>
+.save { background: none; border: 0; padding: 2px 0 6px; font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--accent); cursor: pointer; text-align: left; }
+.saved { color: var(--accent); margin: 0 0 4px; }
 .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
 .row + .row { border-top: 1px solid var(--line); }

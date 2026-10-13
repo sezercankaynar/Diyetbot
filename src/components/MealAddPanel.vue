@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { dayTotals, getFood, mealTitle, mealTotals, placeDish, portionText, searchFoods, type Food, type Slot } from '@/engine'
+import { dayTotals, getFood, itemTotals, mealTitle, mealTotals, placeDish, plateName, portionText, searchFoods, sumTotals, type Food, type MenuItem, type SavedMeal, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
@@ -73,6 +73,25 @@ async function confirmPick() {
   nextTick(() => input.value?.focus())
 }
 
+// Empty search: the user's saved meals (whole meal in one tap) and the foods they log most.
+const savedList = computed(() =>
+  [...store.savedMeals].sort((a, b) => Number(b.slot === props.slot) - Number(a.slot === props.slot)),
+)
+const mealKcal = (m: SavedMeal) => sumTotals(m.items.map((x) => itemTotals(x.foodId, x.factor))).kcal
+const shortName = (id: string) => plateName(getFood(id)?.name ?? '')
+async function putMeal(m: SavedMeal) {
+  const parts = m.items.filter((x) => getFood(x.foodId))
+  if (!parts.length) return
+  const [main, ...sides] = parts
+  const item: MenuItem = { slot: props.slot, foodId: main.foodId, factor: main.factor, ...(sides.length ? { sides } : {}), title: m.name, own: true }
+  await store.setMenuMeal(props.date, item)
+  added.value.push(m.name)
+}
+function pickQuick(foodId: string, f: number) {
+  pick(foodId)
+  factor.value = PORTIONS.includes(f) ? f : factor.value
+}
+
 // Not in the list: build the dish from ingredients (RecipeBuilder); it's saved and picked.
 const manual = ref(false)
 function openManual() {
@@ -127,6 +146,20 @@ async function saveManual(food: Food) {
       </div>
     </section>
 
+    <template v-if="!picked && !manual && !query.trim()">
+      <div v-if="savedList.length" class="quick">
+        <div class="label">Kayıtlı öğünlerin (bu öğünün yerine koyar)</div>
+        <div class="qchips">
+          <button v-for="m in savedList" :key="m.id" type="button" class="chip meal" @click="putMeal(m)">⭐ {{ m.name }} <span class="num">· {{ mealKcal(m) }} kcal</span></button>
+        </div>
+      </div>
+      <div v-if="store.frequent.length" class="quick">
+        <div class="label">Sık yediklerin</div>
+        <div class="qchips">
+          <button v-for="x in store.frequent" :key="x.foodId" type="button" class="chip" @click="pickQuick(x.foodId, x.factor)">＋ {{ shortName(x.foodId) }}</button>
+        </div>
+      </div>
+    </template>
     <template v-if="!picked && !manual">
       <ul v-if="results.length" class="results">
         <li v-for="f in results" :key="f.id">
@@ -146,6 +179,10 @@ async function saveManual(food: Food) {
 .results li + li { border-top: 1px solid var(--line); }
 .results button { width: 100%; padding: 10px 12px; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .picked { margin-top: 12px; }
+.quick { margin-top: 10px; }
+.qchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 0.82rem; font-weight: 650; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; }
+.chip.meal { background: var(--accent-soft); color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
 .chips button { border: 0; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 0.82rem; font-weight: 650; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
 .chips button[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); }
