@@ -47,6 +47,10 @@ export interface WeekMenu {
   sig?: string
   /** Special days (invitation, wedding …): that evening is free, the rest of the week is a bit lighter. */
   special?: string[]
+  /** Weekly balance: kcal taken off a day's menu to make up for days that went over (date → kcal). */
+  lighter?: Record<string, number>
+  /** The weekly-balance offer the user turned down (its pending kcal), so it isn't repeated. */
+  balanceDismissed?: number
   days: MenuDay[]
 }
 
@@ -624,6 +628,39 @@ export function amountText(foodId: string, factor: number): string {
   return `${portionText(factor)} (1 porsiyon: ${f.portion})`
 }
 
+/** Ways to enter an amount besides portions: grams, and/or a count (dilim, adet …) with its factor per one. */
+export interface AmountWays {
+  /** Grams in one portion (factor 1), when known. */
+  grams?: number
+  /** A countable unit and the factor one of it adds (e.g. dilim, 0.5 when a portion is 2 dilim). */
+  count?: { unit: string; perOne: number }
+}
+
+const COUNT_UNITS = ['adet', 'dilim', 'bardak', 'su bardağı', 'kase', 'tabak', 'yemek kaşığı', 'tatlı kaşığı', 'çay kaşığı', 'avuç', 'fincan', 'kare', 'paket', 'kutu', 'kepçe', 'tava', 'top']
+
+export function amountWays(foodId: string): AmountWays {
+  const f = getFood(foodId)
+  if (!f) return {}
+  if (f.unit) return { ...(f.unitGrams ? { grams: f.unitGrams } : {}), count: { unit: f.unit, perOne: 1 } }
+  const out: AmountWays = {}
+  // The portion's stated weight ("1 tabak (≈300 g)"); else per-100 g items; else (raw) recipe weight for
+  // dishes cooked without water (tost, çay …) – soups and pilavs always state a portion weight.
+  const stated = /\(≈?\s*(\d+)\s*(g|ml)\b/.exec(f.portion)
+  if (stated) out.grams = Number(stated[1])
+  else if (/^100 (g|ml)$/.test(f.portion)) out.grams = 100
+  else if (f.recipe) {
+    const g = f.recipe.lines.reduce((a, l) => a + l.grams, 0) / (f.recipe.servings || 1)
+    if (g > 0) out.grams = Math.round(g)
+  }
+  // "2 dilim (≈50 g)", "1 adet", "3 adet", "1 kase (≈250 ml)" → count in that unit (not for descriptions
+  // of several things like "2 dilim ekmek, 40 g kaşar").
+  const c = /^(\d+(?:[.,]\d+)?)\s+(?:(?:küçük|orta|büyük|ince belli|ince|kalın)\s+)?([a-zçğıöşü]+(?:\s(?:bardağı|kaşığı))?)/i.exec(f.portion)
+  if (c && !f.portion.includes(',') && COUNT_UNITS.includes(c[2].toLocaleLowerCase('tr'))) {
+    out.count = { unit: c[2].toLocaleLowerCase('tr'), perOne: 1 / Number(c[1].replace(',', '.')) }
+  }
+  return out
+}
+
 /** Portion multiplier as Turkish text, e.g. 1.5 → "1,5 porsiyon". */
 export function portionText(factor: number): string {
   if (factor === 1) return '1 porsiyon'
@@ -658,4 +695,52 @@ export function buildMenuContext(
     ramadan: !!p.ramadan,
     likes: p.likes ?? [],
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Weekly balance: days that went over are made up for by the rest of the week, a little each day
+
+/** Most a day's menu is made lighter for the weekly balance. */
+export const MAX_LIGHTER = 200
+
+export interface WeekBalance {
+  /** kcal over the target on past days of this week, not yet made up for. */
+  pending: number
+  /** Past days that went over, with how much. */
+  overDays: { date: string; over: number }[]
+  /** Days still to come (from tomorrow) and how much lighter each would get. */
+  plan: { date: string; add: number }[]
+}
+
+/**
+ * How much the week is over (past days vs the daily target, logged days only) and how the remaining
+ * days could make up for it: evenly, at most MAX_LIGHTER a day, never below the safe floor. Days that
+ * stayed under don't make room for more food.
+ */
+export function weekBalance(menu: WeekMenu, target: number, floor: number, eaten: (date: string) => number | null, today: string): WeekBalance {
+  const lighter = menu.lighter ?? {}
+  const overDays = menu.days
+    .filter((d) => d.date < today)
+    .map((d) => ({ date: d.date, over: (eaten(d.date) ?? 0) - target }))
+    .filter((d) => d.over > 0 && eaten(d.date) !== null)
+  const made = Object.values(lighter).reduce((a, b) => a + b, 0)
+  const pending = Math.max(0, Math.round(overDays.reduce((a, d) => a + d.over, 0) - made))
+  const rest = menu.days.filter((d) => d.date > today)
+  const room = (date: string) => Math.max(0, Math.min(MAX_LIGHTER - (lighter[date] ?? 0), target - (lighter[date] ?? 0) - floor))
+  const each = rest.length ? pending / rest.length : 0
+  const plan = rest.map((d) => ({ date: d.date, add: Math.floor(Math.min(each, room(d.date)) / 10) * 10 })).filter((x) => x.add > 0)
+  return { pending, overDays, plan }
+}
+
+/** Takes the planned kcal off the remaining days' menus (portions get a bit smaller). */
+export function applyBalance(menu: WeekMenu, target: number, plan: WeekBalance['plan']): WeekMenu {
+  const lighter = { ...(menu.lighter ?? {}) }
+  const days = menu.days.map((d) => {
+    const add = plan.find((x) => x.date === d.date)?.add
+    if (!add) return d
+    lighter[d.date] = (lighter[d.date] ?? 0) + add
+    const limit = { kcal: target - lighter[d.date], protein: Infinity, carb: Infinity, fat: Infinity }
+    return { ...d, items: fitDay(d.items, limit) }
+  })
+  return { ...menu, days, lighter }
 }

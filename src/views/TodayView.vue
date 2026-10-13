@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { addDays, getFood, itemTotals, mealTitle, mealTotals, mealWindow, partsOf, plateName, slotPlan, sumTotals, type MenuItem, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
@@ -14,6 +14,7 @@ import BackupPanel from '@/components/BackupPanel.vue'
 import CravingPanel from '@/components/CravingPanel.vue'
 import DailyCoach from '@/components/DailyCoach.vue'
 import RestSuggest from '@/components/RestSuggest.vue'
+import WeekBalance from '@/components/WeekBalance.vue'
 import RingProgress from '@/components/RingProgress.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import { fmt } from '@/content/labels'
@@ -24,6 +25,7 @@ const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup'>(null)
 const isMonday = computed(() => new Date(`${store.todayDate}T12:00:00`).getDay() === 1)
 const daysAgo = (iso: string) => Math.max(0, Math.round((Date.parse(`${store.todayDate}T12:00:00`) - Date.parse(iso)) / 86_400_000))
 const openMeal = ref<Slot | null>(null)
+watch(() => store.viewDate, () => (openMeal.value = null))
 
 const greeting = computed(() => {
   if (!store.isViewToday) return store.viewDate === addDays(store.todayDate, -1) ? 'Dün' : 'Geçmiş gün'
@@ -33,7 +35,7 @@ const greeting = computed(() => {
 const dateLabel = computed(() =>
   new Date(`${store.viewDate}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }),
 )
-const target = computed(() => store.plan.energy?.target ?? 0)
+const target = computed(() => store.dayTarget(store.viewDate))
 const remaining = computed(() => target.value - store.todayTotals.kcal)
 
 const meals = computed(() => {
@@ -66,6 +68,20 @@ function eatenTitle(slot: Slot, item: MenuItem) {
   return same ? mealTitle(item) : ids.map((id) => plateName(getFood(id)?.name ?? '')).join(', ')
 }
 const slotSheet = ref<{ slot: Slot; label: string } | null>(null)
+
+// What was eaten for this meal the day before: logged again in one tap.
+const yesterdayOf = (slot: Slot) => {
+  const y = addDays(store.viewDate, -1)
+  return store.diary.filter((e) => e.date === y && e.menuSlot === slot)
+}
+const yesterdayText = (slot: Slot) => {
+  const list = yesterdayOf(slot)
+  const kcal = sumTotals(list.map((e) => itemTotals(e.foodId, e.factor))).kcal
+  return `${list.map((e) => plateName(getFood(e.foodId)?.name ?? '')).slice(0, 3).join(', ')}${list.length > 3 ? '…' : ''} · ${kcal} kcal`
+}
+async function sameAsYesterday(slot: Slot) {
+  await store.logFoods(yesterdayOf(slot).map((e) => ({ foodId: e.foodId, factor: e.factor })), slot)
+}
 const extras = computed(() => store.todayDiary.filter((e) => !e.menuSlot))
 
 const ACTIONS = [
@@ -118,6 +134,8 @@ const ACTIONS = [
         </div>
       </section>
 
+      <WeekBalance v-if="store.isViewToday" />
+
       <div class="actions">
         <button v-for="a in ACTIONS" :key="a.id" type="button" class="action" @click="sheet = a.id">
           <span class="ico" aria-hidden="true">{{ a.icon }}</span>
@@ -159,6 +177,9 @@ const ACTIONS = [
             <template v-else>
               <MealPlate :item="m.item!" />
               <button type="button" class="btn ghost small" @click="store.toggleMenuEaten(m.slot)">Yedim, miktarları düzelteceğim</button>
+              <button v-if="yesterdayOf(m.slot).length" type="button" class="btn ghost small same" @click="sameAsYesterday(m.slot)">
+                ↺ Dünküyle aynısını yedim<span class="small muted">{{ yesterdayText(m.slot) }}</span>
+              </button>
               <button type="button" class="btn ghost small" @click="slotSheet = { slot: m.slot, label: m.label }">Bunu yemedim, başka şeyler yedim</button>
             </template>
             <div>Önerilen saat: <span class="num">{{ m.window }}</span></div>
@@ -242,5 +263,6 @@ const ACTIONS = [
 .extra + .extra { border-top: 1px solid var(--line); }
 .extra :deep(.food-row) { flex: 1; }
 @media (max-width: 360px) { .hero { flex-direction: column; } }
+.same { display: grid; gap: 2px; text-align: left; height: auto; white-space: normal; }
 .backup { border-left: 4px solid var(--info-border); }
 </style>

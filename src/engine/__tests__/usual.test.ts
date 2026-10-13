@@ -22,6 +22,12 @@ describe('what the user really eats', () => {
     e('2026-08-01', 'yl-baklava', 1),
   ]
 
+  it('menu plates the user only ticked are not "their" foods', () => {
+    const ticked = [e('2026-10-12', 'yl-zy-bezelye-tabak', 1, 'lunch'), e('2026-10-11', 'yl-zy-bezelye-tabak', 1, 'lunch')].map((x) => ({ ...x, fromMenu: true }))
+    expect(frequentFoods(ticked, today)).toEqual([])
+    expect(usualMains(ticked, today)).toEqual([])
+  })
+
   it('frequent foods: most logged first, last amount, no menu parts, nothing older than 30 days', () => {
     const f = frequentFoods(diary, today)
     expect(f.map((x) => x.foodId)).toEqual(expect.arrayContaining(['yl-karisik-tost', 'yl-sutlu-cikolata-kare']))

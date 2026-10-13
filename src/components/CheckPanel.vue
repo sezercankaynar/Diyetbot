@@ -6,6 +6,7 @@ import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
 import PackagedPanel from './PackagedPanel.vue'
 import RecipeBuilder from './RecipeBuilder.vue'
+import AmountInput from './AmountInput.vue'
 
 // With a slot, what's saved is logged as that meal (what was eaten instead of / on top of the menu plate).
 const props = defineProps<{ title?: string; slot?: Slot }>()
@@ -73,7 +74,7 @@ const ctx = computed(() => {
   const plan = store.plan
   if (!plan.energy || !plan.macros || !plan.recommendedDiet) return null
   return {
-    kcalTarget: plan.energy.target,
+    kcalTarget: store.dayTarget(store.viewDate),
     proteinTarget: plan.macros.proteinG,
     eaten: store.todayTotals,
     diet: plan.recommendedDiet.id,
@@ -172,6 +173,7 @@ async function eat() {
             <button type="button" class="btn ghost small" aria-label="Porsiyonu artır" @click="step(i, 1)">+</button>
             <button type="button" class="btn danger small" @click="remove(idx)">Çıkar</button>
           </div>
+          <AmountInput v-model="i.factor" :food-id="i.foodId" />
         </div>
       </section>
 

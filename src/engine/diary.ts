@@ -7,8 +7,10 @@ export interface DiaryEntry {
   date: string
   foodId: string
   factor: number
-  /** Set when the entry came from ticking a planned menu meal. */
+  /** The meal it was eaten as (ticked menu meal, or what was eaten instead of it). */
   menuSlot?: Slot
+  /** Logged by ticking the menu plate (not picked by the user). */
+  fromMenu?: boolean
 }
 
 export function diaryTotals(entries: DiaryEntry[], date: string): Totals {

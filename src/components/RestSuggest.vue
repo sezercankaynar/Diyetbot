@@ -7,7 +7,8 @@ import MealPlate from './MealPlate.vue'
 // When the day went off the menu (other foods eaten, extras), plates for the meals still to come,
 // sized to what's actually left of the day.
 const store = useAppStore()
-const ctx = computed(() => store.menuCtx)
+// The day's target after the weekly balance.
+const ctx = computed(() => (store.menuCtx ? { ...store.menuCtx, kcal: store.dayTarget(store.viewDate) } : null))
 const logged = computed(() => store.todayDiary)
 const eatenSlots = computed(() => new Set(logged.value.filter((e) => e.menuSlot).map((e) => e.menuSlot as Slot)))
 const plan = computed(() => (ctx.value ? slotPlan(ctx.value) : []))

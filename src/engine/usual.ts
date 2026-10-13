@@ -33,7 +33,7 @@ export function frequentFoods(diary: DiaryEntry[], today: string, limit = 10): P
   const score = new Map<string, number>()
   const last = new Map<string, { date: string; factor: number }>()
   for (const e of diary) {
-    if (e.date < from || e.date > today || !picked(e.foodId)) continue
+    if (e.date < from || e.date > today || e.fromMenu || !picked(e.foodId)) continue
     score.set(e.foodId, (score.get(e.foodId) ?? 0) + 1 + (e.date >= recent ? 0.5 : 0))
     const l = last.get(e.foodId)
     if (!l || e.date >= l.date) last.set(e.foodId, { date: e.date, factor: e.factor })
@@ -71,7 +71,7 @@ export function usualMeals(diary: DiaryEntry[], saved: SavedMeal[], today: strin
   const combos = new Map<string, { slot: Slot; days: number; latest: DiaryEntry[]; date: string }>()
   for (const [k, entries] of meals) {
     const [date, slot] = k.split('|') as [string, Slot]
-    if (!entries.some((e) => picked(e.foodId)) || !entries.every((e) => usable(e.foodId))) continue
+    if (!entries.some((e) => picked(e.foodId) && !e.fromMenu) || !entries.every((e) => usable(e.foodId))) continue
     const ck = `${slot}|${keyOf(entries.map((e) => e.foodId))}`
     const c = combos.get(ck)
     if (!c) combos.set(ck, { slot, days: 1, latest: entries, date })
@@ -97,7 +97,7 @@ export function usualMains(diary: DiaryEntry[], today: string): string[] {
   const from = addDays(today, -21)
   const days = new Map<string, Set<string>>()
   for (const e of diary) {
-    if ((e.menuSlot !== 'lunch' && e.menuSlot !== 'dinner') || e.date < from || e.date > today) continue
+    if ((e.menuSlot !== 'lunch' && e.menuSlot !== 'dinner') || e.fromMenu || e.date < from || e.date > today) continue
     days.set(e.foodId, (days.get(e.foodId) ?? new Set()).add(e.date))
   }
   return [...days].filter(([, d]) => d.size >= 2).map(([id]) => id)

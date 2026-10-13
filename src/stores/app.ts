@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import {
   analyzeWeek,
   buildMenuContext,
+  weekBalance,
+  applyBalance,
   frequentFoods,
   usualMains,
   usualMeals,
@@ -170,6 +172,31 @@ export const useAppStore = defineStore('app', () => {
     if (next > todayDate.value || next < addDays(todayDate.value, -30)) return
     viewDate.value = next
   }
+  /** The day's kcal target after the weekly balance (a day may be a bit lighter to make up for another). */
+  const dayTarget = (date: string) => Math.max(0, (plan.value.energy?.target ?? 0) - (menu.value?.lighter?.[date] ?? 0))
+  const balance = computed(() => {
+    const e = plan.value.energy
+    if (!menu.value || !e) return null
+    const eaten = (date: string) => (diary.value.some((x) => x.date === date) ? diaryTotals(diary.value, date).kcal : null)
+    return weekBalance(menu.value, e.target, e.floor, eaten, todayDate.value)
+  })
+  /** Offer to make up for days over the target, unless turned down for this much already. */
+  const balanceOffer = computed(() => {
+    const b = balance.value
+    if (!b || b.pending < 150 || !b.plan.length) return null
+    return (menu.value?.balanceDismissed ?? 0) >= b.pending - 50 ? null : b
+  })
+  async function applyWeekBalance() {
+    const b = balance.value
+    if (!menu.value || !b || !plan.value.energy) return
+    menu.value = applyBalance(menu.value, plan.value.energy.target, b.plan)
+    await repo.saveMenu(menu.value)
+  }
+  async function dismissWeekBalance() {
+    if (!menu.value || !balance.value) return
+    menu.value = { ...menu.value, balanceDismissed: balance.value.pending }
+    await repo.saveMenu(menu.value)
+  }
   const menuOutdated = computed(() => !!menu.value && !!menuCtx.value && isMenuOutdated(menu.value, menuCtx.value))
   const sortedAdjustments = computed(() => [...adjustments.value].sort((a, b) => b.date.localeCompare(a.date)))
 
@@ -325,10 +352,10 @@ export const useAppStore = defineStore('app', () => {
 
   const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 
-  async function logFoods(items: CheckItem[], menuSlot?: Slot) {
+  async function logFoods(items: CheckItem[], menuSlot?: Slot, fromMenu = false) {
     for (const i of items) {
       // Logged on the day shown on Bugün (today, or an earlier day being filled in).
-      const e: DiaryEntry = { id: newId(), date: viewDate.value, foodId: i.foodId, factor: i.factor, menuSlot }
+      const e: DiaryEntry = { id: newId(), date: viewDate.value, foodId: i.foodId, factor: i.factor, menuSlot, ...(fromMenu ? { fromMenu } : {}) }
       await repo.putDiary(e)
       diary.value = [...diary.value, e]
     }
@@ -462,7 +489,8 @@ export const useAppStore = defineStore('app', () => {
     }
     // A plate is logged part by part (main, pilav, yoghurt, salad …).
     const item = todayMenu.value?.items.find((i) => i.slot === slot)
-    if (item) await logFoods(partsOf(item), slot)
+    // A plate the user built (own) counts as their pick.
+    if (item) await logFoods(partsOf(item), slot, !item.own)
   }
 
   async function saveProfile(p: Profile) {
@@ -533,6 +561,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
+    dayTarget, balance, balanceOffer, applyWeekBalance, dismissWeekBalance,
     savedMeals, saveMeal, deleteSavedMeal, frequent, ownMeals,
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,

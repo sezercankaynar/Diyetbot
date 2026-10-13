@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { amountText, getFood, itemTotals, nextEatenAmount, plateName, sumTotals, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
+import AmountInput from './AmountInput.vue'
 
 // What was actually eaten for a ticked meal, one line per food, each amount adjustable.
 const props = defineProps<{ slot: Slot }>()
 const store = useAppStore()
 const entries = computed(() => store.todayDiary.filter((e) => e.menuSlot === props.slot))
+const exact = ref<string | null>(null)
 const total = computed(() => sumTotals(entries.value.map((e) => itemTotals(e.foodId, e.factor))))
 
 // Save what was eaten here as a meal to add again with one tap (and that menus may offer).
@@ -36,6 +38,8 @@ async function save() {
       <div class="txt">
         <div class="nm">{{ plateName(getFood(e.foodId)?.name ?? '') }}</div>
         <div class="small amt">{{ amountText(e.foodId, e.factor) }} · {{ itemTotals(e.foodId, e.factor).kcal }} kcal</div>
+        <AmountInput v-if="exact === e.id" :model-value="e.factor" :food-id="e.foodId" @update:model-value="store.setDiaryAmount(e.id, $event)" />
+        <button v-else type="button" class="exact" @click="exact = e.id">tam miktar yaz</button>
       </div>
       <div class="ctrl">
         <button type="button" class="step" :aria-label="`${getFood(e.foodId)?.name} azalt`" @click="store.setDiaryAmount(e.id, nextEatenAmount(e.foodId, e.factor, -1))">−</button>
@@ -47,6 +51,7 @@ async function save() {
 </template>
 
 <style scoped>
+.exact { background: none; border: 0; padding: 0; font: inherit; font-size: 0.75rem; color: var(--ink-3); text-decoration: underline; cursor: pointer; }
 .save { background: none; border: 0; padding: 2px 0 6px; font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--accent); cursor: pointer; text-align: left; }
 .saved { color: var(--accent); margin: 0 0 4px; }
 .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }

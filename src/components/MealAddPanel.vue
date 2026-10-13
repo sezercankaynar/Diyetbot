@@ -5,6 +5,7 @@ import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
 import RecipeBuilder from './RecipeBuilder.vue'
+import AmountInput from './AmountInput.vue'
 
 // Puts a dish the user searched for (or built) into one menu meal.
 const props = defineProps<{ date: string; slot: Slot; title: string }>()
@@ -127,6 +128,8 @@ async function saveManual(food: Food) {
       <div class="chips">
         <button v-for="x in PORTIONS" :key="x" type="button" :aria-pressed="x === factor" @click="factor = x">{{ portionText(x) }}</button>
       </div>
+      <div class="small muted">ya da tam miktarı yaz:</div>
+      <AmountInput v-model="factor" :food-id="picked" />
       <div v-if="current" class="mode">
         <button type="button" :aria-pressed="!append" @click="append = false">Tabağın yerine koy</button>
         <button type="button" :aria-pressed="append" @click="append = true">Tabağa ekle</button>
