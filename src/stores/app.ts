@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   analyzeWeek,
   buildMenuContext,
+  widgetDays,
   weekBalance,
   applyBalance,
   frequentFoods,
@@ -56,6 +57,7 @@ import { parseBackup, repo, type Backup } from '@/db'
 import { scheduleWaterNotifications, type ScheduleResult } from '@/native/waterNotifications'
 import { readSteps, type StepsResult } from '@/native/steps'
 import { scheduleWeighNotifications } from '@/native/weighNotifications'
+import { updateMenuWidget } from '@/native/menuWidget'
 
 export const today = (): string => {
   const d = new Date()
@@ -197,6 +199,17 @@ export const useAppStore = defineStore('app', () => {
     menu.value = { ...menu.value, balanceDismissed: balance.value.pending }
     await repo.saveMenu(menu.value)
   }
+  // Home-screen widget (Android): the week's menu and what's eaten, sent when either changes.
+  const widgetData = computed(() =>
+    menu.value && menuCtx.value && plan.value.energy
+      ? widgetDays(menu.value, menuCtx.value, profile.value.mealTimes, diary.value, plan.value.energy.target, todayDate.value)
+      : null,
+  )
+  let widgetTimer: ReturnType<typeof setTimeout> | undefined
+  watch(widgetData, (d) => {
+    clearTimeout(widgetTimer)
+    if (d) widgetTimer = setTimeout(() => void updateMenuWidget(d), 400)
+  })
   const menuOutdated = computed(() => !!menu.value && !!menuCtx.value && isMenuOutdated(menu.value, menuCtx.value))
   const sortedAdjustments = computed(() => [...adjustments.value].sort((a, b) => b.date.localeCompare(a.date)))
 
