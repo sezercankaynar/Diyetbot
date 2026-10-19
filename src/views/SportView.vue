@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { lastDays, stepTarget, weekSchedule, WEEKDAY_SHORT_TR, WEEKDAY_TR, type DayType } from '@/engine'
+import ExerciseDemo from '@/components/ExerciseDemo.vue'
+import { exerciseImages } from '@/content/exerciseImages'
 import { CARDIO_TYPES, COOLDOWN, EXERCISE_GUIDES, TRAINING_EVIDENCE, WARMUP, type ExerciseSlot } from '@/content/exercises'
 import { useAppStore } from '@/stores/app'
 import { stepsSupported } from '@/native/steps'
@@ -114,10 +116,12 @@ const restText = (slot?: string) => {
           <div v-for="(e, i) in workout.exercises" :key="e.name + i" class="ex">
             <button type="button" class="ex-head" :aria-expanded="openEx === e.name" @click="openEx = openEx === e.name ? null : e.name">
               <span class="n">{{ i + 1 }}</span>
+              <img v-if="e.slot" class="thumb" :src="exerciseImages(e.slot as ExerciseSlot, store.profile.equipment).src[1]" alt="" loading="lazy" />
               <span class="ex-name">{{ e.name }}</span>
               <span class="small muted num">{{ e.sets }}×{{ e.reps }}</span>
             </button>
             <div v-if="openEx === e.name && guide(e.slot)" class="ex-body small">
+              <ExerciseDemo :slot="e.slot as ExerciseSlot" :equipment="store.profile.equipment" :name="e.name" />
               <p class="muted">{{ guide(e.slot)!.muscles }}</p>
               <ol><li v-for="s in guide(e.slot)!.steps" :key="s">{{ s }}</li></ol>
               <div class="cues">
@@ -226,6 +230,7 @@ const restText = (slot?: string) => {
 .day-head { display: flex; gap: 12px; align-items: center; }
 .big-ic { font-size: 2rem; width: 52px; height: 52px; border-radius: 16px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; flex: none; }
 .ex + .ex { border-top: 1px solid var(--line); }
+.thumb { width: 52px; height: 36px; object-fit: cover; border-radius: 8px; flex: none; background: var(--surface-2); }
 .ex-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .n { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex: none; }
 .ex-name { flex: 1; font-weight: 650; }
