@@ -41,11 +41,15 @@ function nextText(iso: string) {
   return d.toDateString() === new Date().toDateString() ? `bugün ${t}` : `${DAYS[d.getDay()]} ${t}`
 }
 const testMsg = ref('')
+const testNative = ref(false)
 async function test() {
   const r = await store.testWater()
-  testMsg.value = r === 'ok'
-    ? '5 saniye içinde bildirim gelmeli. Gelmezse telefonun pil tasarrufu ya da "uygulamayı uyut" ayarı Diyetbot\'u engelliyor olabilir (Xiaomi: Otomatik başlatma açık, Pil → Kısıtlama yok; Samsung: Pil → Uyku modundaki uygulamalardan çıkar).'
-    : r === 'denied' ? 'Bildirim izni yok; yukarıdan bildirim ayarlarını aç.' : r === 'web' ? 'Bildirimler sadece Android uygulamasında çalışır.' : 'Deneme bildirimi kurulamadı.'
+  testNative.value = r.result !== 'web'
+  testMsg.value = r.result === 'ok'
+    ? 'Şimdi 1. deneme bildirimi gelmeli, 1 dakika sonra da 2. deneme. 1. gelmiyorsa telefonun Diyetbot bildirimlerini kapatmış (Bildirim ayarlarını aç). Sadece 2. gelmiyorsa telefon zamanlanmış hatırlatmaları engelliyor: pil tasarrufu ya da "uygulamayı uyut" ayarı (Xiaomi: Otomatik başlatma açık, Pil → Kısıtlama yok; Samsung: Pil → Uyku modundaki uygulamalardan çıkar).'
+    : r.result === 'denied' ? 'Bildirim izni yok; yukarıdan bildirim ayarlarını aç.'
+    : r.result === 'web' ? 'Bildirimler sadece Android uygulamasında çalışır.'
+    : `Deneme bildirimi kurulamadı: ${r.error ?? 'bilinmeyen hata'}`
 }
 const intervalText = (m: number) => (m % 60 ? `${Math.floor(m / 60)},5 saat` : `${m / 60} saat`)
 
@@ -105,9 +109,15 @@ async function savePicks() {
           Telefon Diyetbot'u arka planda kısıtlıyor; bu yüzden hatırlatmalar gelmeyebilir. Uygulama ayarlarında Pil → "Kısıtlamasız" seç.
           <button type="button" class="link" @click="openAppSettings()">Uygulama ayarlarını aç</button>
         </p>
+      </div>
+      <div class="status small">
         <p>
           <button type="button" class="link" @click="test">🔔 Deneme bildirimi gönder</button>
-          <span v-if="testMsg" class="muted"> {{ testMsg }}</span>
+          <span v-if="testMsg" class="muted msg">{{ testMsg }}</span>
+        </p>
+        <p v-if="testMsg && testNative">
+          <button type="button" class="link" @click="openNotificationSettings()">Bildirim ayarlarını aç</button> ·
+          <button type="button" class="link" @click="openAppSettings()">Uygulama ayarlarını aç</button>
         </p>
       </div>
       <div v-if="editing" class="remind-form">
@@ -172,6 +182,7 @@ async function savePicks() {
 .link { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-2); text-align: left; cursor: pointer; }
 .status { display: grid; gap: 6px; margin-top: 6px; }
 .status p { margin: 0; }
+.msg { display: block; margin-top: 4px; }
 .status .link { color: var(--accent); font-weight: 700; padding: 0; }
 .remind-form { margin-top: 8px; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }

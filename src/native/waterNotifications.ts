@@ -7,7 +7,23 @@ const FIRST_ID = 7000
 const MAX = 60
 const TEST_ID = FIRST_ID + MAX
 const ACTION_TYPE = 'WATER'
+/** Own channel: high importance, so reminders pop up on screen (the default channel only lands in the shade). */
+const CHANNEL = 'su-hatirlatma'
 let listening = false
+let channelReady = false
+
+async function ensureChannel() {
+  if (channelReady) return
+  try {
+    await LocalNotifications.createChannel({
+      id: CHANNEL, name: 'Su hatırlatıcısı', description: 'Gün içinde su içmeyi hatırlatır',
+      importance: 4, visibility: 1, vibration: true, lights: true,
+    })
+    channelReady = true
+  } catch {
+    // Older Android: no channels.
+  }
+}
 
 export type ScheduleResult = 'ok' | 'denied' | 'web'
 
@@ -31,13 +47,14 @@ async function exactAllowed(): Promise<boolean> {
 }
 
 async function ensureListening(onDrank: () => void) {
+  await ensureChannel()
   if (listening) return
   listening = true
   await LocalNotifications.registerActionTypes({
     types: [{ id: ACTION_TYPE, actions: [{ id: 'drank', title: 'İçtim (+1 bardak)' }] }],
   })
   await LocalNotifications.addListener('localNotificationActionPerformed', (a) => {
-    if (a.actionId === 'drank' && a.notification.id >= FIRST_ID && a.notification.id <= TEST_ID) onDrank()
+    if (a.actionId === 'drank' && a.notification.id >= FIRST_ID && a.notification.id <= TEST_ID + 1) onDrank()
   })
 }
 
@@ -69,6 +86,7 @@ export async function scheduleWaterNotifications(times: Date[], target: number, 
         schedule: { at, allowWhileIdle: true },
         isExactNotification: exact,
         smallIcon: 'ic_stat_water',
+        channelId: CHANNEL,
         actionTypeId: ACTION_TYPE,
       })),
     })
@@ -85,22 +103,29 @@ export async function waterPending(): Promise<Pick<WaterStatus, 'pending' | 'nex
   return { pending: list.length, ...(times.length ? { next: new Date(Math.min(...times)).toISOString() } : {}) }
 }
 
-/** A test reminder in 5 seconds, to see that notifications reach the phone. */
-export async function sendTestWater(onDrank: () => void): Promise<WaterStatus['result']> {
-  if (!Capacitor.isNativePlatform()) return 'web'
+/**
+ * Test in two steps: a notification shown right now (does the phone display them at all?) and one
+ * through a timed alarm in 1 minute (do scheduled reminders fire?).
+ */
+export async function sendTestWater(onDrank: () => void): Promise<{ result: WaterStatus['result']; error?: string }> {
+  if (!Capacitor.isNativePlatform()) return { result: 'web' }
   try {
-    if (!(await permitted())) return 'denied'
+    if (!(await permitted())) return { result: 'denied' }
     await ensureListening(onDrank)
+    const base = { smallIcon: 'ic_stat_water', channelId: CHANNEL, actionTypeId: ACTION_TYPE }
+    await LocalNotifications.schedule({
+      notifications: [{ ...base, id: TEST_ID, title: '💧 Deneme 1/2: bildirim', body: 'Bunu görüyorsan telefon Diyetbot bildirimlerini gösteriyor.' }],
+    })
     await LocalNotifications.schedule({
       notifications: [{
-        id: TEST_ID, title: '💧 Deneme: su vakti', body: 'Bildirimler çalışıyor. "İçtim" bir bardak ekler.',
-        schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true }, isExactNotification: false,
-        smallIcon: 'ic_stat_water', actionTypeId: ACTION_TYPE,
+        ...base, id: TEST_ID + 1, title: '💧 Deneme 2/2: zamanlanmış hatırlatma',
+        body: 'Bu da geldiyse su hatırlatmaları çalışır. "İçtim" bir bardak ekler.',
+        schedule: { at: new Date(Date.now() + 60_000), allowWhileIdle: true }, isExactNotification: false,
       }],
     })
-    return 'ok'
-  } catch {
-    return 'error'
+    return { result: 'ok' }
+  } catch (e) {
+    return { result: 'error', error: e instanceof Error ? e.message : String(e) }
   }
 }
 
