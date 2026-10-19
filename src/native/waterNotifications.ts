@@ -5,41 +5,113 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 
 const FIRST_ID = 7000
 const MAX = 60
+const TEST_ID = FIRST_ID + MAX
 const ACTION_TYPE = 'WATER'
 let listening = false
 
 export type ScheduleResult = 'ok' | 'denied' | 'web'
 
-/** Replaces all pending water reminders with these times. */
-export async function scheduleWaterNotifications(times: Date[], target: number, onDrank: () => void): Promise<ScheduleResult> {
-  if (!Capacitor.isNativePlatform()) return 'web'
-  let perm = await LocalNotifications.checkPermissions()
-  if (perm.display !== 'granted' && times.length) perm = await LocalNotifications.requestPermissions()
-  await cancelWaterNotifications()
-  if (!times.length) return 'ok'
-  if (perm.display !== 'granted') return 'denied'
-  if (!listening) {
-    listening = true
-    await LocalNotifications.registerActionTypes({
-      types: [{ id: ACTION_TYPE, actions: [{ id: 'drank', title: 'İçtim (+1 bardak)' }] }],
-    })
-    await LocalNotifications.addListener('localNotificationActionPerformed', (a) => {
-      if (a.actionId === 'drank' && a.notification.id >= FIRST_ID && a.notification.id < FIRST_ID + MAX) onDrank()
-    })
+/** What happened when the reminders were set up, so the screen can say it (never silently). */
+export interface WaterStatus {
+  result: ScheduleResult | 'error'
+  /** Reminders waiting on the phone, and the next one. */
+  pending?: number
+  next?: string
+  /** Delivered on time (exact alarms allowed) or within about an hour (inexact). */
+  exact?: boolean
+  error?: string
+}
+
+async function exactAllowed(): Promise<boolean> {
+  try {
+    return (await LocalNotifications.checkExactNotificationSetting()).exact_alarm === 'granted'
+  } catch {
+    return false
   }
-  await LocalNotifications.schedule({
-    notifications: times.slice(0, MAX).map((at, i) => ({
-      id: FIRST_ID + i,
-      title: '💧 Su vakti',
-      body: `Bir bardak su iç. Günlük hedefin ${target} bardak.`,
-      schedule: { at, allowWhileIdle: true },
-      // A reminder doesn't need to the minute; inexact alarms need no extra permission.
-      isExactNotification: false,
-      smallIcon: 'ic_stat_water',
-      actionTypeId: ACTION_TYPE,
-    })),
+}
+
+async function ensureListening(onDrank: () => void) {
+  if (listening) return
+  listening = true
+  await LocalNotifications.registerActionTypes({
+    types: [{ id: ACTION_TYPE, actions: [{ id: 'drank', title: 'İçtim (+1 bardak)' }] }],
   })
-  return 'ok'
+  await LocalNotifications.addListener('localNotificationActionPerformed', (a) => {
+    if (a.actionId === 'drank' && a.notification.id >= FIRST_ID && a.notification.id <= TEST_ID) onDrank()
+  })
+}
+
+/** Asks for the notification permission when it hasn't been decided yet. */
+async function permitted(): Promise<boolean> {
+  let perm = await LocalNotifications.checkPermissions()
+  if (perm.display !== 'granted') perm = await LocalNotifications.requestPermissions()
+  return perm.display === 'granted'
+}
+
+/** Replaces all pending water reminders with these times. */
+export async function scheduleWaterNotifications(times: Date[], target: number, onDrank: () => void): Promise<WaterStatus> {
+  if (!Capacitor.isNativePlatform()) return { result: 'web' }
+  try {
+    if (times.length && !(await permitted())) {
+      await cancelWaterNotifications()
+      return { result: 'denied' }
+    }
+    await cancelWaterNotifications()
+    if (!times.length) return { result: 'ok', pending: 0 }
+    await ensureListening(onDrank)
+    // On time when the phone allows exact alarms; otherwise inexact (Android may delay up to ~1 hour).
+    const exact = await exactAllowed()
+    await LocalNotifications.schedule({
+      notifications: times.slice(0, MAX).map((at, i) => ({
+        id: FIRST_ID + i,
+        title: '💧 Su vakti',
+        body: `Bir bardak su iç. Günlük hedefin ${target} bardak.`,
+        schedule: { at, allowWhileIdle: true },
+        isExactNotification: exact,
+        smallIcon: 'ic_stat_water',
+        actionTypeId: ACTION_TYPE,
+      })),
+    })
+    return { ...(await waterPending()), result: 'ok', exact }
+  } catch (e) {
+    return { result: 'error', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** How many water reminders the phone has waiting, and when the next one is. */
+export async function waterPending(): Promise<Pick<WaterStatus, 'pending' | 'next'>> {
+  const list = (await LocalNotifications.getPending()).notifications.filter((n) => n.id >= FIRST_ID && n.id < FIRST_ID + MAX)
+  const times = list.map((n) => n.schedule?.at).filter((x): x is Date => !!x).map((x) => new Date(x).getTime()).filter((t) => t > Date.now())
+  return { pending: list.length, ...(times.length ? { next: new Date(Math.min(...times)).toISOString() } : {}) }
+}
+
+/** A test reminder in 5 seconds, to see that notifications reach the phone. */
+export async function sendTestWater(onDrank: () => void): Promise<WaterStatus['result']> {
+  if (!Capacitor.isNativePlatform()) return 'web'
+  try {
+    if (!(await permitted())) return 'denied'
+    await ensureListening(onDrank)
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: TEST_ID, title: '💧 Deneme: su vakti', body: 'Bildirimler çalışıyor. "İçtim" bir bardak ekler.',
+        schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true }, isExactNotification: false,
+        smallIcon: 'ic_stat_water', actionTypeId: ACTION_TYPE,
+      }],
+    })
+    return 'ok'
+  } catch {
+    return 'error'
+  }
+}
+
+/** Opens the phone's "Alarms & reminders" setting, so reminders come on time. */
+export async function askExactAlarms(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false
+  try {
+    return (await LocalNotifications.changeExactNotificationSetting()).exact_alarm === 'granted'
+  } catch {
+    return false
+  }
 }
 
 export async function cancelWaterNotifications(): Promise<void> {

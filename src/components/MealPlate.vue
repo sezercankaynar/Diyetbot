@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import DishRecipe from './DishRecipe.vue'
 import { methodFor } from '@/content/recipes'
+import { DISH_RECIPES } from '@/content/dishRecipes'
 import { amountText, getFood, itemTotals, mealTitle, mealTotals, partsOf, plateName, type MenuItem } from '@/engine'
 
 // A menu meal as a dietitian writes it: one line per food with its household amount.
@@ -16,7 +17,7 @@ const rows = computed(() =>
     est: !!getFood(x.foodId)?.estimated,
     factor: x.factor,
     // Dishes with a recipe open it (pilav, soups, sulu yemek …).
-    recipe: !!getFood(x.foodId)?.recipe && !!methodFor(x.foodId),
+    recipe: (!!getFood(x.foodId)?.recipe && !!methodFor(x.foodId)) || !!DISH_RECIPES[x.foodId],
   })),
 )
 const open = ref<{ id: string; factor: number } | null>(null)

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { dayReview, HABITS, REMINDER_INTERVALS, waterNudge, type WaterReminder } from '@/engine'
 import { useAppStore } from '@/stores/app'
+import { openAppSettings, openNotificationSettings } from '@/native/deviceSettings'
 
 const store = useAppStore()
 const choosing = ref(false)
@@ -32,6 +33,19 @@ function openSettings() {
 async function saveReminder(on: boolean) {
   await store.setWaterReminder({ ...draft.value, on })
   editing.value = false
+}
+const DAYS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
+function nextText(iso: string) {
+  const d = new Date(iso)
+  const t = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return d.toDateString() === new Date().toDateString() ? `bugün ${t}` : `${DAYS[d.getDay()]} ${t}`
+}
+const testMsg = ref('')
+async function test() {
+  const r = await store.testWater()
+  testMsg.value = r === 'ok'
+    ? '5 saniye içinde bildirim gelmeli. Gelmezse telefonun pil tasarrufu ya da "uygulamayı uyut" ayarı Diyetbot\'u engelliyor olabilir (Xiaomi: Otomatik başlatma açık, Pil → Kısıtlama yok; Samsung: Pil → Uyku modundaki uygulamalardan çıkar).'
+    : r === 'denied' ? 'Bildirim izni yok; yukarıdan bildirim ayarlarını aç.' : r === 'web' ? 'Bildirimler sadece Android uygulamasında çalışır.' : 'Deneme bildirimi kurulamadı.'
 }
 const intervalText = (m: number) => (m % 60 ? `${Math.floor(m / 60)},5 saat` : `${m / 60} saat`)
 
@@ -68,9 +82,34 @@ async function savePicks() {
       <button type="button" class="link small" :aria-expanded="editing" @click="editing ? (editing = false) : openSettings()">
         🔔 Su hatırlatıcısı: <strong>{{ store.waterReminder.on ? `açık · ${intervalText(store.waterReminder.everyMin)}te bir, ${store.waterReminder.start}–${store.waterReminder.end}` : 'kapalı (açmak için dokun)' }}</strong>
       </button>
-      <p v-if="store.waterReminder.on && store.waterNotify === 'denied'" class="small warn">
-        Telefon bildirimlere izin vermiyor; hatırlatma sadece uygulama açıkken burada görünür. Ayarlar → Uygulamalar → Diyetbot → Bildirimler'den açabilirsin.
-      </p>
+      <div v-if="store.waterReminder.on && store.waterNotify && store.waterNotify.result !== 'web'" class="status small">
+        <template v-if="store.waterNotify.result === 'ok'">
+          <p v-if="store.waterNotify.pending">
+            ✓ Telefonda {{ store.waterNotify.pending }} hatırlatma kurulu<template v-if="store.waterNotify.next"> · sonraki: <strong>{{ nextText(store.waterNotify.next) }}</strong></template>.
+          </p>
+          <p v-else>Bugünkü hedefe ulaştın; hatırlatmalar yarın sürer.</p>
+          <p v-if="!store.waterNotify.exact" class="muted">
+            Android bu hatırlatmaları pil için biraz geciktirebilir (en fazla ~1 saat).
+            <button type="button" class="link" @click="store.allowExactWater()">Tam zamanında gelsin</button>
+          </p>
+        </template>
+        <p v-else-if="store.waterNotify.result === 'denied'" class="warn">
+          Telefon Diyetbot'un bildirim göndermesine izin vermiyor, hatırlatmalar gelmez.
+          <button type="button" class="link" @click="openNotificationSettings()">Bildirim ayarlarını aç</button>
+        </p>
+        <p v-else class="warn">
+          Hatırlatmalar kurulamadı ({{ store.waterNotify.error }}).
+          <button type="button" class="link" @click="store.rescheduleWater()">Tekrar dene</button>
+        </p>
+        <p v-if="store.bgRestricted" class="warn">
+          Telefon Diyetbot'u arka planda kısıtlıyor; bu yüzden hatırlatmalar gelmeyebilir. Uygulama ayarlarında Pil → "Kısıtlamasız" seç.
+          <button type="button" class="link" @click="openAppSettings()">Uygulama ayarlarını aç</button>
+        </p>
+        <p>
+          <button type="button" class="link" @click="test">🔔 Deneme bildirimi gönder</button>
+          <span v-if="testMsg" class="muted"> {{ testMsg }}</span>
+        </p>
+      </div>
       <div v-if="editing" class="remind-form">
         <div class="label">Ne sıklıkla?</div>
         <div class="chips">
@@ -131,6 +170,9 @@ async function savePicks() {
 .nudge { margin: 10px 0 0; background: color-mix(in srgb, var(--c-water) 14%, var(--surface)); border-radius: 12px; padding: 8px 10px; }
 .remind { margin-top: 10px; }
 .link { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-2); text-align: left; cursor: pointer; }
+.status { display: grid; gap: 6px; margin-top: 6px; }
+.status p { margin: 0; }
+.status .link { color: var(--accent); font-weight: 700; padding: 0; }
 .remind-form { margin-top: 8px; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
 .chips button { border: 0; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 0.82rem; font-weight: 650; background: var(--surface); color: var(--ink-2); cursor: pointer; }

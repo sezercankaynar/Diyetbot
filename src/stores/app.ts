@@ -54,7 +54,8 @@ import {
   type WaterReminder,
 } from '@/engine'
 import { parseBackup, repo, type Backup } from '@/db'
-import { scheduleWaterNotifications, type ScheduleResult } from '@/native/waterNotifications'
+import { askExactAlarms, scheduleWaterNotifications, sendTestWater, type ScheduleResult, type WaterStatus } from '@/native/waterNotifications'
+import { deviceStatus } from '@/native/deviceSettings'
 import { readSteps, type StepsResult } from '@/native/steps'
 import { scheduleWeighNotifications } from '@/native/weighNotifications'
 import { updateMenuWidget } from '@/native/menuWidget'
@@ -84,7 +85,9 @@ export const useAppStore = defineStore('app', () => {
   const activeHabits = ref<string[]>([])
   const waterReminder = ref<WaterReminder>({ ...DEFAULT_WATER_REMINDER })
   /** Result of the last notification scheduling ('denied' → notifications are off for the app). */
-  const waterNotify = ref<ScheduleResult | null>(null)
+  const waterNotify = ref<WaterStatus | null>(null)
+  /** Android restricts the app in the background (reminders may not come). */
+  const bgRestricted = ref(false)
   /** Steps come from Health Connect (set after the first successful sync). */
   const stepsAuto = ref(false)
   const weighReminder = ref<{ on: boolean; days: number[]; time: string }>({ on: false, days: [1, 4], time: '08:00' })
@@ -277,9 +280,17 @@ export const useAppStore = defineStore('app', () => {
     try {
       const times = upcomingReminders(waterReminder.value, new Date(), 7, todayLog.value.water >= waterTarget.value)
       waterNotify.value = await scheduleWaterNotifications(times, waterTarget.value, () => void addWater(1))
-    } catch {
-      waterNotify.value = null
+      bgRestricted.value = !!(await deviceStatus())?.backgroundRestricted
+    } catch (e) {
+      // Never silent: the water card says what went wrong.
+      waterNotify.value = { result: 'error', error: e instanceof Error ? e.message : String(e) }
     }
+  }
+  const testWater = () => sendTestWater(() => void addWater(1))
+  /** Lets reminders come on time (Android "Alarms & reminders"), then sets them up again. */
+  async function allowExactWater() {
+    await askExactAlarms()
+    if (waterReminder.value.on) await rescheduleWater()
   }
 
   async function setWeighReminder(r: { on: boolean; days: number[]; time: string }) {
@@ -578,7 +589,7 @@ export const useAppStore = defineStore('app', () => {
     savedMeals, saveMeal, deleteSavedMeal, frequent, ownMeals,
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
     kcalOffset, stepsOffset, plan, sortedLogs, analysis, sortedAdjustments,
-    waterReminder, waterNotify, setWaterReminder, rescheduleWater, stepsAuto, syncSteps,
+    waterReminder, waterNotify, bgRestricted, testWater, allowExactWater, setWaterReminder, rescheduleWater, stepsAuto, syncSteps,
     weighReminder, weighNotify, setWeighReminder, markBackup, lastBackupAt, firstUse, weekReview, plateau, backupReminder,
     liked, disliked, diary, menu, customFoods, saveCustomFood, deleteCustomFood, addToMenu, eatenSlotsOn,
     checkIns, sortedCheckIns, coachContext, waterTarget, daily, activeHabits, todayLog, addWater, toggleHabit, setSteps, toggleWorkout, setHabits, saveCheckIn, deleteCheckIn, todayDate, menuCtx, todayMenu, todayDiary, todayTotals, menuOutdated,
