@@ -6,7 +6,7 @@ export interface AiTool {
   name: string
   description: string
   input_schema: Record<string, unknown>
-  run: (input: Record<string, unknown>) => unknown
+  run: (input: Record<string, unknown>) => unknown | Promise<unknown>
 }
 
 export interface AgentResult {
@@ -43,17 +43,19 @@ export async function runAgent(
     }
     // The assistant turn goes back unchanged (thinking blocks included), then all results in one message.
     messages.push({ role: 'assistant', content: res.content_blocks })
-    const results: Block[] = res.tool_calls.map((call) => {
+    // In order (a dish created by one call can be used by the next).
+    const results: Block[] = []
+    for (const call of res.tool_calls) {
       const tool = o.tools.find((t) => t.name === call.name)
       o.onTool?.(call.name)
       try {
         if (!tool) throw new Error(`unknown tool ${call.name}`)
-        const out = JSON.stringify(tool.run((call.input ?? {}) as Record<string, unknown>))
-        return { type: 'tool_result', tool_use_id: call.id, content: out.length > MAX_RESULT ? `${out.slice(0, MAX_RESULT)}…` : out }
+        const out = JSON.stringify(await tool.run((call.input ?? {}) as Record<string, unknown>))
+        results.push({ type: 'tool_result', tool_use_id: call.id, content: out.length > MAX_RESULT ? `${out.slice(0, MAX_RESULT)}…` : out })
       } catch (e) {
-        return { type: 'tool_result', tool_use_id: call.id, content: String((e as Error).message ?? e), is_error: true }
+        results.push({ type: 'tool_result', tool_use_id: call.id, content: String((e as Error).message ?? e), is_error: true })
       }
-    })
+    }
     messages.push({ role: 'user', content: results })
   }
   throw new Error('Yapay zekâ yanıtı tamamlanamadı (çok fazla adım).')

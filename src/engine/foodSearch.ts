@@ -34,7 +34,9 @@ export function searchFoods(query: string, limit = 30, foods: Food[] = allFoods(
       if (name.includes(hit)) score += 1
       if (name.startsWith(hit)) score += 1
       // "peynir" → "Beyaz peynir" (the food itself) before "Peynirli gözleme" (a dish with it).
+      // Also with a compound-noun ending ("pilav" → "Pirinç pilavı"), but not "-li" ("Peynirli gözleme").
       if (nameWords.includes(w)) score += 1.5
+      else if (nameWords.some((nw) => ['i', 'u', 'si', 'su'].some((suf) => nw === w + suf))) score += 1
     }
     if (!ok) continue
     if (!f.brand) score += 1.5 // generic dishes before chain/packaged items

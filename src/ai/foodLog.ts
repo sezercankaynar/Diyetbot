@@ -1,9 +1,9 @@
 // "Öğlen yarım lahmacun ve ayran içtim" → foods from the catalogue with amounts and meals, for the user
 // to check and save. Claude finds the foods with search_foods; the values are the app's.
-import { getFood, type Slot } from '@/engine'
+import { getFood, type Food, type Slot } from '@/engine'
 import { runAgent } from './agent'
 import { AiError, type AiSettings } from './gateway'
-import { searchFoodsTool } from './tools'
+import { createFoodTool, searchFoodsTool, searchIngredientsTool } from './tools'
 
 export interface ParsedItem {
   /** A meal of the day, or null = eaten outside meals. */
@@ -18,6 +18,8 @@ export interface ParsedLog {
   /** Things that couldn't be matched to the catalogue. */
   unmatched: string[]
   note: string
+  /** Foods made for this text (not in the catalogue before); saved with the user's own foods. */
+  created: string[]
 }
 
 const SCHEMA = {
@@ -47,13 +49,18 @@ const SCHEMA = {
 export async function parseFoodText(
   s: AiSettings,
   text: string,
-  o: { meals: { slot: Slot; label: string }[]; fixedSlot?: Slot | null; hour: number; signal?: AbortSignal; onTool?: (n: string) => void },
+  o: {
+    meals: { slot: Slot; label: string }[]; fixedSlot?: Slot | null; hour: number; signal?: AbortSignal; onTool?: (n: string) => void
+    /** Saves a food Claude made (not in the catalogue). */
+    save: (f: Food) => Promise<void>
+  },
 ): Promise<ParsedLog> {
   const mealList = o.meals.map((m) => `${m.slot} = ${m.label}`).join(', ')
   const system = [
     'You turn what a Turkish user writes about what they ate into foods from the app\'s catalogue.',
     'For EVERY food mentioned, call search_foods (Turkish, short queries; try a more general word if nothing fits). Use only returned food_ids. Search several foods in parallel when you can.',
-    'Pick the closest match (a plain item over a combo plate unless the user described the combo). If nothing reasonable exists after 2 tries, put the words in "unmatched".',
+    'Pick the closest match (a plain item over a combo plate unless the user described the combo).',
+    'If the food or drink is NOT in the catalogue after 2 searches, create it with create_food and use the returned food_id: for dishes and home drinks give a normal one-portion Turkish recipe with ingredients from search_ingredients (servings 1); only for packaged/branded products give label values. Put words in "unmatched" only if you cannot tell what food it is.',
     'Amount → factor (multiple of the food\'s standard portion): no amount = the standard portion (1). "yarım" = 0.5 of the portion. Grams → grams / grams_per_portion. ' +
       'A count in the food\'s count_unit → count × factor_per_one (e.g. 3 dilim with factor_per_one 0.5 → 1.5). "2 tane" of a 1-adet food → 2. Round to 2 decimals.',
     'Drinks without calories (water, plain tea/coffee) are fine to include if listed in the catalogue; ignore plain water.',
@@ -62,9 +69,11 @@ export async function parseFoodText(
       : `Assign each item a meal from: ${mealList}, or "extra" for snacks eaten between meals. Use words like sabah/kahvaltı, öğle(n), akşam, ara öğün; without any hint use the meal closest to the current hour (${o.hour}:00).`,
     'Do not invent nutrition values. Reply only with the JSON.',
   ].join('\n')
+  const created: string[] = []
+  const tools = [searchFoodsTool, searchIngredientsTool, createFoodTool(o.save, created)]
   const run = (format: boolean) => runAgent(s, {
     model: s.logModel, system: format ? system : `${system}\nAnswer with only a JSON object of this shape: ${JSON.stringify(SCHEMA)}`,
-    tools: [searchFoodsTool], maxTokens: 1500, maxRounds: 5, signal: o.signal, onTool: o.onTool,
+    tools, maxTokens: 2500, maxRounds: 8, signal: o.signal, onTool: o.onTool,
     messages: [{ role: 'user', content: text }],
     ...(format ? { format: { type: 'json_schema' as const, schema: SCHEMA } } : {}),
   })
@@ -95,5 +104,5 @@ export async function parseFoodText(
     const slot = o.fixedSlot ?? (slots.has(it.meal as Slot) ? (it.meal as Slot) : null)
     items.push({ slot, foodId: it.food_id, factor: Math.min(10, Math.max(0.1, Math.round((Number(it.factor) || 1) * 100) / 100)), said: it.said })
   }
-  return { items, unmatched, note: data.note ?? '' }
+  return { items, unmatched, note: data.note ?? '', created: created.filter((id) => items.some((i) => i.foodId === id)) }
 }

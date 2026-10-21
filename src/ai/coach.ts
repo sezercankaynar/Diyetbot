@@ -6,7 +6,7 @@ import {
 import type { useAppStore } from '@/stores/app'
 import { runAgent, type AgentResult } from './agent'
 import type { AiSettings, ChatMessage } from './gateway'
-import { coachTools, type DayContext } from './tools'
+import { coachTools, createFoodTool, proposeMenuTool, searchIngredientsTool, type DayContext, type MenuProposal } from './tools'
 
 type Store = ReturnType<typeof useAppStore>
 
@@ -81,6 +81,7 @@ export function coachDayContext(store: Store): DayContext {
     openSlots: comingSlots(store, eatenSlots),
     avoid: entries.map((e) => e.foodId),
     labels: Object.fromEntries((ctx ? slotPlan(ctx) : []).map((s) => [s.slot, s.label])),
+    planned: store.menu?.days.find((d) => d.date === today)?.items ?? [],
   }
 }
 
@@ -89,7 +90,9 @@ function system(snapshot: ReturnType<typeof coachSnapshot>): string {
     'Sen Diyetbot uygulamasının diyet ve antrenman koçusun. Kullanıcıyla Türkçe, sıcak, yargılamadan ve kısa konuş (genelde 2–6 cümle ya da kısa bir liste).',
     'Kurallar:',
     '- Kalori, protein ve diğer sayıları ASLA kendin hesaplama ya da uydurma. Sayılar ya aşağıdaki özetten ya da araçlardan (search_foods, check_foods, rest_of_day_plates) gelsin. Bir yiyeceğin değerini sorarlarsa search_foods kullan.',
-    '- "Ne yesem / akşam ne yiyeyim" gibi sorularda rest_of_day_plates aracını kullan ve oradan 1–2 tabağı öner.',
+    '- "Ne yesem / akşam ne yiyeyim / günün kalanında ne yiyeyim" gibi sorularda önce rest_of_day_plates aracına bak; sonra önerini propose_menu ile somut menü olarak gönder (kullanıcı tek dokunuşla menüsüne koyar). Önerini yaptıktan sonra metinde kısaca neden uygun olduğunu söyle; tabakların içeriğini ve sayıları tekrar sayma, ekranda kart olarak görünüyor.',
+    '- Kullanıcı katalogda olmayan bir yemek isterse ya da senin önerdiğin yemek katalogda yoksa: search_foods ile ara; yoksa create_food ile malzemelerinden (search_ingredients, normal Türk ev tarifi) oluştur ve onu kullan. Paketli/markalı ürünlerde etiket değerlerini ver.',
+    '- propose_menu sonucunda gün hedefin üstündeyse (fits: false) porsiyonları küçültüp tekrar öner. Yalnızca henüz yenmemiş öğünler için öner.',
     '- "Şunu yiyebilir miyim" sorularında yiyeceği search_foods ile bul, check_foods ile değerlendir.',
     '- Kayma olduysa suçlama; telafi için aç kalmayı önerme. Önemli olan haftalık ortalama.',
     '- Tıbbi teşhis koyma, ilaç önerme. Hastalık, gebelik, yeme bozukluğu ya da ciddi belirti söz konusuysa doktora/diyetisyene yönlendir.',
@@ -103,10 +106,22 @@ function system(snapshot: ReturnType<typeof coachSnapshot>): string {
 }
 
 export async function askCoach(
-  s: AiSettings, store: Store, history: ChatMessage[], o: { signal?: AbortSignal; onTool?: (name: string) => void } = {},
+  s: AiSettings, store: Store, history: ChatMessage[],
+  o: { signal?: AbortSignal; onTool?: (name: string) => void; onPropose?: (p: MenuProposal) => void; onCreate?: (foodId: string) => void } = {},
 ): Promise<AgentResult> {
+  const d = coachDayContext(store)
+  const created: string[] = []
+  const tools = [
+    ...coachTools(d),
+    searchIngredientsTool,
+    createFoodTool(async (f) => {
+      await store.saveCustomFood(f)
+      o.onCreate?.(f.id)
+    }, created),
+    proposeMenuTool(d, (p) => o.onPropose?.(p)),
+  ]
   return runAgent(s, {
     model: s.coachModel, system: system(coachSnapshot(store)), messages: history,
-    tools: coachTools(coachDayContext(store)), maxTokens: 1500, maxRounds: 6, ...o,
+    tools, maxTokens: 2500, maxRounds: 10, signal: o.signal, onTool: o.onTool,
   })
 }
