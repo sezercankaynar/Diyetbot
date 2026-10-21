@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { AI_MODELS, testGateway, type AiSettings } from '@/ai/gateway'
+import { AI_MODELS, AiError, gatewayChat, testGateway, type AiSettings } from '@/ai/gateway'
 import { useAppStore } from '@/stores/app'
 
 // Gateway token, address and models for the AI features. Kept only on this phone.
@@ -22,9 +22,27 @@ async function save() {
     return
   }
   const missing = [store.ai.logModel, store.ai.coachModel].filter((m) => r.models.length && !r.models.includes(m))
-  msg.value = missing.length
-    ? { ok: false, text: `Bağlandı, ama ${missing.join(', ')} bu token için izinli değil; aşağıdan başka model seç.` }
-    : { ok: true, text: 'Bağlandı ✓ Yapay zekâ özellikleri Bugün ekranında.' }
+  if (missing.length) {
+    busy.value = false
+    msg.value = { ok: false, text: `Token geçerli, ama ${missing.join(', ')} bu token için izinli değil; aşağıdan başka model seç.` }
+    return
+  }
+  // The token is fine; now one tiny real request, so a bad Claude key in the gateway shows up here.
+  busy.value = true
+  try {
+    await gatewayChat(store.ai, { model: store.ai.logModel, messages: [{ role: 'user', content: 'Sadece "tamam" yaz.' }], max_tokens: 10 })
+    msg.value = { ok: true, text: 'Bağlandı ✓ Claude yanıt verdi. Yapay zekâ özellikleri Bugün ekranında.' }
+  } catch (e) {
+    const type = e instanceof AiError ? e.type : ''
+    msg.value = {
+      ok: false,
+      text: type === 'upstream_auth_error'
+        ? 'Token geçerli, ama gateway\'deki Claude API anahtarı Anthropic tarafından reddediliyor. Gateway panelinde Claude Anahtarları → "Test et"; gerekirse Düzenle → yeni anahtar (sk-ant-api…, tür: API anahtarı).'
+        : `Token geçerli, ama Claude'a istek başarısız: ${(e as Error).message}`,
+    }
+  } finally {
+    busy.value = false
+  }
 }
 function clear() {
   draft.value = { ...draft.value, token: '' }

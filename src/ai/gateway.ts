@@ -81,7 +81,7 @@ const MESSAGES: Record<string, string> = {
   model_not_found: 'Seçili model bulunamadı; ayarlardan başka model seç.',
   rate_limited: 'Çok sık istek gönderildi; bir dakika sonra tekrar dene.',
   upstream_rate_limited: 'Claude şu an yoğun; biraz sonra tekrar dene.',
-  upstream_auth_error: 'Gateway\'deki Claude anahtarı geçersiz (gateway panelinden kontrol et).',
+  upstream_auth_error: 'Gateway\'deki Claude API anahtarı Anthropic tarafından reddediliyor. Gateway panelinde Claude Anahtarları → "Test et" ile kontrol et; gerekirse yeni anahtar gir (sk-ant-api…, tür: API anahtarı).',
   upstream_key_disabled: 'Gateway\'deki Claude anahtarı pasif.',
 }
 
