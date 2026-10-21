@@ -4,4 +4,5 @@
     <color name="widget_ink">#17201C</color>
     <color name="widget_muted">#87938D</color>
     <color name="widget_accent">#1D8A59</color>
+    <color name="widget_button_ink">#FFFFFF</color>
 </resources>

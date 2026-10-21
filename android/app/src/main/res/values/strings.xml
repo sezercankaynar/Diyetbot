@@ -6,5 +6,6 @@
     <string name="custom_url_scheme">com.sezercankaynar.diyetbot</string>
     <string name="widget_title">Bugünün menüsü</string>
     <string name="widget_empty">Menünü görmek için Diyetbot\'u bir kez aç.</string>
+    <string name="widget_coach">💬 Koça sor</string>
     <string name="widget_description">Günün menüsü: öğün saatleri, tabaklar ve kaloriler</string>
 </resources>

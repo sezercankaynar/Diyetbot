@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { onWidgetAction, takeWidgetAction } from '@/native/menuWidget'
 import { useAppStore } from '@/stores/app'
 import TodayView from '@/views/TodayView.vue'
 import MenuView from '@/views/MenuView.vue'
@@ -37,12 +38,22 @@ const go = (t: string) => {
   } else if (ALL.includes(t as Tab)) tab.value = t as Tab
 }
 
+/** The widget's "Koça sor" opened the app: show today's Bugün with the coach chat. */
+async function widgetAction() {
+  const a = await takeWidgetAction()
+  if (a !== 'coach' || !store.hasProfile) return
+  store.viewDate = store.todayDate
+  tab.value = 'bugun'
+  store.openRequest = 'coach'
+}
 onMounted(async () => {
   await store.load()
   if (!fromHash()) {
     if (!store.hasProfile) meSub.value = 'profil'
     tab.value = store.hasProfile ? 'bugun' : 'ben'
   }
+  await widgetAction()
+  onWidgetAction(() => void widgetAction())
 })
 // Onboarding finished (profile saved): go to Bugün. (An import that brings a profile does the same.)
 watch(
@@ -63,6 +74,7 @@ document.addEventListener('visibilitychange', () => {
     // Keeps a week of water reminders ahead.
     if (store.waterReminder.on) store.rescheduleWater()
     if (store.stepsAuto) store.syncSteps(false)
+    void widgetAction()
   }
 })
 window.addEventListener('hashchange', () => {

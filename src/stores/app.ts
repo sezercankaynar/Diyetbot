@@ -218,10 +218,12 @@ export const useAppStore = defineStore('app', () => {
       : null,
   )
   let widgetTimer: ReturnType<typeof setTimeout> | undefined
-  watch(widgetData, (d) => {
+  watch([widgetData, aiReady], ([d, ai]) => {
     clearTimeout(widgetTimer)
-    if (d) widgetTimer = setTimeout(() => void updateMenuWidget(d), 400)
+    if (d) widgetTimer = setTimeout(() => void updateMenuWidget(d, ai), 400)
   })
+  /** A screen asked to be opened from outside (the widget's "Koça sor"). */
+  const openRequest = ref<'coach' | null>(null)
   const menuOutdated = computed(() => !!menu.value && !!menuCtx.value && isMenuOutdated(menu.value, menuCtx.value))
   const sortedAdjustments = computed(() => [...adjustments.value].sort((a, b) => b.date.localeCompare(a.date)))
 
@@ -594,7 +596,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    ai, aiReady, setAi,
+    ai, aiReady, setAi, openRequest,
     dayTarget, balance, balanceOffer, applyWeekBalance, dismissWeekBalance,
     savedMeals, saveMeal, deleteSavedMeal, frequent, ownMeals,
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,

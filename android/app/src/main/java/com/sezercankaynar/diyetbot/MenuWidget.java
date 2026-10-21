@@ -50,6 +50,18 @@ public class MenuWidget extends AppWidgetProvider {
         v.setOnClickPendingIntent(R.id.widget_root,
             PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
 
+        // "Koça sor": opens the app straight into the coach chat (only when AI is set up in the app).
+        if (aiReady(context)) {
+            Intent coach = new Intent(context, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(MenuWidgetPlugin.EXTRA_ACTION, "coach");
+            v.setOnClickPendingIntent(R.id.widget_coach,
+                PendingIntent.getActivity(context, 1, coach, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+            v.setViewVisibility(R.id.widget_coach, View.VISIBLE);
+        } else {
+            v.setViewVisibility(R.id.widget_coach, View.GONE);
+        }
+
         LocalDate today = LocalDate.now();
         v.setTextViewText(R.id.widget_date, today.format(DateTimeFormatter.ofPattern("d MMMM EEEE", new Locale("tr", "TR"))));
         JSONObject day = findDay(context, today.toString());
@@ -84,6 +96,16 @@ public class MenuWidget extends AppWidgetProvider {
         if (day.has("eaten")) v.setTextViewText(R.id.widget_kcal, nf.format(day.optInt("eaten")) + " / " + nf.format(target) + " kcal");
         else v.setTextViewText(R.id.widget_kcal, "Menü " + nf.format(menuKcal) + " kcal");
         return v;
+    }
+
+    private static boolean aiReady(Context context) {
+        String raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null);
+        if (raw == null) return false;
+        try {
+            return new JSONObject(raw).optBoolean("ai", false);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static JSONObject findDay(Context context, String date) {

@@ -1,5 +1,6 @@
 package com.sezercankaynar.diyetbot;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
@@ -11,5 +12,12 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MenuWidgetPlugin.class);
         registerPlugin(DeviceSettingsPlugin.class);
         super.onCreate(savedInstanceState);
+        MenuWidgetPlugin.handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        MenuWidgetPlugin.handleIntent(intent);
     }
 }

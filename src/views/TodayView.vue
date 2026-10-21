@@ -24,6 +24,16 @@ import { fmt } from '@/content/labels'
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
 const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup' | 'ailog' | 'coach'>(null)
+// Opened from the widget's "Koça sor".
+watch(
+  () => store.openRequest,
+  (r) => {
+    if (r !== 'coach') return
+    store.openRequest = null
+    if (store.aiReady) sheet.value = 'coach'
+  },
+  { immediate: true },
+)
 const isMonday = computed(() => new Date(`${store.todayDate}T12:00:00`).getDay() === 1)
 const daysAgo = (iso: string) => Math.max(0, Math.round((Date.parse(`${store.todayDate}T12:00:00`) - Date.parse(iso)) / 86_400_000))
 const openMeal = ref<Slot | null>(null)
