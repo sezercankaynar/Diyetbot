@@ -2,7 +2,8 @@
 // to check and save. Claude finds the foods with search_foods; the values are the app's.
 import { getFood, type Food, type Slot } from '@/engine'
 import { runAgent } from './agent'
-import { AiError, type AiSettings } from './gateway'
+import { AiError, type AiSettings, type Block } from './gateway'
+import type { AiImage } from './image'
 import { createFoodTool, searchFoodsTool, searchIngredientsTool } from './tools'
 
 export interface ParsedItem {
@@ -48,16 +49,22 @@ const SCHEMA = {
 
 export async function parseFoodText(
   s: AiSettings,
-  text: string,
+  input: string | { text?: string; image?: AiImage },
   o: {
     meals: { slot: Slot; label: string }[]; fixedSlot?: Slot | null; hour: number; signal?: AbortSignal; onTool?: (n: string) => void
     /** Saves a food Claude made (not in the catalogue). */
     save: (f: Food) => Promise<void>
   },
 ): Promise<ParsedLog> {
+  const { text = '', image } = typeof input === 'string' ? { text: input } : input
   const mealList = o.meals.map((m) => `${m.slot} = ${m.label}`).join(', ')
   const system = [
     'You turn what a Turkish user writes about what they ate into foods from the app\'s catalogue.',
+    image
+      ? 'Here the user sends a PHOTO of their meal (their note, if any, may name foods or amounts and wins over what you see). Identify every food and drink visible and ' +
+        'estimate each amount from visual cues (a dinner plate ≈ 26 cm, a tea glass ≈ 100 ml, a water glass ≈ 200 ml, a slice of bread ≈ 25 g, a spoon …). ' +
+        'For each item set "said" to a short Turkish description of what you saw with the amount, e.g. "yarım tabak pilav (~150 g)". Mention in "note" that amounts are estimated from the photo.'
+      : '',
     'For EVERY food mentioned, call search_foods (Turkish, short queries; try a more general word if nothing fits). Use only returned food_ids. Search several foods in parallel when you can.',
     'Pick the closest match (a plain item over a combo plate unless the user described the combo).',
     'If the food or drink is NOT in the catalogue after 2 searches, create it with create_food and use the returned food_id: for dishes and home drinks give a normal one-portion Turkish recipe with ingredients from search_ingredients (servings 1); only for packaged/branded products give label values. Put words in "unmatched" only if you cannot tell what food it is.',
@@ -68,13 +75,13 @@ export async function parseFoodText(
       ? `Everything belongs to the meal "${o.fixedSlot}".`
       : `Assign each item a meal from: ${mealList}, or "extra" for snacks eaten between meals. Use words like sabah/kahvaltı, öğle(n), akşam, ara öğün; without any hint use the meal closest to the current hour (${o.hour}:00).`,
     'Do not invent nutrition values. Reply only with the JSON.',
-  ].join('\n')
+  ].filter(Boolean).join('\n')
   const created: string[] = []
   const tools = [searchFoodsTool, searchIngredientsTool, createFoodTool(o.save, created)]
   const run = (format: boolean) => runAgent(s, {
-    model: s.logModel, system: format ? system : `${system}\nAnswer with only a JSON object of this shape: ${JSON.stringify(SCHEMA)}`,
+    model: image ? s.photoModel : s.logModel, system: format ? system : `${system}\nAnswer with only a JSON object of this shape: ${JSON.stringify(SCHEMA)}`,
     tools, maxTokens: 2500, maxRounds: 8, signal: o.signal, onTool: o.onTool,
-    messages: [{ role: 'user', content: text }],
+    messages: [{ role: 'user', content: image ? photoContent(image, text) : text }],
     ...(format ? { format: { type: 'json_schema' as const, schema: SCHEMA } } : {}),
   })
   let r
@@ -105,4 +112,12 @@ export async function parseFoodText(
     items.push({ slot, foodId: it.food_id, factor: Math.min(10, Math.max(0.1, Math.round((Number(it.factor) || 1) * 100) / 100)), said: it.said })
   }
   return { items, unmatched, note: data.note ?? '', created: created.filter((id) => items.some((i) => i.foodId === id)) }
+}
+
+/** A photo plus the user's note as one message. */
+export function photoContent(image: AiImage, note: string): Block[] {
+  return [
+    { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
+    { type: 'text', text: note.trim() || 'Bu fotoğraftakileri yedim.' },
+  ]
 }

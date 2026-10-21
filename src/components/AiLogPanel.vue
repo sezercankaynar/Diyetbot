@@ -6,10 +6,11 @@ import { useAppStore } from '@/stores/app'
 import SheetPanel from './SheetPanel.vue'
 import FoodRow from './FoodRow.vue'
 import AmountInput from './AmountInput.vue'
+import { fileToImage, type AiImage } from '@/ai/image'
 
 // "Ne yedin, yaz": Claude turns the text into catalogue foods with amounts and meals; the user checks
 // and saves. Values are the app's own.
-const props = defineProps<{ slot?: Slot | null }>()
+const props = defineProps<{ slot?: Slot | null; photo?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useAppStore()
 
@@ -23,6 +24,20 @@ const note = ref('')
 const created = ref<string[]>([])
 const saved = ref(false)
 let ctrl: AbortController | null = null
+// Photo of the meal (optional; the text then is a note).
+const image = ref<AiImage | null>(null)
+async function onFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
+  if (!f) return
+  try {
+    image.value = await fileToImage(f)
+    error.value = ''
+  } catch (err) {
+    error.value = (err as Error).message
+  }
+}
 onBeforeUnmount(() => ctrl?.abort())
 
 const meals = computed(() => (store.menuCtx ? slotPlan(store.menuCtx).map((s) => ({ slot: s.slot, label: s.label })) : []))
@@ -31,14 +46,14 @@ const total = computed(() => sumTotals(items.value.map((i) => itemTotals(i.foodI
 const dayWord = computed(() => (store.isViewToday ? 'bugüne' : 'o güne'))
 
 async function understand() {
-  if (!text.value.trim() || busy.value) return
+  if ((!text.value.trim() && !image.value) || busy.value) return
   busy.value = true
   error.value = ''
   saved.value = false
-  status.value = 'Okunuyor…'
+  status.value = image.value ? 'Fotoğrafa bakılıyor…' : 'Okunuyor…'
   ctrl = new AbortController()
   try {
-    const r = await parseFoodText(store.ai, text.value, {
+    const r = await parseFoodText(store.ai, { text: text.value, ...(image.value ? { image: image.value } : {}) }, {
       meals: meals.value, fixedSlot: props.slot ?? null, hour: new Date().getHours(), signal: ctrl.signal,
       onTool: (n) => (status.value = n === 'create_food' ? 'Katalogda olmayan yeni yemek ekleniyor…' : n === 'search_ingredients' ? 'Malzemeler hesaplanıyor…' : 'Yemekler katalogda aranıyor…'),
       save: (f) => store.saveCustomFood(f),
@@ -72,19 +87,29 @@ async function save() {
   unmatched.value = []
   note.value = ''
   text.value = ''
+  image.value = null
 }
 </script>
 
 <template>
-  <SheetPanel :title="slot ? `${label(slot)}: ne yedin?` : '✨ Ne yedin, yaz'" @close="emit('close')">
-    <p class="small muted">
+  <SheetPanel :title="slot ? `${label(slot)}: ne yedin?` : photo ? '📷 Fotoğraftan kaydet' : '✨ Ne yedin, yaz'" @close="emit('close')">
+    <div class="photo">
+      <label class="btn ghost small"><input type="file" accept="image/*" capture="environment" hidden @change="onFile" />📷 Fotoğraf çek</label>
+      <label class="btn ghost small"><input type="file" accept="image/*" hidden @change="onFile" />🖼 Galeriden seç</label>
+    </div>
+    <div v-if="image" class="preview">
+      <img :src="image.preview" alt="Yemeğin fotoğrafı" />
+      <button type="button" class="btn ghost small" @click="image = null">✕ Fotoğrafı kaldır</button>
+    </div>
+    <p v-if="image" class="small muted">Fotoğraftaki yemekleri ve yaklaşık miktarlarını tanıyacağım. Bildiğin bir şey varsa aşağıya yaz (ör. “pilav yarım tabaktı”, “içecek şekersiz”).</p>
+    <p v-else class="small muted">
       Yediklerini konuşur gibi yaz; uygulama katalogdaki yemeklerle eşleştirsin. Örnek: <em>“sabah 2 yumurta, 3 dilim peynir, bir simit; öğlen yarım lahmacun ve ayran; akşam üstü bir avuç fındık”</em>.
       Klavyedeki 🎤 ile konuşarak da yazabilirsin.
     </p>
-    <textarea v-model="text" rows="4" placeholder="Bugün ne yedin?" :disabled="busy" />
+    <textarea v-model="text" :rows="image ? 2 : 4" :placeholder="image ? 'Not (isteğe bağlı)' : 'Bugün ne yedin?'" :disabled="busy" />
     <div class="row">
       <span class="small muted">{{ status }}</span>
-      <button type="button" class="btn" :disabled="busy || !text.trim()" @click="understand">{{ busy ? 'Bakılıyor…' : 'Anla' }}</button>
+      <button type="button" class="btn" :disabled="busy || (!text.trim() && !image)" @click="understand">{{ busy ? 'Bakılıyor…' : 'Anla' }}</button>
     </div>
     <p v-if="error" class="small warn" role="alert">{{ error }}</p>
     <p v-if="saved" class="small ok" role="status">Kaydedildi ✓ {{ store.isViewToday ? 'Bugünün' : 'O günün' }} öğünlerine eklendi.</p>
@@ -120,6 +145,10 @@ async function save() {
 </template>
 
 <style scoped>
+.photo { display: flex; gap: 8px; margin-bottom: 8px; }
+.photo .btn { flex: 1; text-align: center; cursor: pointer; }
+.preview { display: grid; gap: 6px; margin-bottom: 6px; }
+.preview img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
 textarea { width: 100%; font: inherit; margin-top: 8px; resize: vertical; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 0; }
 .item { padding: 10px 0; border-bottom: 1px solid var(--line); }

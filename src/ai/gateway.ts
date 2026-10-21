@@ -9,6 +9,8 @@ export interface AiSettings {
   logModel: string
   /** Model for the coach chat. */
   coachModel: string
+  /** Model for photos (meals, written recipes): needs to see well. */
+  photoModel: string
 }
 
 export const AI_MODELS = [
@@ -22,6 +24,7 @@ export const DEFAULT_AI: AiSettings = {
   url: 'https://claude-gateway-backend.vercel.app',
   logModel: 'claude-haiku-5-5',
   coachModel: 'claude-sonnet-5-5',
+  photoModel: 'claude-sonnet-5-5',
 }
 
 const KEY = 'diyetbot.ai'

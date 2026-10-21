@@ -21,7 +21,7 @@ async function save() {
     msg.value = { ok: false, text: `Kaydedildi ama bağlantı kurulamadı: ${r.message}` }
     return
   }
-  const missing = [store.ai.logModel, store.ai.coachModel].filter((m) => r.models.length && !r.models.includes(m))
+  const missing = [store.ai.logModel, store.ai.coachModel, store.ai.photoModel].filter((m) => r.models.length && !r.models.includes(m))
   if (missing.length) {
     busy.value = false
     msg.value = { ok: false, text: `Token geçerli, ama ${missing.join(', ')} bu token için izinli değil; aşağıdan başka model seç.` }
@@ -71,6 +71,10 @@ function clear() {
     <label>
       <span class="small muted">Diyet koçu için model</span>
       <select v-model="draft.coachModel"><option v-for="m in AI_MODELS" :key="m.id" :value="m.id">{{ m.label }}</option></select>
+    </label>
+    <label>
+      <span class="small muted">Fotoğraftan tanıma için model</span>
+      <select v-model="draft.photoModel"><option v-for="m in AI_MODELS" :key="m.id" :value="m.id">{{ m.label }}</option></select>
     </label>
     <details class="adv">
       <summary class="small">Gateway adresi</summary>

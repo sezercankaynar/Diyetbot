@@ -47,6 +47,14 @@
         </provider>
     </application>
 
+    <!-- Photo of a meal or a recipe: the phone's camera app is opened from the file chooser
+         (Android 11+ needs this to see it; no camera permission is used). -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

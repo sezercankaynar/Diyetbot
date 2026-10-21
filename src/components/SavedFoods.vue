@@ -10,6 +10,12 @@ const store = useAppStore()
 const own = computed(() => store.customFoods.filter((f) => f.id.startsWith('ev-') && !f.hidden).sort((a, b) => a.name.localeCompare(b.name, 'tr')))
 const packaged = computed(() => store.customFoods.filter((f) => f.id.startsWith('pk-') && !f.hidden).sort((a, b) => a.name.localeCompare(b.name, 'tr')))
 const editing = ref<Food | null>(null)
+const adding = ref(false)
+async function add(f: Food) {
+  await store.saveCustomFood(f)
+  adding.value = false
+  msg.value = `"${f.name}" eklendi: 1 porsiyon ${f.kcal} kcal.`
+}
 const msg = ref('')
 
 async function save(f: Food) {
@@ -33,6 +39,7 @@ async function remove(f: Food) {
 
 <template>
   <div>
+    <button type="button" class="btn ghost small add" @click="adding = true">＋ {{ store.aiReady ? 'Tarifimden yemek ekle (yapay zekâ ile ya da elle)' : 'Tarifimden yemek ekle' }}</button>
     <p v-if="msg" class="ok small">{{ msg }}</p>
     <template v-if="store.savedMeals.length">
       <div class="label grp">Kayıtlı öğünlerim</div>
@@ -61,6 +68,9 @@ async function remove(f: Food) {
       </template>
     </template>
     <p class="small muted">Düzenlemek geçmiş günlerdeki kayıtların toplamını da değiştirir (aynı yemeğe bağlılar).</p>
+    <SheetPanel v-if="adding" title="📖 Tarifimden yemek ekle" @close="adding = false">
+      <RecipeBuilder save-label="Kaydet" @save="add" @cancel="adding = false" />
+    </SheetPanel>
     <SheetPanel v-if="editing" title="Kayıtlı yemeği düzenle" @close="editing = null">
       <RecipeBuilder :edit="editing" save-label="Değişiklikleri kaydet" @save="save" @cancel="editing = null" />
     </SheetPanel>
@@ -69,6 +79,7 @@ async function remove(f: Food) {
 
 <style scoped>
 .grp { margin-top: 10px; }
+.add { width: 100%; margin-bottom: 8px; }
 .row { display: flex; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .txt { flex: 1; min-width: 0; }
 .nm { font-weight: 650; }

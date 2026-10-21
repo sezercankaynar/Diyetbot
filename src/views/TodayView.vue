@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { addDays, getFood, itemTotals, mealTitle, mealTotals, mealWindow, partsOf, plateName, slotPlan, sumTotals, type MenuItem, type Slot } from '@/engine'
+import { addDays, getFood, itemTotals, mealTitle, mealTotals, mealWindow, partsOf, plateName, slotPlan, sumTotals, type Food, type MenuItem, type Slot } from '@/engine'
 import { useAppStore } from '@/stores/app'
 import CalloutBox from '@/components/CalloutBox.vue'
 import FoodRow from '@/components/FoodRow.vue'
@@ -17,13 +17,21 @@ import RestSuggest from '@/components/RestSuggest.vue'
 import WeekBalance from '@/components/WeekBalance.vue'
 import AiLogPanel from '@/components/AiLogPanel.vue'
 import CoachPanel from '@/components/CoachPanel.vue'
+import RecipeBuilder from '@/components/RecipeBuilder.vue'
 import RingProgress from '@/components/RingProgress.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
-const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup' | 'ailog' | 'coach'>(null)
+const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup' | 'ailog' | 'aiphoto' | 'recipe' | 'coach'>(null)
+const recipeSaved = ref('')
+// A dish from the user's own recipe: saved with their foods (shows up in search).
+async function saveRecipe(f: Food) {
+  await store.saveCustomFood(f)
+  sheet.value = null
+  recipeSaved.value = `“${f.name}” kaydedildi: 1 porsiyon ${f.kcal} kcal. Artık aramada çıkıyor.`
+}
 // Opened from the widget's "Koça sor".
 watch(
   () => store.openRequest,
@@ -149,9 +157,12 @@ const ACTIONS = [
       <WeekBalance v-if="store.isViewToday" />
 
       <div v-if="store.aiReady" class="ai-row">
-        <button type="button" class="ai-btn" @click="sheet = 'ailog'"><span aria-hidden="true">✨</span> Ne yedin, yaz</button>
-        <button v-if="store.isViewToday" type="button" class="ai-btn" @click="sheet = 'coach'"><span aria-hidden="true">💬</span> Koça sor</button>
+        <button type="button" class="ai-btn" @click="sheet = 'ailog'"><span aria-hidden="true">✨</span> Yazarak kaydet</button>
+        <button type="button" class="ai-btn" @click="sheet = 'aiphoto'"><span aria-hidden="true">📷</span> Fotoğraftan kaydet</button>
+        <button type="button" class="ai-btn soft" @click="sheet = 'recipe'"><span aria-hidden="true">📖</span> Tarifimden yemek</button>
+        <button type="button" class="ai-btn soft" :disabled="!store.isViewToday" @click="sheet = 'coach'"><span aria-hidden="true">💬</span> Koça sor</button>
       </div>
+      <p v-if="recipeSaved" class="small saved-note" role="status">{{ recipeSaved }}</p>
 
       <div class="actions">
         <button v-for="a in ACTIONS" :key="a.id" type="button" class="action" @click="sheet = a.id">
@@ -234,6 +245,10 @@ const ACTIONS = [
 
     <CheckPanel v-if="sheet === 'check'" @close="sheet = null" />
     <AiLogPanel v-if="sheet === 'ailog'" @close="sheet = null" />
+    <AiLogPanel v-if="sheet === 'aiphoto'" photo @close="sheet = null" />
+    <SheetPanel v-if="sheet === 'recipe'" title="📖 Tarifimden yemek ekle" @close="sheet = null">
+      <RecipeBuilder save-label="Kaydet" @save="saveRecipe" @cancel="sheet = null" />
+    </SheetPanel>
     <CoachPanel v-if="sheet === 'coach'" @close="sheet = null" />
     <CheckPanel v-if="slotSheet" :slot="slotSheet.slot" :title="`${slotSheet.label}: ne yedin?`" @close="slotSheet = null" />
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
@@ -263,7 +278,10 @@ const ACTIONS = [
   border: 0; border-radius: 16px; cursor: pointer;
 }
 .ico { font-size: 1.45rem; }
-.ai-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.ai-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.ai-btn.soft { background: var(--accent-soft); color: var(--accent); }
+.ai-btn:disabled { opacity: 0.5; }
+.saved-note { color: var(--accent); margin: -2px 2px 10px; }
 .ai-btn {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 8px;
   font: inherit; font-size: 0.85rem; font-weight: 750; color: var(--accent-ink); background: var(--accent);

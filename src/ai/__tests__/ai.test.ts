@@ -137,3 +137,41 @@ describe('foods that are not in the catalogue', () => {
     expect(r.fits).toBe(got!.day.kcal <= ctx.kcal + 50)
   })
 })
+
+describe('photos and recipes', () => {
+  it('a meal photo goes as an image block with the note, to the photo model', async () => {
+    const bodies: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)))
+      return reply({ content: JSON.stringify({ items: [{ meal: 'lunch', food_id: 'pc-ayran', factor: 1, said: '1 bardak ayran' }], unmatched: [], note: 'Miktarlar fotoğraftan tahmin edildi.' }) })
+    }))
+    const image = { data: 'QUJD', mediaType: 'image/jpeg' as const, preview: '' }
+    const r = await parseFoodText(S, { text: 'ayran şekersiz', image }, { meals: [{ slot: 'lunch', label: 'Öğle' }], hour: 13, save: async () => {} })
+    expect(bodies[0].model).toBe('claude-sonnet-5-5')
+    const content = (bodies[0].messages as { content: { type: string; source?: { data: string }; text?: string }[] }[])[0].content
+    expect(content[0]).toMatchObject({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'QUJD' } })
+    expect(content[1]).toMatchObject({ type: 'text', text: 'ayran şekersiz' })
+    expect(String(bodies[0].system)).toMatch(/PHOTO/)
+    expect(r.items[0]).toMatchObject({ foodId: 'pc-ayran', slot: 'lunch' })
+  })
+
+  it('a recipe becomes ingredient lines; unknown ingredients and silly amounts are left out', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => reply({
+      content: JSON.stringify({
+        name: 'Annemin karnıyarığı', servings: 6,
+        lines: [
+          { ingredient_id: 'patlican', grams: 1500, said: '6 patlıcan' },
+          { ingredient_id: 'dana-kiyma-20', grams: 300, said: '300 g kıyma' },
+          { ingredient_id: 'uydurma', grams: 10, said: 'sihirli toz' },
+          { ingredient_id: 'zeytinyagi', grams: 0, said: 'biraz yağ' },
+        ],
+        unmatched: ['1 demet maydanoz'], note: 'Patlıcanları orta boy saydım.',
+      }),
+    })))
+    const { parseRecipe } = await import('../recipe')
+    const r = await parseRecipe(S, { text: 'Annemin karnıyarığı…' })
+    expect(r).toMatchObject({ name: 'Annemin karnıyarığı', servings: 6, note: 'Patlıcanları orta boy saydım.' })
+    expect(r.lines.map((l) => l.ingredientId)).toEqual(['patlican', 'dana-kiyma-20'])
+    expect(r.unmatched).toEqual(['1 demet maydanoz', 'sihirli toz', 'biraz yağ'])
+  })
+})
