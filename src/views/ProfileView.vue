@@ -5,6 +5,7 @@ import { useAppStore } from '@/stores/app'
 import SegControl from '@/components/SegControl.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
 import SavedFoods from '@/components/SavedFoods.vue'
+import AiSettings from '@/components/AiSettings.vue'
 import * as L from '@/content/labels'
 import { setTheme, theme, type Theme } from '@/theme'
 
@@ -275,6 +276,11 @@ watch(
     <details class="fold">
       <summary>Kayıtlı yemeklerim ve ürünlerim <span class="hint">{{ savedCount }}</span></summary>
       <div class="fold-body"><SavedFoods /></div>
+    </details>
+
+    <details class="fold">
+      <summary>✨ Yapay zekâ <span class="hint">{{ store.aiReady ? 'açık' : 'kapalı' }}</span></summary>
+      <div class="fold-body"><AiSettings /></div>
     </details>
 
     <details class="fold">

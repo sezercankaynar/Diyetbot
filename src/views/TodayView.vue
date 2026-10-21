@@ -15,13 +15,15 @@ import CravingPanel from '@/components/CravingPanel.vue'
 import DailyCoach from '@/components/DailyCoach.vue'
 import RestSuggest from '@/components/RestSuggest.vue'
 import WeekBalance from '@/components/WeekBalance.vue'
+import AiLogPanel from '@/components/AiLogPanel.vue'
+import CoachPanel from '@/components/CoachPanel.vue'
 import RingProgress from '@/components/RingProgress.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import { fmt } from '@/content/labels'
 
 const emit = defineEmits<{ go: [tab: string] }>()
 const store = useAppStore()
-const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup'>(null)
+const sheet = ref<null | 'check' | 'out' | 'craving' | 'backup' | 'ailog' | 'coach'>(null)
 const isMonday = computed(() => new Date(`${store.todayDate}T12:00:00`).getDay() === 1)
 const daysAgo = (iso: string) => Math.max(0, Math.round((Date.parse(`${store.todayDate}T12:00:00`) - Date.parse(iso)) / 86_400_000))
 const openMeal = ref<Slot | null>(null)
@@ -136,6 +138,11 @@ const ACTIONS = [
 
       <WeekBalance v-if="store.isViewToday" />
 
+      <div v-if="store.aiReady" class="ai-row">
+        <button type="button" class="ai-btn" @click="sheet = 'ailog'"><span aria-hidden="true">✨</span> Ne yedin, yaz</button>
+        <button v-if="store.isViewToday" type="button" class="ai-btn" @click="sheet = 'coach'"><span aria-hidden="true">💬</span> Koça sor</button>
+      </div>
+
       <div class="actions">
         <button v-for="a in ACTIONS" :key="a.id" type="button" class="action" @click="sheet = a.id">
           <span class="ico" aria-hidden="true">{{ a.icon }}</span>
@@ -216,6 +223,8 @@ const ACTIONS = [
     </template>
 
     <CheckPanel v-if="sheet === 'check'" @close="sheet = null" />
+    <AiLogPanel v-if="sheet === 'ailog'" @close="sheet = null" />
+    <CoachPanel v-if="sheet === 'coach'" @close="sheet = null" />
     <CheckPanel v-if="slotSheet" :slot="slotSheet.slot" :title="`${slotSheet.label}: ne yedin?`" @close="slotSheet = null" />
     <EatOutPanel v-if="sheet === 'out'" @close="sheet = null" />
     <CravingPanel v-if="sheet === 'craving'" @close="sheet = null" />
@@ -244,6 +253,12 @@ const ACTIONS = [
   border: 0; border-radius: 16px; cursor: pointer;
 }
 .ico { font-size: 1.45rem; }
+.ai-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.ai-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 8px;
+  font: inherit; font-size: 0.85rem; font-weight: 750; color: var(--accent-ink); background: var(--accent);
+  border: 0; border-radius: 16px; box-shadow: var(--shadow); cursor: pointer;
+}
 .sec-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .sec-head a { font-size: 0.85rem; }
 .meal { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 10px 0; }

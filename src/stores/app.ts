@@ -59,6 +59,7 @@ import { deviceStatus } from '@/native/deviceSettings'
 import { readSteps, type StepsResult } from '@/native/steps'
 import { scheduleWeighNotifications } from '@/native/weighNotifications'
 import { updateMenuWidget } from '@/native/menuWidget'
+import { loadAi, saveAi, type AiSettings } from '@/ai/gateway'
 
 export const today = (): string => {
   const d = new Date()
@@ -151,6 +152,14 @@ export const useAppStore = defineStore('app', () => {
   )
   /** The style the app recommends (without the user's own choice). */
   const recommendedId = computed(() => buildPlan(profile.value, { kcalOffset: kcalOffset.value }).recommendedDiet?.id ?? null)
+  /** AI through the Claude gateway: settings live only on this device (not in backups). */
+  const ai = ref<AiSettings>(loadAi())
+  const aiReady = computed(() => !!ai.value.token.trim())
+  function setAi(s: AiSettings) {
+    ai.value = { ...s, token: s.token.trim(), url: s.url.trim() }
+    saveAi(ai.value)
+  }
+
   /** Meals the user saved; foods they log most; their usual breakfasts/snacks and main dishes. */
   const savedMeals = ref<SavedMeal[]>([])
   const frequent = computed(() => frequentFoods(diary.value, todayDate.value))
@@ -585,6 +594,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
+    ai, aiReady, setAi,
     dayTarget, balance, balanceOffer, applyWeekBalance, dismissWeekBalance,
     savedMeals, saveMeal, deleteSavedMeal, frequent, ownMeals,
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,
