@@ -46,6 +46,17 @@
     </LinearLayout>
 
     <TextView
+        android:id="@+id/widget_partner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="3dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="@color/widget_muted"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <TextView
         android:id="@+id/widget_empty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

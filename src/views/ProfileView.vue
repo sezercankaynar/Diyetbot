@@ -6,10 +6,13 @@ import SegControl from '@/components/SegControl.vue'
 import BackupPanel from '@/components/BackupPanel.vue'
 import SavedFoods from '@/components/SavedFoods.vue'
 import AiSettings from '@/components/AiSettings.vue'
+import PartnerSettings from '@/components/PartnerSettings.vue'
+import { useShareStore } from '@/stores/share'
 import * as L from '@/content/labels'
 import { setTheme, theme, type Theme } from '@/theme'
 
 const store = useAppStore()
+const share = useShareStore()
 const savedCount = computed(() => store.customFoods.filter((f) => !f.hidden).length || '')
 const THEMES: { value: Theme; label: string }[] = [
   { value: 'system', label: 'Sistem' },
@@ -276,6 +279,11 @@ watch(
     <details class="fold">
       <summary>Kayıtlı yemeklerim ve ürünlerim <span class="hint">{{ savedCount }}</span></summary>
       <div class="fold-body"><SavedFoods /></div>
+    </details>
+
+    <details class="fold">
+      <summary>👫 Partnerim <span class="hint">{{ share.view?.partner?.name ?? (share.paired ? 'bekleniyor' : 'kapalı') }}</span></summary>
+      <div class="fold-body"><PartnerSettings /></div>
     </details>
 
     <details class="fold">

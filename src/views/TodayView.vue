@@ -18,6 +18,7 @@ import WeekBalance from '@/components/WeekBalance.vue'
 import AiLogPanel from '@/components/AiLogPanel.vue'
 import CoachPanel from '@/components/CoachPanel.vue'
 import RecipeBuilder from '@/components/RecipeBuilder.vue'
+import PartnerCard from '@/components/PartnerCard.vue'
 import RingProgress from '@/components/RingProgress.vue'
 import MacroBars from '@/components/MacroBars.vue'
 import { fmt } from '@/content/labels'
@@ -214,6 +215,8 @@ const ACTIONS = [
           </div>
         </div>
       </section>
+
+      <PartnerCard v-if="store.isViewToday" />
 
       <RestSuggest />
 

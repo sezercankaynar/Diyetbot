@@ -62,6 +62,15 @@ public class MenuWidget extends AppWidgetProvider {
             v.setViewVisibility(R.id.widget_coach, View.GONE);
         }
 
+        // The partner's day (partner sharing), one line.
+        String partner = readString(context, "partner");
+        if (partner != null && !partner.isEmpty()) {
+            v.setTextViewText(R.id.widget_partner, partner);
+            v.setViewVisibility(R.id.widget_partner, View.VISIBLE);
+        } else {
+            v.setViewVisibility(R.id.widget_partner, View.GONE);
+        }
+
         LocalDate today = LocalDate.now();
         v.setTextViewText(R.id.widget_date, today.format(DateTimeFormatter.ofPattern("d MMMM EEEE", new Locale("tr", "TR"))));
         JSONObject day = findDay(context, today.toString());
@@ -96,6 +105,16 @@ public class MenuWidget extends AppWidgetProvider {
         if (day.has("eaten")) v.setTextViewText(R.id.widget_kcal, nf.format(day.optInt("eaten")) + " / " + nf.format(target) + " kcal");
         else v.setTextViewText(R.id.widget_kcal, "Menü " + nf.format(menuKcal) + " kcal");
         return v;
+    }
+
+    private static String readString(Context context, String field) {
+        String raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null);
+        if (raw == null) return null;
+        try {
+            return new JSONObject(raw).optString(field, "");
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static boolean aiReady(Context context) {

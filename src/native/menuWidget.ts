@@ -11,10 +11,10 @@ interface MenuWidgetPlugin {
 const MenuWidget = registerPlugin<MenuWidgetPlugin>('MenuWidget')
 
 /** `ai`: AI is set up in the app, so the widget shows its "Koça sor" button. */
-export async function updateMenuWidget(days: WidgetDay[], ai = false): Promise<void> {
+export async function updateMenuWidget(days: WidgetDay[], ai = false, partner: string | null = null): Promise<void> {
   if (!Capacitor.isNativePlatform()) return
   try {
-    await MenuWidget.update({ data: JSON.stringify({ days, ai }) })
+    await MenuWidget.update({ data: JSON.stringify({ days, ai, ...(partner ? { partner } : {}) }) })
   } catch {
     // An older app build without the widget: nothing to update.
   }

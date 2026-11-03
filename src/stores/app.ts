@@ -218,9 +218,11 @@ export const useAppStore = defineStore('app', () => {
       : null,
   )
   let widgetTimer: ReturnType<typeof setTimeout> | undefined
-  watch([widgetData, aiReady], ([d, ai]) => {
+  /** The partner's day in one line for the widget (set by the share store). */
+  const widgetPartner = ref<string | null>(null)
+  watch([widgetData, aiReady, widgetPartner], ([d, ai, partner]) => {
     clearTimeout(widgetTimer)
-    if (d) widgetTimer = setTimeout(() => void updateMenuWidget(d, ai), 400)
+    if (d) widgetTimer = setTimeout(() => void updateMenuWidget(d, ai, partner), 400)
   })
   /** A screen asked to be opened from outside (the widget's "Koça sor"). */
   const openRequest = ref<'coach' | null>(null)
@@ -596,7 +598,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    ai, aiReady, setAi, openRequest,
+    ai, aiReady, setAi, openRequest, widgetPartner,
     dayTarget, balance, balanceOffer, applyWeekBalance, dismissWeekBalance,
     savedMeals, saveMeal, deleteSavedMeal, frequent, ownMeals,
     loaded, hasProfile, profile, weighLogs, adjustments, dietChoice,

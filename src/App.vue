@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { onWidgetAction, takeWidgetAction } from '@/native/menuWidget'
+import { useShareStore } from '@/stores/share'
 import { useAppStore } from '@/stores/app'
 import TodayView from '@/views/TodayView.vue'
 import MenuView from '@/views/MenuView.vue'
@@ -22,6 +23,7 @@ const ALL: Tab[] = TABS.map((t) => t.id)
 const meSub = ref<'plan' | 'profil' | 'kanit' | undefined>()
 
 const store = useAppStore()
+const share = useShareStore()
 const fromHash = (): Tab | null => {
   const h = location.hash.slice(1)
   if (h === 'plan' || h === 'profil' || h === 'kanit') {
@@ -54,6 +56,7 @@ onMounted(async () => {
   }
   await widgetAction()
   onWidgetAction(() => void widgetAction())
+  share.startSync()
 })
 // Onboarding finished (profile saved): go to Bugün. (An import that brings a profile does the same.)
 watch(
@@ -75,6 +78,8 @@ document.addEventListener('visibilitychange', () => {
     if (store.waterReminder.on) store.rescheduleWater()
     if (store.stepsAuto) store.syncSteps(false)
     void widgetAction()
+    void share.push()
+    void share.refresh()
   }
 })
 window.addEventListener('hashchange', () => {
