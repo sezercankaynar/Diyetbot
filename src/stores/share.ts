@@ -4,7 +4,7 @@ import { addDays, onTarget, shareDay, slotPlan, stepTarget, type ShareDayData } 
 import { loadShare, saveShare, shareApi, ShareError, type PartnerView, type ShareSettings } from '@/share/client'
 import { useAppStore } from './app'
 
-/** Following each other's day with a partner (through the gateway's /v1/share). */
+/** Following each other's day with a partner (through the diyetbot-share service). */
 export const useShareStore = defineStore('share', () => {
   const app = useAppStore()
   const settings = ref<ShareSettings>(loadShare())
@@ -19,7 +19,6 @@ export const useShareStore = defineStore('share', () => {
     settings.value = { ...settings.value, ...patch }
     saveShare(settings.value)
   }
-  const url = () => app.ai.url || settings.value.url
 
   async function run<T>(fn: () => Promise<T>): Promise<T | null> {
     busy.value = true
@@ -44,22 +43,22 @@ export const useShareStore = defineStore('share', () => {
   /** Starts sharing and shows an invite code for the partner. */
   async function start(name: string) {
     await run(async () => {
-      const r = await shareApi.invite({ ...settings.value, url: url() }, name.trim(), app.ai.token)
-      if (r.member_key) set({ key: r.member_key, me: name.trim(), url: url() })
+      const r = await shareApi.invite(settings.value, name.trim())
+      if (r.member_key) set({ key: r.member_key, me: name.trim() })
       invite.value = { code: r.code, expires_at: r.expires_at }
       await push()
     })
   }
   async function newCode() {
     await run(async () => {
-      const r = await shareApi.invite({ ...settings.value, url: url() }, settings.value.me, '')
+      const r = await shareApi.invite(settings.value, settings.value.me)
       invite.value = { code: r.code, expires_at: r.expires_at }
     })
   }
   async function join(code: string, name: string) {
     return run(async () => {
-      const r = await shareApi.join({ ...settings.value, url: url() }, code.trim(), name.trim())
-      set({ key: r.member_key, me: name.trim(), url: url() })
+      const r = await shareApi.join(settings.value, code.trim(), name.trim())
+      set({ key: r.member_key, me: name.trim() })
       await push()
       await refresh()
       return r.partner.name

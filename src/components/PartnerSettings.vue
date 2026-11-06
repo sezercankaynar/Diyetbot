@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useAppStore } from '@/stores/app'
 import { useShareStore } from '@/stores/share'
 
 // Pairing with a partner: start (invite code) or join with a code; what to share; end.
-const app = useAppStore()
 const share = useShareStore()
 const name = ref(share.settings.me)
 const code = ref('')
@@ -33,8 +31,8 @@ const until = (iso: string) => new Date(iso).toLocaleString('tr-TR', { weekday: 
 
       <div class="box">
         <div class="label">Davet et</div>
-        <p class="small muted">Bir kod oluştur, partnerine gönder. {{ app.aiReady ? '' : 'Bunun için Yapay zekâ bölümüne gateway token\'ı girilmiş olmalı (partnerin için gerekmez).' }}</p>
-        <button type="button" class="btn" :disabled="share.busy || !name.trim() || !app.aiReady" @click="share.start(name)">Davet kodu oluştur</button>
+        <p class="small muted">Bir kod oluştur, partnerine gönder.</p>
+        <button type="button" class="btn" :disabled="share.busy || !name.trim()" @click="share.start(name)">Davet kodu oluştur</button>
       </div>
       <div class="box">
         <div class="label">Kodum var</div>

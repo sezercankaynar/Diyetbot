@@ -1,5 +1,5 @@
-// Partner sharing through the gateway (/v1/share): pairing with an invite code, each day's summary,
-// the partner's days and cheers. The device key is kept only on this phone (localStorage, not in backups).
+// Partner sharing through the diyetbot-share service (github.com/sezercankaynar/diyetbot-share, /v1/share):
+// pairing with an invite code, each day's summary, the partner's days and cheers. The device key is kept only on this phone (localStorage, not in backups).
 import { DEFAULT_SHARE_PREFS, type ShareDayData, type SharePrefs } from '@/engine'
 
 export interface ShareSettings {
@@ -30,12 +30,15 @@ export interface PartnerView {
 }
 
 const KEY = 'diyetbot.share'
-export const DEFAULT_SHARE: ShareSettings = { key: '', me: '', url: 'https://claude-gateway-backend.vercel.app', prefs: { ...DEFAULT_SHARE_PREFS } }
+export const SHARE_URL = 'https://diyetbot-share.vercel.app'
+export const DEFAULT_SHARE: ShareSettings = { key: '', me: '', url: SHARE_URL, prefs: { ...DEFAULT_SHARE_PREFS } }
 
 export function loadShare(): ShareSettings {
   try {
     const raw = localStorage.getItem(KEY)
     const s = raw ? { ...DEFAULT_SHARE, ...JSON.parse(raw) } : { ...DEFAULT_SHARE }
+    // Sharing first lived on the Claude gateway; it has its own service now.
+    if (!s.url || s.url.includes('claude-gateway')) s.url = SHARE_URL
     return { ...s, prefs: { ...DEFAULT_SHARE_PREFS, ...s.prefs } }
   } catch {
     return { ...DEFAULT_SHARE }
@@ -56,15 +59,16 @@ export class ShareError extends Error {
 }
 
 const MESSAGES: Record<string, string> = {
-  unauthorized: 'Davet başlatmak için Ben → Profil → ✨ Yapay zekâ bölümüne gateway token\'ı girilmiş olmalı (davet edenin; katılan için gerekmez).',
   invite_invalid: 'Kod yanlış ya da süresi dolmuş (24 saat geçerli). Partnerinden yeni kod iste.',
   pair_full: 'Bu eşleşme dolu ya da artık yok.',
   already_paired: 'Zaten eşleştiniz.',
   share_unauthorized: 'Eşleşme bitmiş. İstersen yeniden eşleşebilirsin.',
   no_partner: 'Partnerin henüz katılmadı.',
+  rate_limited: 'Çok sık deneme yapıldı; biraz sonra tekrar dene.',
+  not_found: 'Paylaşım servisine ulaşılamadı (adres yanlış ya da servis kurulmamış).',
 }
 
-async function call<T>(s: Pick<ShareSettings, 'url' | 'key'>, method: string, path: string, body?: unknown, auth?: string): Promise<T> {
+async function call<T>(s: Pick<ShareSettings, 'url' | 'key'>, method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${s.url.replace(/\/+$/, '')}/v1/share${path}`, {
@@ -72,7 +76,6 @@ async function call<T>(s: Pick<ShareSettings, 'url' | 'key'>, method: string, pa
       headers: {
         'Content-Type': 'application/json',
         ...(s.key ? { 'X-Share-Key': s.key } : {}),
-        ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     })
@@ -88,9 +91,9 @@ async function call<T>(s: Pick<ShareSettings, 'url' | 'key'>, method: string, pa
 }
 
 export const shareApi = {
-  /** Starts sharing (needs the gateway token) or, with a key, a new code for the pair. */
-  invite: (s: ShareSettings, name: string, gatewayToken: string) =>
-    call<{ member_key?: string; code: string; expires_at: string }>(s, 'POST', '/invite', s.key ? {} : { name }, s.key ? undefined : gatewayToken),
+  /** Starts sharing or, with a key, a new code for the pair. */
+  invite: (s: ShareSettings, name: string) =>
+    call<{ member_key?: string; code: string; expires_at: string }>(s, 'POST', '/invite', s.key ? {} : { name }),
   join: (s: ShareSettings, code: string, name: string) =>
     call<{ member_key: string; partner: { name: string } }>({ url: s.url, key: '' }, 'POST', '/join', { code, name }),
   me: (s: ShareSettings) => call<{ me: { name: string }; partner: { name: string; last_seen_at: string } | null }>(s, 'GET', '/me'),
